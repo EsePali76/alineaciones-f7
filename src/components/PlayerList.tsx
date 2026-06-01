@@ -6,6 +6,8 @@ interface PlayerListProps {
   players: Player[]
   onEdit: (player: Player) => void
   onRemove: (id: string) => void
+  /** Si el usuario es admin (muestra acciones de editar/borrar). */
+  isAdmin: boolean
 }
 
 /** Media de las 5 valoraciones (sin valorar cuenta como 3 si es invitado, si no se ignora). */
@@ -18,11 +20,13 @@ function mediaValoracion(p: Player): number | null {
   return present.reduce((a, b) => a + b, 0) / present.length
 }
 
-export function PlayerList({ players, onEdit, onRemove }: PlayerListProps) {
+export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListProps) {
   if (players.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-500">
-        Aún no hay jugadores. Añade el primero con el formulario.
+        {isAdmin
+          ? 'Aún no hay jugadores. Añade el primero con el formulario de abajo.'
+          : 'Aún no hay jugadores en el plantel.'}
       </p>
     )
   }
@@ -41,7 +45,7 @@ export function PlayerList({ players, onEdit, onRemove }: PlayerListProps) {
               <th className="px-3 py-2 font-medium">Posiciones</th>
               <th className="px-3 py-2 font-medium">Pierna</th>
               <th className="px-3 py-2 font-medium">Media</th>
-              <th className="px-3 py-2 font-medium"></th>
+              {isAdmin && <th className="px-3 py-2 font-medium"></th>}
             </tr>
           </thead>
           <tbody>
@@ -83,24 +87,26 @@ export function PlayerList({ players, onEdit, onRemove }: PlayerListProps) {
                   <td className="px-3 py-2 text-slate-300">
                     {media === null ? '—' : media.toFixed(1)}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => onEdit(p)}
-                        className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar a ${p.nombre}?`)) onRemove(p.id)
-                        }}
-                        className="rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:border-red-500"
-                      >
-                        Borrar
-                      </button>
-                    </div>
-                  </td>
+                  {isAdmin && (
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => onEdit(p)}
+                          className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`¿Eliminar a ${p.nombre}?`)) onRemove(p.id)
+                          }}
+                          className="rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:border-red-500"
+                        >
+                          Borrar
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               )
             })}

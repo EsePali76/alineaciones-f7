@@ -3,6 +3,7 @@ import { toBlob, toPng } from 'html-to-image'
 import { usePlayersStore } from '../store/playersStore'
 import { useLineupsStore } from '../store/lineupsStore'
 import { useGeneratorStore } from '../store/generatorStore'
+import { useAuthStore } from '../store/authStore'
 import type { Player } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore } from '../domain/scoring'
@@ -321,6 +322,7 @@ function BalanceResult({
 }) {
   const pctA = Math.round(balance.balancePctA)
   const pctB = 100 - pctA
+  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const fieldRef = useRef<HTMLDivElement>(null)
   const [imgMsg, setImgMsg] = useState('')
@@ -353,14 +355,16 @@ function BalanceResult({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Equipos propuestos</h2>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={onConfirm}
-            disabled={confirmada}
-            className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white enabled:hover:bg-emerald-500 disabled:cursor-default disabled:opacity-50"
-            title="Guarda esta alineación en el historial para evitar repetirla en el futuro"
-          >
-            {confirmada ? '✓ Confirmada' : '✅ Confirmar alineación'}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={onConfirm}
+              disabled={confirmada}
+              className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white enabled:hover:bg-emerald-500 disabled:cursor-default disabled:opacity-50"
+              title="Guarda esta alineación en el historial para evitar repetirla en el futuro"
+            >
+              {confirmada ? '✓ Confirmada' : '✅ Confirmar alineación'}
+            </button>
+          )}
           <button
             onClick={onCopy}
             className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"

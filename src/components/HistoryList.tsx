@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useLineupsStore } from '../store/lineupsStore'
 import { usePlayersStore } from '../store/playersStore'
+import { useAuthStore } from '../store/authStore'
 import type { ConfirmedLineup } from '../domain/types'
 
 export function HistoryList() {
   const lineups = useLineupsStore((s) => s.lineups)
   const removeLineup = useLineupsStore((s) => s.removeLineup)
   const players = usePlayersStore((s) => s.players)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   // Mapa id → nombre para mostrar las alineaciones de forma legible.
   const nombrePorId = useMemo(() => {
@@ -45,14 +47,16 @@ export function HistoryList() {
                 year: 'numeric',
               })}
             </span>
-            <button
-              onClick={() => {
-                if (confirm('¿Eliminar esta alineación del historial?')) removeLineup(lu.id)
-              }}
-              className="rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:border-red-500"
-            >
-              Borrar
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  if (confirm('¿Eliminar esta alineación del historial?')) removeLineup(lu.id)
+                }}
+                className="rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:border-red-500"
+              >
+                Borrar
+              </button>
+            )}
           </div>
           <div className="grid gap-2 text-sm md:grid-cols-2">
             <div className="rounded border border-slate-400 bg-slate-900/60 p-2">
@@ -64,7 +68,7 @@ export function HistoryList() {
               <p className="text-slate-300">{lu.teamB.map(nombre).join(', ')}</p>
             </div>
           </div>
-          <ResultadoRow lineup={lu} />
+          <ResultadoRow lineup={lu} isAdmin={isAdmin} />
         </div>
       ))}
     </div>
@@ -72,7 +76,7 @@ export function HistoryList() {
 }
 
 /** Muestra/edita el marcador de una alineación (tras el partido). */
-function ResultadoRow({ lineup }: { lineup: ConfirmedLineup }) {
+function ResultadoRow({ lineup, isAdmin }: { lineup: ConfirmedLineup; isAdmin: boolean }) {
   const setResultado = useLineupsStore((s) => s.setResultado)
   const clearResultado = useLineupsStore((s) => s.clearResultado)
 
@@ -102,25 +106,36 @@ function ResultadoRow({ lineup }: { lineup: ConfirmedLineup }) {
         <span className="text-xs text-slate-500">
           {ganaA ? '· gana Blanco' : ganaB ? '· gana Rojo' : '· empate'}
         </span>
-        <div className="ml-auto flex gap-2">
-          <button
-            onClick={() => setEditando(true)}
-            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-          >
-            Editar
-          </button>
-          <button
-            onClick={() => clearResultado(lineup.id)}
-            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
-          >
-            Quitar
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="ml-auto flex gap-2">
+            <button
+              onClick={() => setEditando(true)}
+              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+            >
+              Editar
+            </button>
+            <button
+              onClick={() => clearResultado(lineup.id)}
+              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
+            >
+              Quitar
+            </button>
+          </div>
+        )}
       </div>
     )
   }
 
-  // Vista de edición / sin resultado.
+  // Sin resultado y sin permisos de admin: solo informa.
+  if (!isAdmin) {
+    return (
+      <div className="mt-2 border-t border-slate-700/60 pt-2 text-sm text-slate-500">
+        Sin resultado aún
+      </div>
+    )
+  }
+
+  // Vista de edición (admin).
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-700/60 pt-2 text-sm">
       <span className="text-slate-400">Marcador:</span>

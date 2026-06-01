@@ -1,72 +1,84 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { Player } from '../domain/types'
+import * as api from '../lib/dataApi'
 
 /** Datos editables de un jugador (todo menos id/createdAt, que gestiona el store). */
 export type PlayerInput = Omit<Player, 'id' | 'createdAt'>
 
 interface PlayersState {
   players: Player[]
-  addPlayer: (input: PlayerInput) => void
-  updatePlayer: (id: string, input: PlayerInput) => void
-  removePlayer: (id: string) => void
-  /** Reemplaza todo el plantel (para import de JSON). */
-  replaceAll: (players: Player[]) => void
+  loaded: boolean
+  load: () => Promise<void>
+  addPlayer: (input: PlayerInput) => Promise<void>
+  updatePlayer: (id: string, input: PlayerInput) => Promise<void>
+  removePlayer: (id: string) => Promise<void>
+  /** Reemplaza/sube todo el plantel (import o migración). */
+  replaceAll: (players: Player[]) => Promise<void>
 }
 
 function newId(): string {
-  // crypto.randomUUID está disponible en navegadores modernos; fallback por si acaso.
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
   return `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-export const usePlayersStore = create<PlayersState>()(
-  persist(
-    (set) => ({
-      players: [],
-      addPlayer: (input) =>
-        set((state) => ({
-          players: [...state.players, { ...input, id: newId(), createdAt: Date.now() }],
-        })),
-      updatePlayer: (id, input) =>
-        set((state) => ({
-          players: state.players.map((p) => (p.id === id ? { ...p, ...input } : p)),
-        })),
-      removePlayer: (id) =>
-        set((state) => ({ players: state.players.filter((p) => p.id !== id) })),
-      replaceAll: (players) => set({ players }),
-    }),
-    {
-      name: 'alineaciones-f7-players',
-      // v2: escala 1-5 → 0-10 (×2) y rename de valoración `calidad` → `tecnica`.
-      version: 2,
-      migrate: (persisted, version) => {
-        const state = persisted as { players?: unknown[] } | undefined
-        if (!state || version >= 2) return state as PlayersState
+function avisoError(e: unknown) {
+  console.error(e)
+  alert('No se pudo guardar en la nube. ¿Has entrado como admin? Se han recargado los datos.')
+}
 
-        const x2 = (v: unknown): number | undefined =>
-          typeof v === 'number' ? Math.min(10, Math.max(0, Math.round(v * 2))) : undefined
+export const usePlayersStore = create<PlayersState>((set, get) => ({
+  players: [],
+  loaded: false,
 
-        state.players = (state.players ?? []).map((raw) => {
-          const p = raw as { ratings?: Record<string, unknown>; tocado?: boolean }
-          const r = p.ratings ?? {}
-          return {
-            ...p,
-            tocado: p.tocado ?? false,
-            ratings: {
-              // calidad antigua → tecnica; si ya hubiera tecnica, se respeta.
-              tecnica: x2(r.tecnica ?? r.calidad),
-              disparo: x2(r.disparo),
-              presion: x2(r.presion),
-              velocidad: x2(r.velocidad),
-              fisico: x2(r.fisico),
-              forma: x2(r.forma),
-              animo: x2(r.animo),
-            },
-          }
-        })
-        return state as PlayersState
-      },
-    },
-  ),
-)
+  load: async () => {
+    const players = await api.fetchPlayers()
+    set({ players, loaded: true })
+  },
+
+  addPlayer: async (input) => {
+    const player: Player = { ...input, id: newId(), createdAt: Date.now() }
+    const prev = get().players
+    set({ players: [...prev, player] }) // optimista
+    try {
+      await api.upsertPlayer(player)
+    } catch (e) {
+      set({ players: prev })
+      avisoError(e)
+    }
+  },
+
+  updatePlayer: async (id, input) => {
+    const prev = get().players
+    const updated = prev.map((p) => (p.id === id ? { ...p, ...input } : p))
+    const player = updated.find((p) => p.id === id)
+    set({ players: updated })
+    try {
+      if (player) await api.upsertPlayer(player)
+    } catch (e) {
+      set({ players: prev })
+      avisoError(e)
+    }
+  },
+
+  removePlayer: async (id) => {
+    const prev = get().players
+    set({ players: prev.filter((p) => p.id !== id) })
+    try {
+      await api.deletePlayer(id)
+    } catch (e) {
+      set({ players: prev })
+      avisoError(e)
+    }
+  },
+
+  replaceAll: async (players) => {
+    const prev = get().players
+    set({ players })
+    try {
+      await api.upsertPlayers(players)
+    } catch (e) {
+      set({ players: prev })
+      avisoError(e)
+    }
+  },
+}))
