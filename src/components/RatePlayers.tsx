@@ -15,8 +15,9 @@ import {
 import type { RatingKey } from '../domain/constants'
 
 /**
- * Valoración colaborativa: cada usuario vota a TODOS los demás jugadores (menos a
- * sí mismo). Anónimo. Editable hasta pulsar "Finalizar", que lo bloquea.
+ * Valoración colaborativa: cada usuario vota a los demás jugadores (menos a sí mismo).
+ * Anónimo. Cada parámetro es OPCIONAL (lo que dejes en blanco no cuenta) y editar uno
+ * no afecta a los demás. Se guarda por jugador con su botón. Editable hasta "Finalizar".
  */
 export function RatePlayers() {
   const players = usePlayersStore((s) => s.players)
@@ -28,6 +29,10 @@ export function RatePlayers() {
   const finalize = useRatingsStore((s) => s.finalize)
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
+  // Borrador en edición del jugador seleccionado (no se guarda hasta pulsar Guardar).
+  const [draft, setDraft] = useState<PlayerRatings>({})
+  const [guardando, setGuardando] = useState(false)
+  const [guardadoOk, setGuardadoOk] = useState(false)
 
   useEffect(() => {
     loadMine()
@@ -35,7 +40,6 @@ export function RatePlayers() {
 
   const finalizado = profile?.ratingsFinalized ?? false
 
-  // Jugadores a valorar: activos, no invitados (a esos los estima el admin), distintos de mí.
   const aValorar = useMemo(
     () =>
       players
@@ -43,6 +47,17 @@ export function RatePlayers() {
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [players, profile?.playerId],
   )
+
+  // Al elegir jugador (o al cargar mis votos), el borrador parte de lo ya guardado.
+  const elegir = (id: string) => {
+    setSeleccionado(id)
+    setDraft({ ...(mine.get(id) ?? {}) })
+    setGuardadoOk(false)
+  }
+  useEffect(() => {
+    if (seleccionado) setDraft({ ...(mine.get(seleccionado) ?? {}) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mineLoaded])
 
   if (!isLinked) {
     return (
@@ -53,21 +68,35 @@ export function RatePlayers() {
   }
 
   const jugador = seleccionado ? aValorar.find((p) => p.id === seleccionado) : null
-  const valores = seleccionado ? mine.get(seleccionado) ?? {} : {}
+  const guardado = seleccionado ? mine.get(seleccionado) ?? {} : {}
+  const sucio = JSON.stringify(draft) !== JSON.stringify(guardado)
 
-  const setValor = async (key: RatingKey, value: Rating | undefined) => {
-    if (!seleccionado || finalizado) return
-    const nuevos: PlayerRatings = { ...mine.get(seleccionado) }
-    if (value === undefined) delete nuevos[key]
-    else nuevos[key] = value
-    await saveMine(seleccionado, nuevos)
+  const setValor = (key: RatingKey, value: Rating | undefined) => {
+    if (finalizado) return
+    setGuardadoOk(false)
+    setDraft((d) => {
+      const n = { ...d }
+      if (value === undefined) delete n[key]
+      else n[key] = value
+      return n
+    })
   }
 
-  // Cuántos jugadores tienen al menos la valoración general puesta.
+  const guardar = async () => {
+    if (!seleccionado) return
+    setGuardando(true)
+    try {
+      await saveMine(seleccionado, draft)
+      setGuardadoOk(true)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   const completados = aValorar.filter((p) => mine.get(p.id)?.general != null).length
 
   const ratingRow = (key: RatingKey) => {
-    const val = valores[key]
+    const val = draft[key]
     return (
       <div key={key} className="flex items-start gap-3">
         <div className="w-40 shrink-0">
@@ -102,8 +131,10 @@ export function RatePlayers() {
       <div>
         <h2 className="text-lg font-semibold">Valorar jugadores</h2>
         <p className="text-sm text-slate-400">
-          Puntúa al resto del grupo (0-10). Es anónimo: nadie verá tu voto, solo la media.
-          Puedes hacerlo en varias veces; cuando termines, pulsa <b>Finalizar</b> y se bloqueará.
+          Puntúa al resto del grupo (0-10). Es anónimo: nadie verá tu voto, solo la media.{' '}
+          <b>Cada parámetro es opcional</b>: deja en blanco lo que no quieras puntuar (no cuenta) y
+          rellena solo lo que quieras. Guarda cada jugador con su botón. Cuando termines del todo,
+          pulsa <b>Finalizar</b> y se bloqueará.
         </p>
       </div>
 
@@ -141,7 +172,7 @@ export function RatePlayers() {
                 return (
                   <button
                     key={p.id}
-                    onClick={() => setSeleccionado(p.id)}
+                    onClick={() => elegir(p.id)}
                     className={
                       'flex items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors ' +
                       (activo ? 'bg-slate-700 text-white' : 'text-slate-300 hover:bg-slate-800')
@@ -175,6 +206,24 @@ export function RatePlayers() {
                   </span>
                   {RATING_KEYS_FACETAS.map((key) => ratingRow(key))}
                 </div>
+
+                {/* Guardar */}
+                {!finalizado && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={guardar}
+                      disabled={guardando || !sucio}
+                      className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white enabled:hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {guardando ? 'Guardando…' : 'Guardar'}
+                    </button>
+                    {sucio ? (
+                      <span className="text-xs text-amber-400">Cambios sin guardar</span>
+                    ) : guardadoOk ? (
+                      <span className="text-xs text-emerald-400">✓ Guardado</span>
+                    ) : null}
+                  </div>
+                )}
               </div>
             )}
           </div>
