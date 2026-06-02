@@ -1,4 +1,5 @@
 import type { ConfirmedLineup } from './types'
+import { mvpDelPartido } from './animo'
 
 /** Estadísticas acumuladas de un color de equipo (blanco = A, rojo = B). */
 export interface TeamStats {
@@ -47,6 +48,7 @@ export interface PlayerStats {
   golesContra: number
   goles: number
   asistencias: number
+  mvps: number
   vecesBlanco: number
   vecesRojo: number
   /** Racha actual con signo: +3 = 3 victorias seguidas, -2 = 2 derrotas; 0 = sin racha. */
@@ -101,6 +103,7 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
       golesContra: 0,
       goles: 0,
       asistencias: 0,
+      mvps: 0,
       vecesBlanco: 0,
       vecesRojo: 0,
       racha: 0,
@@ -130,5 +133,12 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
     }
     map.set(id, s)
   }
+
+  // Cuenta de MVPs por jugador.
+  for (const l of recientes) {
+    const mvp = mvpDelPartido(l)
+    if (mvp && map.has(mvp)) map.get(mvp)!.mvps++
+  }
+
   return map
 }

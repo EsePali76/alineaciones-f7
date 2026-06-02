@@ -62,6 +62,7 @@ export function StatsPanel() {
                 <th className="px-2 py-2 text-center font-medium" title="Racha actual">Racha</th>
                 <th className="px-2 py-2 text-center font-medium" title="Goles">⚽</th>
                 <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
+                <th className="px-2 py-2 text-center font-medium" title="MVPs">🏆</th>
                 <th className="px-2 py-2 text-center font-medium" title="Veces de blanco / de rojo">⚪/🔴</th>
                 <th className="px-2 py-2 text-center font-medium" title="Ánimo">Ánimo</th>
               </tr>
@@ -80,6 +81,7 @@ export function StatsPanel() {
                     <td className="px-2 py-2 text-center">{rachaTexto(s.racha)}</td>
                     <td className="px-2 py-2 text-center text-slate-300">{s.goles || '—'}</td>
                     <td className="px-2 py-2 text-center text-slate-300">{s.asistencias || '—'}</td>
+                    <td className="px-2 py-2 text-center text-slate-300">{s.mvps || '—'}</td>
                     <td className="px-2 py-2 text-center text-slate-400">
                       {s.vecesBlanco}/{s.vecesRojo}
                     </td>
