@@ -237,14 +237,12 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
         </div>
       </div>
 
-      {/* Valoraciones 0-10 (solo admin / modo completo) */}
-      {!soloIdentidad && (
+      {/* Valoraciones 0-10: SOLO para invitados (al resto los valora el grupo en "Valorar"). */}
+      {!soloIdentidad && data.invitado && (
       <div className="flex flex-col gap-3 text-sm">
         <span className="text-slate-400">
-          Valoración (0-10){' '}
-          {data.invitado && (
-            <span className="text-amber-400">· sin valorar = 5 (media) por ser invitado</span>
-          )}
+          Valoración estimada del invitado (0-10){' '}
+          <span className="text-amber-400">· sin valorar = 5 (media)</span>
         </span>
 
         {/* Ancla: destacada y separada porque pondera bastante más */}
@@ -255,6 +253,12 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
         {/* Facetas */}
         <div className="flex flex-col gap-3">{RATING_KEYS_FACETAS.map((key) => ratingRow(key))}</div>
       </div>
+      )}
+
+      {!soloIdentidad && !data.invitado && (
+        <p className="text-xs text-slate-500">
+          Las valoraciones de este jugador salen de los votos del grupo (pestaña «Valorar»).
+        </p>
       )}
 
       {/* Flags (solo admin / modo completo) */}

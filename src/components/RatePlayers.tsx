@@ -35,11 +35,11 @@ export function RatePlayers() {
 
   const finalizado = profile?.ratingsFinalized ?? false
 
-  // Jugadores a valorar: activos, distintos de mí.
+  // Jugadores a valorar: activos, no invitados (a esos los estima el admin), distintos de mí.
   const aValorar = useMemo(
     () =>
       players
-        .filter((p) => p.activo && p.id !== profile?.playerId)
+        .filter((p) => p.activo && !p.invitado && p.id !== profile?.playerId)
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [players, profile?.playerId],
   )
