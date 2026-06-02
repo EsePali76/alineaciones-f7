@@ -97,4 +97,6 @@ export interface MatchResult {
   goleadores?: Record<string, number>
   /** Asistencias por jugador (playerId → nº de asistencias). Opcional. */
   asistencias?: Record<string, number>
+  /** MVP asignado a mano por el admin (playerId). Si está, manda sobre el automático. */
+  mvp?: string
 }

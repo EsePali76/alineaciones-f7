@@ -46,15 +46,21 @@ export function mvpDelPartido(l: ConfirmedLineup): string | null {
   return top.id
 }
 
+/** MVP efectivo: el asignado a mano por el admin si lo hay; si no, el automático. */
+export function mvpEfectivo(l: ConfirmedLineup): string | null {
+  return l.resultado?.mvp ?? mvpDelPartido(l)
+}
+
 /** Variación de ánimo de un jugador en un partido concreto. */
 function deltaDe(l: ConfirmedLineup, playerId: string): number {
   const r = l.resultado
   if (!r) return 0
+  // El MVP (manual o automático) siempre suma +1, gane, pierda o empate.
+  if (mvpEfectivo(l) === playerId) return DELTA_MVP
   if (r.golesA === r.golesB) return 0 // empate
   const enA = l.teamA.includes(playerId)
   const gano = enA ? r.golesA > r.golesB : r.golesB > r.golesA
-  if (!gano) return DELTA_PIERDE
-  return mvpDelPartido(l) === playerId ? DELTA_MVP : DELTA_GANA
+  return gano ? DELTA_GANA : DELTA_PIERDE
 }
 
 /** Ánimo calculado (0-10) de un jugador a partir del historial con resultados. */

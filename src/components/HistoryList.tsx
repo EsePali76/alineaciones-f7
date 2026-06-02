@@ -4,6 +4,7 @@ import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
 import { useAuthStore } from '../store/authStore'
 import { useTurno } from '../hooks/useTurno'
+import { mvpEfectivo } from '../domain/animo'
 import type { ConfirmedLineup, MatchResult } from '../domain/types'
 
 export function HistoryList() {
@@ -100,6 +101,7 @@ function ResultadoRow({
   const [b, setB] = useState(String(r?.golesB ?? ''))
   const [goles, setGoles] = useState<Record<string, string>>(() => mapToStr(r?.goleadores))
   const [asist, setAsist] = useState<Record<string, string>>(() => mapToStr(r?.asistencias))
+  const [mvp, setMvp] = useState<string>(r?.mvp ?? '')
 
   const jugadores = [...lineup.teamA, ...lineup.teamB]
 
@@ -110,6 +112,7 @@ function ResultadoRow({
       golesB: Math.max(0, Math.round(Number(b) || 0)),
       goleadores: strToMap(goles),
       asistencias: strToMap(asist),
+      mvp: mvp || undefined,
     }
     setResultado(lineup.id, resultado)
     setEditando(false)
@@ -126,6 +129,7 @@ function ResultadoRow({
     const ganaB = r.golesB > r.golesA
     const goleadores = entriesPos(r.goleadores)
     const asistencias = entriesPos(r.asistencias)
+    const mvpId = mvpEfectivo(lineup)
     return (
       <div className="mt-2 flex flex-col gap-1 border-t border-slate-700/60 pt-2 text-sm">
         <div className="flex flex-wrap items-center gap-3">
@@ -161,6 +165,12 @@ function ResultadoRow({
         {asistencias.length > 0 && (
           <p className="text-xs text-slate-400">
             🅰️ {asistencias.map(([id, n]) => `${nombre(id)}${n > 1 ? ` (${n})` : ''}`).join(', ')}
+          </p>
+        )}
+        {mvpId && (
+          <p className="text-xs text-amber-400">
+            🏆 MVP: {nombre(mvpId)}
+            {r.mvp ? ' (asignado a mano)' : ''}
           </p>
         )}
       </div>
@@ -233,6 +243,23 @@ function ResultadoRow({
         </div>
       </div>
 
+      {/* MVP manual (opcional; si se deja en automático, se detecta por goles+asistencias) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-slate-400">🏆 MVP:</span>
+        <select
+          value={mvp}
+          onChange={(e) => setMvp(e.target.value)}
+          className="rounded border border-slate-600 bg-slate-900 px-2 py-1"
+        >
+          <option value="">— automático (por goles+asist.) —</option>
+          {jugadores.map((id) => (
+            <option key={id} value={id}>
+              {nombre(id)}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="flex gap-2">
         <button
           onClick={guardar}
@@ -247,6 +274,7 @@ function ResultadoRow({
               setB(String(r.golesB))
               setGoles(mapToStr(r.goleadores))
               setAsist(mapToStr(r.asistencias))
+              setMvp(r.mvp ?? '')
               setEditando(false)
             }}
             className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"

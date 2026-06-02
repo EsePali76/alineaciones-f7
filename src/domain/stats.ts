@@ -1,5 +1,5 @@
 import type { ConfirmedLineup } from './types'
-import { mvpDelPartido } from './animo'
+import { mvpEfectivo } from './animo'
 
 /** Estadísticas acumuladas de un color de equipo (blanco = A, rojo = B). */
 export interface TeamStats {
@@ -134,9 +134,9 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
     map.set(id, s)
   }
 
-  // Cuenta de MVPs por jugador.
+  // Cuenta de MVPs por jugador (manual del admin o automático).
   for (const l of recientes) {
-    const mvp = mvpDelPartido(l)
+    const mvp = mvpEfectivo(l)
     if (mvp && map.has(mvp)) map.get(mvp)!.mvps++
   }
 
