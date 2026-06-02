@@ -85,6 +85,12 @@ export interface ConfirmedLineup {
   teamB: string[]
   /** Id del jugador que hizo la alineación (el del turno). Para historial/estadísticas. */
   madeBy?: string
+  /** Formación elegida por equipo (para dibujar el campo igual para todos). */
+  formacionA?: string
+  formacionB?: string
+  /** Colocación manual (ids en orden de puesto), si se arrastraron fichas. */
+  placementA?: string[]
+  placementB?: string[]
   /** Resultado del partido, si ya se ha registrado tras jugar. */
   resultado?: MatchResult
 }

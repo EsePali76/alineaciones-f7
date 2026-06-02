@@ -35,6 +35,8 @@ export function TeamGenerator() {
   const setJugadoresPorEquipo = useGeneratorStore((s) => s.setJugadoresPorEquipo)
   const setFormacionNombreA = useGeneratorStore((s) => s.setFormacionNombreA)
   const setFormacionNombreB = useGeneratorStore((s) => s.setFormacionNombreB)
+  const placementA = useGeneratorStore((s) => s.placementA)
+  const placementB = useGeneratorStore((s) => s.placementB)
   const setPlacementA = useGeneratorStore((s) => s.setPlacementA)
   const setPlacementB = useGeneratorStore((s) => s.setPlacementB)
   const setBalance = useGeneratorStore((s) => s.setBalance)
@@ -110,12 +112,18 @@ export function TeamGenerator() {
     if (!balanceVivo) return
     const teamAids = balanceVivo.teamA.map((p) => p.id)
     const teamBids = balanceVivo.teamB.map((p) => p.id)
+    const meta = {
+      formacionA: formacionNombreA,
+      formacionB: formacionNombreB,
+      placementA,
+      placementB,
+    }
     if (confirmedLineupId) {
       // Re-confirmar: actualiza la misma alineación (el autor puede editar y reconfirmar).
-      await updateLineupTeams(confirmedLineupId, teamAids, teamBids)
+      await updateLineupTeams(confirmedLineupId, teamAids, teamBids, meta)
     } else {
       const madeBy = turnoActual?.id ?? myPlayerId ?? undefined
-      const id = await addLineup(teamAids, teamBids, madeBy)
+      const id = await addLineup(teamAids, teamBids, { ...meta, madeBy })
       setConfirmedLineupId(id)
       // No se avanza el turno aquí: el autor sigue siendo el del turno y puede editar y
       // re-confirmar. El turno avanza cuando el admin registra el resultado del partido.

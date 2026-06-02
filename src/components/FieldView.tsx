@@ -92,23 +92,27 @@ function Ficha({
   lado,
   onSwap,
   onCrossSwap,
+  readOnly = false,
 }: {
   punto: Punto
   lado: 'A' | 'B'
   onSwap: (lado: 'A' | 'B', dragId: string, dropId: string) => void
   onCrossSwap: (dragId: string, dropId: string) => void
+  readOnly?: boolean
 }) {
   const { player, x, y } = punto
   const color = lado === 'A' ? 'bg-white border-slate-300' : 'bg-red-600 border-red-300'
   return (
     <div
-      draggable
+      draggable={!readOnly}
       onDragStart={(e) => {
+        if (readOnly) return
         e.dataTransfer.setData('text/plain', JSON.stringify({ id: player.id, lado } as DragData))
         e.dataTransfer.effectAllowed = 'move'
       }}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => !readOnly && e.preventDefault()}
       onDrop={(e) => {
+        if (readOnly) return
         e.preventDefault()
         try {
           const d = JSON.parse(e.dataTransfer.getData('text/plain')) as DragData
@@ -120,9 +124,16 @@ function Ficha({
           /* drop inválido, se ignora */
         }
       }}
-      className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-grab flex-col items-center active:cursor-grabbing"
+      className={
+        'absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center ' +
+        (readOnly ? '' : 'cursor-grab active:cursor-grabbing')
+      }
       style={{ left: `${x}%`, top: `${y}%` }}
-      title={`${player.nombre} · ${POSITION_LABEL[player.posiciones[0]]} — arrástralo sobre otra ficha para intercambiar (al otro equipo, con confirmación)`}
+      title={
+        readOnly
+          ? `${player.nombre} · ${POSITION_LABEL[player.posiciones[0]]}`
+          : `${player.nombre} · ${POSITION_LABEL[player.posiciones[0]]} — arrástralo sobre otra ficha para intercambiar (al otro equipo, con confirmación)`
+      }
     >
       <div className={`h-7 w-7 rounded-full border-2 shadow ${color}`} />
       <span className="mt-0.5 whitespace-nowrap rounded bg-black/65 px-1.5 text-[0.8rem] font-medium leading-tight text-white">
@@ -139,23 +150,34 @@ export function FieldView({
   formacionA,
   formacionB,
   onCrossSwap,
+  readOnly = false,
+  placementA: placementAProp,
+  placementB: placementBProp,
 }: {
   balance: TeamBalance
   formacionA: Formacion
   formacionB: Formacion
   onCrossSwap: (dragId: string, dropId: string) => void
+  /** Solo lectura: sin arrastrar fichas (vista compartida de la alineación confirmada). */
+  readOnly?: boolean
+  /** Colocación a usar (si no, se toma del store de generación). */
+  placementA?: string[] | null
+  placementB?: string[] | null
 }) {
-  const placementA = useGeneratorStore((s) => s.placementA)
-  const placementB = useGeneratorStore((s) => s.placementB)
+  const storePlacementA = useGeneratorStore((s) => s.placementA)
+  const storePlacementB = useGeneratorStore((s) => s.placementB)
   const setPlacementA = useGeneratorStore((s) => s.setPlacementA)
   const setPlacementB = useGeneratorStore((s) => s.setPlacementB)
+
+  const placementA = readOnly ? placementAProp ?? null : storePlacementA
+  const placementB = readOnly ? placementBProp ?? null : storePlacementB
 
   const puntosA = aplicarPlacement(posiciones(balance.teamA, 'A', formacionA), placementA)
   const puntosB = aplicarPlacement(posiciones(balance.teamB, 'B', formacionB), placementB)
 
   // Intercambia dos fichas del mismo equipo: cambian de puesto en el campo.
   const handleSwap = (lado: 'A' | 'B', dragId: string, dropId: string) => {
-    if (dragId === dropId) return
+    if (readOnly || dragId === dropId) return
     const puntos = lado === 'A' ? puntosA : puntosB
     const orden = puntos.map((p) => p.player.id)
     const i = orden.indexOf(dragId)
@@ -198,10 +220,10 @@ export function FieldView({
 
         {/* Jugadores */}
         {puntosA.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="A" onSwap={handleSwap} onCrossSwap={onCrossSwap} />
+          <Ficha key={pt.player.id} punto={pt} lado="A" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} />
         ))}
         {puntosB.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="B" onSwap={handleSwap} onCrossSwap={onCrossSwap} />
+          <Ficha key={pt.player.id} punto={pt} lado="B" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} />
         ))}
 
         {/* Etiquetas de equipo */}

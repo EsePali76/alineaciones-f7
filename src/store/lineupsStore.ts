@@ -2,14 +2,28 @@ import { create } from 'zustand'
 import type { ConfirmedLineup, MatchResult } from '../domain/types'
 import * as api from '../lib/dataApi'
 
+/** Metadatos opcionales de una alineación (quién la hizo + cómo dibujarla). */
+export interface LineupMeta {
+  madeBy?: string
+  formacionA?: string
+  formacionB?: string
+  placementA?: string[] | null
+  placementB?: string[] | null
+}
+
 interface LineupsState {
   lineups: ConfirmedLineup[]
   loaded: boolean
   load: () => Promise<void>
-  /** Guarda una alineación confirmada (ids de cada equipo + quién la hizo). Devuelve su id. */
-  addLineup: (teamA: string[], teamB: string[], madeBy?: string, fecha?: number) => Promise<string>
-  /** Actualiza los equipos de una alineación ya confirmada (re-confirmar editando). */
-  updateLineupTeams: (id: string, teamA: string[], teamB: string[]) => Promise<void>
+  /** Guarda una alineación confirmada (ids de cada equipo + metadatos). Devuelve su id. */
+  addLineup: (teamA: string[], teamB: string[], meta?: LineupMeta, fecha?: number) => Promise<string>
+  /** Actualiza equipos y metadatos de una alineación ya confirmada (re-confirmar editando). */
+  updateLineupTeams: (
+    id: string,
+    teamA: string[],
+    teamB: string[],
+    meta?: LineupMeta,
+  ) => Promise<void>
   removeLineup: (id: string) => Promise<void>
   /** Registra/edita el resultado completo de una alineación (marcador + goles + asistencias). */
   setResultado: (id: string, resultado: MatchResult) => Promise<void>
@@ -57,8 +71,18 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
     set({ lineups, loaded: true })
   },
 
-  addLineup: async (teamA, teamB, madeBy, fecha = Date.now()) => {
-    const lineup: ConfirmedLineup = { id: newId(), fecha, teamA, teamB, madeBy }
+  addLineup: async (teamA, teamB, meta = {}, fecha = Date.now()) => {
+    const lineup: ConfirmedLineup = {
+      id: newId(),
+      fecha,
+      teamA,
+      teamB,
+      madeBy: meta.madeBy,
+      formacionA: meta.formacionA,
+      formacionB: meta.formacionB,
+      placementA: meta.placementA ?? undefined,
+      placementB: meta.placementB ?? undefined,
+    }
     const prev = get().lineups
     set({ lineups: [...prev, lineup] })
     try {
@@ -70,8 +94,16 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
     return lineup.id
   },
 
-  updateLineupTeams: (id, teamA, teamB) =>
-    actualizar(get, set, id, (l) => ({ ...l, teamA, teamB })),
+  updateLineupTeams: (id, teamA, teamB, meta = {}) =>
+    actualizar(get, set, id, (l) => ({
+      ...l,
+      teamA,
+      teamB,
+      formacionA: meta.formacionA ?? l.formacionA,
+      formacionB: meta.formacionB ?? l.formacionB,
+      placementA: meta.placementA ?? undefined,
+      placementB: meta.placementB ?? undefined,
+    })),
 
   removeLineup: async (id) => {
     const prev = get().lineups

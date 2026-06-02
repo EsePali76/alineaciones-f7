@@ -13,6 +13,7 @@ import { PlayerForm } from './components/PlayerForm'
 import { PlayerList } from './components/PlayerList'
 import { RatePlayers } from './components/RatePlayers'
 import { TeamGenerator } from './components/TeamGenerator'
+import { ConfirmedLineupView } from './components/ConfirmedLineupView'
 import { HistoryList } from './components/HistoryList'
 import { StatsPanel } from './components/StatsPanel'
 import { DataIO } from './components/DataIO'
@@ -31,13 +32,21 @@ function App() {
   const loadPlayers = usePlayersStore((s) => s.load)
   const playersLoaded = usePlayersStore((s) => s.loaded)
   const loadLineups = useLineupsStore((s) => s.load)
+  const lineups = useLineupsStore((s) => s.lineups)
   const loadAverages = useRatingsStore((s) => s.loadAverages)
   const loadRotation = useRotationStore((s) => s.load)
   const initAuth = useAuthStore((s) => s.init)
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const isLinked = useAuthStore((s) => s.isLinked)
   const { isMyTurn } = useTurno()
-  const puedeEquipos = isMyTurn || isAdmin
+  // Quién puede GENERAR/editar equipos (el del turno o admin).
+  const puedeGenerar = isMyTurn || isAdmin
+  // Alineación confirmada de la semana pendiente de resultado (visible para todos).
+  const pendingLineup = [...lineups]
+    .filter((l) => !l.resultado)
+    .sort((a, b) => b.fecha - a.fecha)[0]
+  // La pestaña Equipos se ve si puedes generar o si hay alineación confirmada que mostrar.
+  const puedeEquipos = puedeGenerar || !!pendingLineup
   const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
   const myPlayer = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
 
@@ -154,7 +163,12 @@ function App() {
             </>
           )}
           {tab === 'valorar' && isLinked && <RatePlayers />}
-          {tab === 'equipos' && puedeEquipos && <TeamGenerator />}
+          {tab === 'equipos' &&
+            (puedeGenerar ? (
+              <TeamGenerator />
+            ) : pendingLineup ? (
+              <ConfirmedLineupView lineup={pendingLineup} />
+            ) : null)}
           {tab === 'estadisticas' && <StatsPanel />}
           {tab === 'historial' && isAdmin && <HistoryList />}
           {tab === 'usuarios' && isAdmin && (
