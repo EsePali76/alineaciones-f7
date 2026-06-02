@@ -83,8 +83,8 @@ export function StatsPanel() {
                     <td className="px-2 py-2 text-center text-slate-400">
                       {s.vecesBlanco}/{s.vecesRojo}
                     </td>
-                    <td className="px-2 py-2 text-center" title={animo != null ? animo.toFixed(1) : ''}>
-                      {animo != null ? animoLabel(animo).emoji : '—'}
+                    <td className="px-2 py-2 whitespace-nowrap text-center text-slate-300" title={animo != null ? animoLabel(animo).texto : ''}>
+                      {animo != null ? `${animoLabel(animo).emoji} ${animo.toFixed(1)}` : '—'}
                     </td>
                   </tr>
                 )

@@ -89,10 +89,10 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
                   <td className="px-3 py-2 text-slate-300">
                     {media === null ? '—' : media.toFixed(1)}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-300">
                     {p.animoCalculado != null ? (
-                      <span title={`${animoLabel(p.animoCalculado).texto} · ${p.animoCalculado.toFixed(1)}`}>
-                        {animoLabel(p.animoCalculado).emoji}
+                      <span title={animoLabel(p.animoCalculado).texto}>
+                        {animoLabel(p.animoCalculado).emoji} {p.animoCalculado.toFixed(1)}
                       </span>
                     ) : (
                       '—'
