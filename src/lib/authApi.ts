@@ -79,3 +79,9 @@ export async function finalizeMyRatings(): Promise<void> {
   const { error } = await supabase.rpc('finalize_my_ratings')
   if (error) throw error
 }
+
+/** Admin: borra la cuenta de un usuario (cascada perfil + votos; el jugador se mantiene). */
+export async function adminDeleteUser(target: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_delete_user', { target })
+  if (error) throw error
+}

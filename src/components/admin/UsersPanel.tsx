@@ -6,6 +6,7 @@ import {
   adminLinkPlayer,
   adminSetRole,
   adminResetRatings,
+  adminDeleteUser,
   type Profile,
 } from '../../lib/authApi'
 
@@ -80,6 +81,7 @@ export function UsersPanel() {
               <th className="px-3 py-2 font-medium">Jugador vinculado</th>
               <th className="px-3 py-2 font-medium">Valoraciones</th>
               <th className="px-3 py-2 font-medium">Rol</th>
+              <th className="px-3 py-2 font-medium"></th>
             </tr>
           </thead>
           <tbody>
@@ -155,6 +157,27 @@ export function UsersPanel() {
                     >
                       {pr.role === 'admin' ? 'Admin' : 'Jugador'}
                     </button>
+                  </td>
+
+                  {/* Borrar usuario */}
+                  <td className="px-3 py-2 text-right">
+                    {!esYo && (
+                      <button
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `¿Borrar la cuenta de ${pr.displayName || pr.email}? ` +
+                                'Se eliminan su acceso y sus votos (el jugador del plantel se mantiene). ' +
+                                'Tendrá que registrarse de nuevo para volver a entrar.',
+                            )
+                          )
+                            accion(() => adminDeleteUser(pr.id))
+                        }}
+                        className="rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:border-red-500"
+                      >
+                        Borrar
+                      </button>
+                    )}
                   </td>
                 </tr>
               )

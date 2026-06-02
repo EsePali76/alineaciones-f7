@@ -139,11 +139,21 @@ begin
   update public.profiles set ratings_finalized = false where id = target;
 end; $$;
 
+-- Admin borra la cuenta de un usuario (cascada: profile + ratings; el jugador se mantiene).
+create or replace function public.admin_delete_user(target uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Solo admin'; end if;
+  if target = auth.uid() then raise exception 'No puedes borrarte a ti mismo'; end if;
+  delete from auth.users where id = target;
+end; $$;
+
 grant execute on function
   public.finalize_my_ratings(),
   public.admin_link_player(uuid, text),
   public.admin_set_role(uuid, text),
-  public.admin_reset_ratings(uuid)
+  public.admin_reset_ratings(uuid),
+  public.admin_delete_user(uuid)
 to authenticated;
 
 -- ============================================================================
