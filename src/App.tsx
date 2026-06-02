@@ -36,6 +36,8 @@ function App() {
   const loadAverages = useRatingsStore((s) => s.loadAverages)
   const loadRotation = useRotationStore((s) => s.load)
   const initAuth = useAuthStore((s) => s.init)
+  const authReady = useAuthStore((s) => s.ready)
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const isLinked = useAuthStore((s) => s.isLinked)
   const { isMyTurn } = useTurno()
@@ -91,17 +93,30 @@ function App() {
         </div>
       </header>
 
-      {cargaError && (
+      {/* Sin sesión: solo se puede registrar/entrar. Nada de datos para los cotillas. */}
+      {!authReady && <p className="p-8 text-center text-slate-500">Cargando…</p>}
+
+      {authReady && !isLoggedIn && (
+        <div className="rounded-lg border border-slate-700 bg-slate-800/40 p-8 text-center">
+          <p className="text-lg font-medium text-slate-200">Acceso solo para el grupo</p>
+          <p className="mt-1 text-sm text-slate-400">
+            Regístrate o entra (botones de arriba) para ver el plantel, las alineaciones y las
+            estadísticas. El admin te emparejará con tu jugador.
+          </p>
+        </div>
+      )}
+
+      {authReady && isLoggedIn && cargaError && (
         <p className="rounded-lg border border-red-800 bg-red-950/40 p-4 text-center text-red-300">
           No se pudo conectar con la nube. Revisa tu conexión y recarga la página.
         </p>
       )}
 
-      {!playersLoaded && !cargaError && (
+      {authReady && isLoggedIn && !playersLoaded && !cargaError && (
         <p className="p-8 text-center text-slate-500">Cargando datos…</p>
       )}
 
-      {playersLoaded && (
+      {authReady && isLoggedIn && playersLoaded && (
         <>
           {/* Pestañas */}
           <nav className="flex gap-1 border-b border-slate-700">
