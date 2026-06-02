@@ -17,6 +17,16 @@ function eligibleOrdered(): string[] {
     .map((p) => p.id)
 }
 
+/** Mezcla aleatoria (Fisher-Yates) de los ids elegibles. */
+function eligibleShuffled(): string[] {
+  const ids = eligibleOrdered()
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[ids[i], ids[j]] = [ids[j], ids[i]]
+  }
+  return ids
+}
+
 interface RotationState {
   data: RotationData
   loaded: boolean
@@ -49,7 +59,8 @@ export const useRotationStore = create<RotationState>((set, get) => ({
   },
 
   reiniciar: async () => {
-    const next = seed(eligibleOrdered())
+    // Orden ALEATORIO de los elegibles (no por antigüedad).
+    const next = seed(eligibleShuffled())
     await persist(set, next)
   },
 

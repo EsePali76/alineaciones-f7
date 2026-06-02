@@ -81,11 +81,12 @@ export function RotationBanner() {
             </button>
             <button
               onClick={() => {
-                if (confirm('¿Reiniciar la rotación con los elegibles actuales?')) reiniciar()
+                if (confirm('¿Reiniciar la rotación en ORDEN ALEATORIO con los elegibles actuales?'))
+                  reiniciar()
               }}
               className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
             >
-              Reiniciar rotación
+              Reiniciar rotación (aleatorio)
             </button>
           </>
         )}
