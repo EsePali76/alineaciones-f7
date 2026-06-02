@@ -197,7 +197,7 @@ export function RatePlayers() {
             ) : (
               <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
                 <h3 className="text-base font-semibold">{jugador.nombre}</h3>
-                <div className="rounded-lg border-2 border-amber-400 bg-amber-500/20 p-3 shadow-[0_0_12px_-2px_rgba(251,191,36,0.4)]">
+                <div className="rounded-lg border-2 border-red-500 bg-red-600/25 p-3 shadow-[0_0_14px_-2px_rgba(239,68,68,0.5)]">
                   {ratingRow(RATING_KEY_ANCLA)}
                 </div>
                 <div className="flex flex-col gap-3 rounded-lg border border-slate-600 bg-slate-800/60 p-3">

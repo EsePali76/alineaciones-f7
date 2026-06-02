@@ -246,7 +246,7 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
         </span>
 
         {/* Ancla: destacada (la que más pondera) */}
-        <div className="rounded-lg border-2 border-amber-400 bg-amber-500/20 p-3 shadow-[0_0_12px_-2px_rgba(251,191,36,0.4)]">
+        <div className="rounded-lg border-2 border-red-500 bg-red-600/25 p-3 shadow-[0_0_14px_-2px_rgba(239,68,68,0.5)]">
           {ratingRow(RATING_KEY_ANCLA)}
         </div>
 
