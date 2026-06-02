@@ -5,17 +5,26 @@ import {
   POSITIONS,
   FOOT_OPTIONS,
   ratingLabel,
-  RATING_KEYS,
+  RATING_KEY_ANCLA,
+  RATING_KEYS_FACETAS,
   RATING_KEY_LABEL,
+  RATING_KEY_HINT,
   MIN_RATING,
   MAX_RATING,
 } from '../domain/constants'
+import type { RatingKey } from '../domain/constants'
 
 interface PlayerFormProps {
   /** Valores iniciales (modo edición). Si se omite, formulario en blanco (alta). */
   initial?: PlayerInput
   onSubmit: (input: PlayerInput) => void
   onCancel?: () => void
+  /**
+   * 'full' (admin): identidad + valoraciones + flags.
+   * 'identity' (autoservicio del usuario): solo nombre/edad/posiciones/perfil.
+   * Las valoraciones se votan entre todos; los flags los gestiona el admin.
+   */
+  mode?: 'full' | 'identity'
 }
 
 const EMPTY: PlayerInput = {
@@ -26,11 +35,13 @@ const EMPTY: PlayerInput = {
   ratings: {},
   invitado: false,
   tocado: false,
+  excluidoRotacion: false,
   activo: true,
 }
 
-export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
+export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: PlayerFormProps) {
   const [data, setData] = useState<PlayerInput>(initial ?? EMPTY)
+  const soloIdentidad = mode === 'identity'
 
   const togglePosition = (code: PositionCode) =>
     setData((d) => ({
@@ -49,8 +60,39 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
       return { ...d, posiciones: pos }
     })
 
-  const setRating = (key: (typeof RATING_KEYS)[number], value: Rating | undefined) =>
+  const setRating = (key: RatingKey, value: Rating | undefined) =>
     setData((d) => ({ ...d, ratings: { ...d.ratings, [key]: value } }))
+
+  // Fila de valoración reutilizable (ancla y facetas comparten render).
+  const ratingRow = (key: RatingKey) => {
+    const val = data.ratings[key]
+    return (
+      <div key={key} className="flex items-start gap-3">
+        <div className="w-40 shrink-0">
+          <span className="text-slate-300">{RATING_KEY_LABEL[key]}</span>
+          <p className="text-xs text-slate-500">{RATING_KEY_HINT[key]}</p>
+        </div>
+        <input
+          type="number"
+          min={MIN_RATING}
+          max={MAX_RATING}
+          step={1}
+          value={val ?? ''}
+          onChange={(e) => {
+            const raw = e.target.value
+            if (raw === '') return setRating(key, undefined)
+            const n = Math.max(MIN_RATING, Math.min(MAX_RATING, Math.round(Number(raw))))
+            setRating(key, n)
+          }}
+          placeholder="—"
+          className="w-20 rounded border border-slate-600 bg-slate-900 px-3 py-1.5"
+        />
+        <span className="pt-2 text-xs text-slate-500">
+          {val === undefined ? 'sin valorar' : ratingLabel(val)}
+        </span>
+      </div>
+    )
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,7 +110,14 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-800/40 p-4"
     >
-      <h2 className="text-lg font-semibold">{initial ? 'Editar jugador' : 'Nuevo jugador'}</h2>
+      <h2 className="text-lg font-semibold">
+        {soloIdentidad ? 'Mis datos' : initial ? 'Editar jugador' : 'Nuevo jugador'}
+      </h2>
+      {soloIdentidad && (
+        <p className="text-sm text-slate-400">
+          Tus datos de identidad. Las valoraciones las pone el resto del grupo (pestaña Valorar).
+        </p>
+      )}
 
       {/* Nombre + edad */}
       <div className="flex flex-wrap gap-3">
@@ -162,9 +211,13 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
         )}
       </div>
 
-      {/* Pierna hábil */}
+      {/* Perfil preferido (antes "pierna hábil") */}
       <div className="flex flex-col gap-2 text-sm">
-        <span className="text-slate-400">Pierna hábil</span>
+        <span className="text-slate-400">Perfil preferido</span>
+        <p className="text-xs text-slate-500">
+          Banda en la que actúa con naturalidad (carrilero/extremo). "Ambos" = cómodo en las dos
+          → la app puede colocarlo en cualquier lado.
+        </p>
         <div className="flex gap-2">
           {FOOT_OPTIONS.map((f) => (
             <button
@@ -184,7 +237,8 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
         </div>
       </div>
 
-      {/* Valoraciones 0-10 */}
+      {/* Valoraciones 0-10 (solo admin / modo completo) */}
+      {!soloIdentidad && (
       <div className="flex flex-col gap-3 text-sm">
         <span className="text-slate-400">
           Valoración (0-10){' '}
@@ -192,35 +246,19 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
             <span className="text-amber-400">· sin valorar = 5 (media) por ser invitado</span>
           )}
         </span>
-        {RATING_KEYS.map((key) => {
-          const val = data.ratings[key]
-          return (
-            <div key={key} className="flex items-center gap-3">
-              <span className="w-32 shrink-0 text-slate-300">{RATING_KEY_LABEL[key]}</span>
-              <input
-                type="number"
-                min={MIN_RATING}
-                max={MAX_RATING}
-                step={1}
-                value={val ?? ''}
-                onChange={(e) => {
-                  const raw = e.target.value
-                  if (raw === '') return setRating(key, undefined)
-                  const n = Math.max(MIN_RATING, Math.min(MAX_RATING, Math.round(Number(raw))))
-                  setRating(key, n)
-                }}
-                placeholder="—"
-                className="w-20 rounded border border-slate-600 bg-slate-900 px-3 py-1.5"
-              />
-              <span className="text-xs text-slate-500">
-                {val === undefined ? 'sin valorar' : ratingLabel(val)}
-              </span>
-            </div>
-          )
-        })}
-      </div>
 
-      {/* Flags */}
+        {/* Ancla: destacada y separada porque pondera bastante más */}
+        <div className="rounded-lg border border-amber-600/50 bg-amber-600/10 p-3">
+          {ratingRow(RATING_KEY_ANCLA)}
+        </div>
+
+        {/* Facetas */}
+        <div className="flex flex-col gap-3">{RATING_KEYS_FACETAS.map((key) => ratingRow(key))}</div>
+      </div>
+      )}
+
+      {/* Flags (solo admin / modo completo) */}
+      {!soloIdentidad && (
       <div className="flex flex-wrap gap-5 text-sm">
         <label className="flex items-center gap-2">
           <input
@@ -238,8 +276,19 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
             onChange={(e) => setData((d) => ({ ...d, tocado: e.target.checked }))}
             className="h-4 w-4"
           />
-          <span title="Juega con molestias o vuelve de lesión. Penaliza su puntaje.">
-            Tocado / en baja forma
+          <span title="Viene mermado a este partido (molestias, vuelve de lesión). Penaliza su puntaje.">
+            Tocado / bajo de forma
+          </span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={data.excluidoRotacion}
+            onChange={(e) => setData((d) => ({ ...d, excluidoRotacion: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          <span title="No entra en la cola para hacer la alineación. No impide ser convocado para jugar.">
+            Excluido de la rotación de turnos
           </span>
         </label>
         <label className="flex items-center gap-2">
@@ -252,6 +301,7 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
           <span>Activo en el plantel</span>
         </label>
       </div>
+      )}
 
       {/* Acciones */}
       <div className="flex gap-3">
@@ -260,7 +310,7 @@ export function PlayerForm({ initial, onSubmit, onCancel }: PlayerFormProps) {
           disabled={!valid}
           className="rounded bg-emerald-600 px-4 py-2 font-medium text-white enabled:hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {initial ? 'Guardar cambios' : 'Añadir jugador'}
+          {soloIdentidad ? 'Guardar mis datos' : initial ? 'Guardar cambios' : 'Añadir jugador'}
         </button>
         {onCancel && (
           <button

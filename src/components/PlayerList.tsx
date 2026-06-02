@@ -1,5 +1,6 @@
 import type { Player } from '../domain/types'
-import { POSITION_LABEL, RATING_KEYS, DEFAULT_RATING } from '../domain/constants'
+import { POSITION_LABEL, FOOT_LABEL, RATING_KEYS, DEFAULT_RATING } from '../domain/constants'
+import { animoLabel } from '../domain/animo'
 import { TocadoIcon } from './TocadoIcon'
 
 interface PlayerListProps {
@@ -10,7 +11,7 @@ interface PlayerListProps {
   isAdmin: boolean
 }
 
-/** Media de las 5 valoraciones (sin valorar cuenta como 3 si es invitado, si no se ignora). */
+/** Media simple de las valoraciones (sin valorar cuenta como 5 si es invitado, si no se ignora). */
 function mediaValoracion(p: Player): number | null {
   const vals = RATING_KEYS.map((k) => p.ratings[k]).map((v) =>
     v === undefined ? (p.invitado ? DEFAULT_RATING : undefined) : v,
@@ -43,8 +44,9 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
               <th className="px-3 py-2 font-medium">Nombre</th>
               <th className="px-3 py-2 font-medium">Edad</th>
               <th className="px-3 py-2 font-medium">Posiciones</th>
-              <th className="px-3 py-2 font-medium">Pierna</th>
+              <th className="px-3 py-2 font-medium">Perfil</th>
               <th className="px-3 py-2 font-medium">Media</th>
+              <th className="px-3 py-2 font-medium">Ánimo</th>
               {isAdmin && <th className="px-3 py-2 font-medium"></th>}
             </tr>
           </thead>
@@ -83,9 +85,18 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
                       ))}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-slate-400 capitalize">{p.pierna}</td>
+                  <td className="px-3 py-2 text-slate-400">{FOOT_LABEL[p.pierna]}</td>
                   <td className="px-3 py-2 text-slate-300">
                     {media === null ? '—' : media.toFixed(1)}
+                  </td>
+                  <td className="px-3 py-2">
+                    {p.animoCalculado != null ? (
+                      <span title={`${animoLabel(p.animoCalculado).texto} · ${p.animoCalculado.toFixed(1)}`}>
+                        {animoLabel(p.animoCalculado).emoji}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   {isAdmin && (
                     <td className="px-3 py-2">

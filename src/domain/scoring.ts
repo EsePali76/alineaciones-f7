@@ -3,45 +3,61 @@ import { DEFAULT_RATING, RATING_KEYS } from './constants'
 
 /**
  * Pesos de cada valoración en el puntaje del jugador. Suman 1.
- * Calidad y velocidad pesan más (son las que más marcan diferencias en F7).
+ * "general" es el ancla (juicio holístico de lo buen futbolista que es) y pesa
+ * bastante más; las facetas matizan; los físicos son modificadores. Esto endereza
+ * el ranking (evita que el atlético-limitado adelante al buen futbolista).
  * AJUSTABLES: si veis que un parámetro pesa de más/menos, se tocan aquí.
  */
 export interface ScoreWeights {
+  general: number
+  definicion: number
+  criterio: number
   tecnica: number
-  disparo: number
-  presion: number
+  defensa: number
   velocidad: number
   fisico: number
-  forma: number
-  animo: number
 }
 
 export const DEFAULT_WEIGHTS: ScoreWeights = {
-  tecnica: 0.2,
-  disparo: 0.15,
-  presion: 0.15,
-  velocidad: 0.15,
-  fisico: 0.15,
-  forma: 0.1,
-  animo: 0.1,
+  general: 0.34,
+  definicion: 0.12,
+  criterio: 0.12,
+  tecnica: 0.12,
+  defensa: 0.1,
+  velocidad: 0.1,
+  fisico: 0.1,
 }
 
 /**
- * Factor que multiplica el puntaje de un jugador "tocado / en baja forma".
- * 0.85 = rinde al ~85% de su nivel ese día. Ajustable.
+ * Factor que multiplica el puntaje de un jugador "tocado / bajo de forma".
+ * 0.82 = rinde al ~82% de su nivel ese día (≈18% menos). Ajustable.
  */
-export const TOCADO_FACTOR = 0.85
+export const TOCADO_FACTOR = 0.82
+
+/**
+ * Influencia MÁXIMA (en puntos de score) del estado de ánimo sobre la nota final.
+ * El ánimo es 0-10 con base 5; el modificador = (animo-5)/5 * ANIMO_MAX_DELTA,
+ * así que va de -0.3 (ánimo 0) a +0.3 (ánimo 10). Influencia mínima, a propósito.
+ */
+export const ANIMO_MAX_DELTA = 0.3
 
 export interface ScoreOptions {
   weights?: ScoreWeights
   tocadoFactor?: number
+  /**
+   * Ánimo calculado del jugador (0-10) para aplicar el modificador suave.
+   * `undefined` = sin efecto (aún no hay historial / no se quiere aplicar).
+   */
+  animo?: number
+  animoMaxDelta?: number
 }
 
 /**
- * Puntaje de un jugador en escala ~1-5.
- * - Valoraciones sin rellenar se asumen a la media (3), tanto para invitados como
+ * Puntaje de un jugador en escala ~0-10.
+ * - Valoraciones sin rellenar se asumen a la media (5), tanto para invitados como
  *   para cualquier hueco vacío, para no falsear el reparto.
- * - Si el jugador va "tocado", se aplica el factor de penalización.
+ * - Si el jugador va "tocado / bajo de forma", se aplica el factor de penalización.
+ * - El ánimo (si se pasa) aplica un modificador suave de ±ANIMO_MAX_DELTA puntos.
  *
  * NOTA: la edad NO entra directamente en el puntaje a propósito. Su efecto real
  * (menos chispa, menos físico) ya lo recogen las valoraciones de velocidad y físico,
@@ -58,6 +74,14 @@ export function playerScore(player: Player, opts: ScoreOptions = {}): number {
   }
 
   if (player.tocado) score *= tocadoFactor
+
+  // Modificador suave de ánimo (automático): influencia mínima.
+  // Usa el ánimo de opciones o, si no, el calculado y adjuntado al jugador.
+  const animo = opts.animo ?? player.animoCalculado
+  if (animo != null) {
+    const delta = opts.animoMaxDelta ?? ANIMO_MAX_DELTA
+    score += ((animo - 5) / 5) * delta
+  }
 
   return score
 }

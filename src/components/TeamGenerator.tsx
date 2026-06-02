@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
 import { toBlob, toPng } from 'html-to-image'
-import { usePlayersStore } from '../store/playersStore'
 import { useLineupsStore } from '../store/lineupsStore'
 import { useGeneratorStore } from '../store/generatorStore'
 import { useAuthStore } from '../store/authStore'
+import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
+import { useTurno } from '../hooks/useTurno'
 import type { Player } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore } from '../domain/scoring'
@@ -13,9 +14,12 @@ import { FieldView } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
 
 export function TeamGenerator() {
-  const players = usePlayersStore((s) => s.players)
+  const players = useEffectivePlayers()
   const lineups = useLineupsStore((s) => s.lineups)
   const addLineup = useLineupsStore((s) => s.addLineup)
+  const { current: turnoActual, isMyTurn } = useTurno()
+  const isAdmin = useAuthStore((s) => s.isAdmin)
+  const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
 
   // Estado de la sesión de generación en store persistente (sobrevive a cambios de pestaña).
   const convocadosIds = useGeneratorStore((s) => s.convocados)
@@ -24,6 +28,10 @@ export function TeamGenerator() {
   const formacionNombreB = useGeneratorStore((s) => s.formacionNombreB)
   const balance = useGeneratorStore((s) => s.balance)
   const confirmada = useGeneratorStore((s) => s.confirmada)
+  const confirmedLineupId = useGeneratorStore((s) => s.confirmedLineupId)
+  const setConfirmedLineupId = useGeneratorStore((s) => s.setConfirmedLineupId)
+  const updateLineupTeams = useLineupsStore((s) => s.updateLineupTeams)
+  const puedeConfirmar = isMyTurn || isAdmin
   const setConvocados = useGeneratorStore((s) => s.setConvocados)
   const setJugadoresPorEquipo = useGeneratorStore((s) => s.setJugadoresPorEquipo)
   const setFormacionNombreA = useGeneratorStore((s) => s.setFormacionNombreA)
@@ -95,21 +103,30 @@ export function TeamGenerator() {
     setBalance(result)
     setCopiado(false)
     setConfirmada(false)
+    setConfirmedLineupId(null) // nueva alineación → ya no re-confirma la anterior
     // Nueva alineación → descarta cualquier colocación manual previa.
     setPlacementA(null)
     setPlacementB(null)
   }
 
-  const confirmar = () => {
+  const confirmar = async () => {
     if (!balanceVivo) return
-    addLineup(
-      balanceVivo.teamA.map((p) => p.id),
-      balanceVivo.teamB.map((p) => p.id),
-    )
+    const teamAids = balanceVivo.teamA.map((p) => p.id)
+    const teamBids = balanceVivo.teamB.map((p) => p.id)
+    if (confirmedLineupId) {
+      // Re-confirmar: actualiza la misma alineación (el autor puede editar y reconfirmar).
+      await updateLineupTeams(confirmedLineupId, teamAids, teamBids)
+    } else {
+      const madeBy = turnoActual?.id ?? myPlayerId ?? undefined
+      const id = await addLineup(teamAids, teamBids, madeBy)
+      setConfirmedLineupId(id)
+      // No se avanza el turno aquí: el autor sigue siendo el del turno y puede editar y
+      // re-confirmar. El turno avanza cuando el admin registra el resultado del partido.
+    }
     setConfirmada(true)
   }
 
-  // Cambia dos jugadores de equipo (arrastrando entre bandos), bajo confirmación.
+  // Cambia dos jugadores de equipo (arrastrando entre bandos), sin confirmación.
   const handleCrossSwap = (id1: string, id2: string) => {
     if (!balanceVivo) return
     const enA = balanceVivo.teamA.some((p) => p.id === id1) ? id1 : id2
@@ -117,7 +134,6 @@ export function TeamGenerator() {
     const pA = balanceVivo.teamA.find((p) => p.id === enA)
     const pB = balanceVivo.teamB.find((p) => p.id === enB)
     if (!pA || !pB) return
-    if (!confirm(`¿Cambiar de equipo a ${pA.nombre} (⚪ A) y ${pB.nombre} (🔴 B)?`)) return
 
     const nuevoA = balanceVivo.teamA.map((p) => (p.id === enA ? pB : p))
     const nuevoB = balanceVivo.teamB.map((p) => (p.id === enB ? pA : p))
@@ -260,6 +276,7 @@ export function TeamGenerator() {
           copiado={copiado}
           onConfirm={confirmar}
           confirmada={confirmada}
+          canConfirm={puedeConfirmar}
           onCrossSwap={handleCrossSwap}
         />
       )}
@@ -309,6 +326,7 @@ function BalanceResult({
   copiado,
   onConfirm,
   confirmada,
+  canConfirm,
   onCrossSwap,
 }: {
   balance: TeamBalance
@@ -318,11 +336,11 @@ function BalanceResult({
   copiado: boolean
   onConfirm: () => void
   confirmada: boolean
+  canConfirm: boolean
   onCrossSwap: (dragId: string, dropId: string) => void
 }) {
   const pctA = Math.round(balance.balancePctA)
   const pctB = 100 - pctA
-  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const fieldRef = useRef<HTMLDivElement>(null)
   const [imgMsg, setImgMsg] = useState('')
@@ -355,7 +373,7 @@ function BalanceResult({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Equipos propuestos</h2>
         <div className="flex flex-wrap gap-2">
-          {isAdmin && (
+          {canConfirm && (
             <button
               onClick={onConfirm}
               disabled={confirmada}

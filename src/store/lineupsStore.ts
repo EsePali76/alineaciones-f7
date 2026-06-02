@@ -1,16 +1,18 @@
 import { create } from 'zustand'
-import type { ConfirmedLineup } from '../domain/types'
+import type { ConfirmedLineup, MatchResult } from '../domain/types'
 import * as api from '../lib/dataApi'
 
 interface LineupsState {
   lineups: ConfirmedLineup[]
   loaded: boolean
   load: () => Promise<void>
-  /** Guarda una alineación confirmada (ids de cada equipo). */
-  addLineup: (teamA: string[], teamB: string[], fecha?: number) => Promise<void>
+  /** Guarda una alineación confirmada (ids de cada equipo + quién la hizo). Devuelve su id. */
+  addLineup: (teamA: string[], teamB: string[], madeBy?: string, fecha?: number) => Promise<string>
+  /** Actualiza los equipos de una alineación ya confirmada (re-confirmar editando). */
+  updateLineupTeams: (id: string, teamA: string[], teamB: string[]) => Promise<void>
   removeLineup: (id: string) => Promise<void>
-  /** Registra/edita el marcador de una alineación. */
-  setResultado: (id: string, golesA: number, golesB: number) => Promise<void>
+  /** Registra/edita el resultado completo de una alineación (marcador + goles + asistencias). */
+  setResultado: (id: string, resultado: MatchResult) => Promise<void>
   /** Borra el marcador de una alineación (queda sin jugar). */
   clearResultado: (id: string) => Promise<void>
   /** Sube en bloque (import/migración). */
@@ -55,8 +57,8 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
     set({ lineups, loaded: true })
   },
 
-  addLineup: async (teamA, teamB, fecha = Date.now()) => {
-    const lineup: ConfirmedLineup = { id: newId(), fecha, teamA, teamB }
+  addLineup: async (teamA, teamB, madeBy, fecha = Date.now()) => {
+    const lineup: ConfirmedLineup = { id: newId(), fecha, teamA, teamB, madeBy }
     const prev = get().lineups
     set({ lineups: [...prev, lineup] })
     try {
@@ -65,7 +67,11 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
       set({ lineups: prev })
       avisoError(e)
     }
+    return lineup.id
   },
+
+  updateLineupTeams: (id, teamA, teamB) =>
+    actualizar(get, set, id, (l) => ({ ...l, teamA, teamB })),
 
   removeLineup: async (id) => {
     const prev = get().lineups
@@ -78,8 +84,8 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
     }
   },
 
-  setResultado: (id, golesA, golesB) =>
-    actualizar(get, set, id, (l) => ({ ...l, resultado: { golesA, golesB } })),
+  setResultado: (id, resultado) =>
+    actualizar(get, set, id, (l) => ({ ...l, resultado })),
 
   clearResultado: (id) => actualizar(get, set, id, (l) => ({ ...l, resultado: undefined })),
 

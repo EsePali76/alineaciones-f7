@@ -24,6 +24,8 @@ interface GeneratorState {
   balance: TeamBalance | null
   /** Si la alineación actual ya se confirmó en el historial. */
   confirmada: boolean
+  /** Id de la alineación confirmada (para re-confirmar editando la misma, no crear otra). */
+  confirmedLineupId: string | null
   setConvocados: (ids: string[]) => void
   setJugadoresPorEquipo: (n: 6 | 7 | 8) => void
   setFormacionNombreA: (nombre: string) => void
@@ -32,6 +34,7 @@ interface GeneratorState {
   setPlacementB: (ids: string[] | null) => void
   setBalance: (b: TeamBalance | null) => void
   setConfirmada: (v: boolean) => void
+  setConfirmedLineupId: (id: string | null) => void
 }
 
 export const useGeneratorStore = create<GeneratorState>()(
@@ -45,6 +48,7 @@ export const useGeneratorStore = create<GeneratorState>()(
       placementB: null,
       balance: null,
       confirmada: false,
+      confirmedLineupId: null,
       setConvocados: (ids) => set({ convocados: ids }),
       setJugadoresPorEquipo: (n) => set({ jugadoresPorEquipo: n }),
       setFormacionNombreA: (nombre) => set({ formacionNombreA: nombre }),
@@ -53,6 +57,7 @@ export const useGeneratorStore = create<GeneratorState>()(
       setPlacementB: (ids) => set({ placementB: ids }),
       setBalance: (b) => set({ balance: b }),
       setConfirmada: (v) => set({ confirmada: v }),
+      setConfirmedLineupId: (id) => set({ confirmedLineupId: id }),
     }),
     { name: 'alineaciones-f7-generator' },
   ),

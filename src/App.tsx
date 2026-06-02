@@ -3,26 +3,43 @@ import { usePlayersStore } from './store/playersStore'
 import type { PlayerInput } from './store/playersStore'
 import type { Player } from './domain/types'
 import { useLineupsStore } from './store/lineupsStore'
+import { useRatingsStore } from './store/ratingsStore'
+import { useRotationStore } from './store/rotationStore'
 import { useAuthStore } from './store/authStore'
+import { useEffectivePlayers } from './hooks/useEffectivePlayers'
+import { useTurno } from './hooks/useTurno'
+import { RotationBanner } from './components/RotationBanner'
 import { PlayerForm } from './components/PlayerForm'
 import { PlayerList } from './components/PlayerList'
+import { RatePlayers } from './components/RatePlayers'
 import { TeamGenerator } from './components/TeamGenerator'
 import { HistoryList } from './components/HistoryList'
+import { StatsPanel } from './components/StatsPanel'
 import { DataIO } from './components/DataIO'
-import { AdminBar } from './components/AdminBar'
+import { AccountBar } from './components/AccountBar'
+import { UsersPanel } from './components/admin/UsersPanel'
+import { AdminProxyRating } from './components/admin/AdminProxyRating'
 
-type Tab = 'plantel' | 'equipos' | 'historial'
+type Tab = 'plantel' | 'valorar' | 'equipos' | 'estadisticas' | 'historial' | 'usuarios'
 
 function App() {
   const players = usePlayersStore((s) => s.players)
+  const effectivePlayers = useEffectivePlayers()
   const addPlayer = usePlayersStore((s) => s.addPlayer)
   const updatePlayer = usePlayersStore((s) => s.updatePlayer)
   const removePlayer = usePlayersStore((s) => s.removePlayer)
   const loadPlayers = usePlayersStore((s) => s.load)
   const playersLoaded = usePlayersStore((s) => s.loaded)
   const loadLineups = useLineupsStore((s) => s.load)
+  const loadAverages = useRatingsStore((s) => s.loadAverages)
+  const loadRotation = useRotationStore((s) => s.load)
   const initAuth = useAuthStore((s) => s.init)
   const isAdmin = useAuthStore((s) => s.isAdmin)
+  const isLinked = useAuthStore((s) => s.isLinked)
+  const { isMyTurn } = useTurno()
+  const puedeEquipos = isMyTurn || isAdmin
+  const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
+  const myPlayer = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
 
   const [tab, setTab] = useState<Tab>('plantel')
   const [editing, setEditing] = useState<Player | null>(null)
@@ -30,11 +47,18 @@ function App() {
 
   useEffect(() => {
     initAuth()
-    Promise.all([loadPlayers(), loadLineups()]).catch((e) => {
+    Promise.all([loadPlayers(), loadLineups(), loadAverages(), loadRotation()]).catch((e) => {
       console.error(e)
       setCargaError(true)
     })
-  }, [initAuth, loadPlayers, loadLineups])
+  }, [initAuth, loadPlayers, loadLineups, loadAverages, loadRotation])
+
+  // Si una pestaña restringida queda seleccionada y pierdes el permiso, vuelve a Plantel.
+  useEffect(() => {
+    if (!isAdmin && (tab === 'historial' || tab === 'usuarios')) setTab('plantel')
+    if (!isLinked && tab === 'valorar') setTab('plantel')
+    if (!puedeEquipos && tab === 'equipos') setTab('plantel')
+  }, [isAdmin, isLinked, puedeEquipos, tab])
 
   const handleSubmit = (input: PlayerInput) => {
     if (editing) {
@@ -49,11 +73,11 @@ function App() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">⚽ alineaciones F7</h1>
+          <h1 className="text-2xl font-bold">⚽ Alineaciones F7</h1>
           <p className="text-sm text-slate-400">Equipos equilibrados para la pachanga</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <AdminBar />
+          <AccountBar />
           <DataIO />
         </div>
       </header>
@@ -75,19 +99,47 @@ function App() {
             <TabButton active={tab === 'plantel'} onClick={() => setTab('plantel')}>
               Plantel
             </TabButton>
-            <TabButton active={tab === 'equipos'} onClick={() => setTab('equipos')}>
-              Equipos
+            {isLinked && (
+              <TabButton active={tab === 'valorar'} onClick={() => setTab('valorar')}>
+                Valorar
+              </TabButton>
+            )}
+            {puedeEquipos && (
+              <TabButton active={tab === 'equipos'} onClick={() => setTab('equipos')}>
+                Equipos
+              </TabButton>
+            )}
+            <TabButton active={tab === 'estadisticas'} onClick={() => setTab('estadisticas')}>
+              Estadísticas
             </TabButton>
-            <TabButton active={tab === 'historial'} onClick={() => setTab('historial')}>
-              Historial
-            </TabButton>
+            {isAdmin && (
+              <TabButton active={tab === 'historial'} onClick={() => setTab('historial')}>
+                Historial
+              </TabButton>
+            )}
+            {isAdmin && (
+              <TabButton active={tab === 'usuarios'} onClick={() => setTab('usuarios')}>
+                Usuarios
+              </TabButton>
+            )}
           </nav>
+
+          <RotationBanner />
 
           {tab === 'plantel' && (
             <>
+              {/* Autoservicio: el usuario vinculado (no admin) edita sus propios datos. */}
+              {isLinked && !isAdmin && myPlayer && (
+                <PlayerForm
+                  key={myPlayer.id}
+                  initial={myPlayer}
+                  mode="identity"
+                  onSubmit={(input) => updatePlayer(myPlayer.id, input)}
+                />
+              )}
               <PlayerList
-                players={players}
-                onEdit={setEditing}
+                players={effectivePlayers}
+                onEdit={(p) => setEditing(players.find((r) => r.id === p.id) ?? p)}
                 onRemove={removePlayer}
                 isAdmin={isAdmin}
               />
@@ -101,8 +153,16 @@ function App() {
               )}
             </>
           )}
-          {tab === 'equipos' && <TeamGenerator />}
-          {tab === 'historial' && <HistoryList />}
+          {tab === 'valorar' && isLinked && <RatePlayers />}
+          {tab === 'equipos' && puedeEquipos && <TeamGenerator />}
+          {tab === 'estadisticas' && <StatsPanel />}
+          {tab === 'historial' && isAdmin && <HistoryList />}
+          {tab === 'usuarios' && isAdmin && (
+            <div className="flex flex-col gap-6">
+              <UsersPanel />
+              <AdminProxyRating />
+            </div>
+          )}
         </>
       )}
     </div>

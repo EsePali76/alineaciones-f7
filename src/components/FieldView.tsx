@@ -32,13 +32,14 @@ function esBanda(p: Player): boolean {
 
 /**
  * Clave de orden vertical dentro de una línea: las bandas van a los extremos según
- * la pierna (zurdo arriba, diestro abajo) y los interiores quedan en el centro.
+ * el PERFIL preferido (izquierdo arriba, derecho abajo) y los interiores al centro.
+ * El perfil "Ambos" queda en medio → cae al flanco que quede libre al repartir.
  */
 function ordenVertical(p: Player): number {
   if (!esBanda(p)) return 1 // interior → centro
-  if (p.pierna === 'izq') return 0 // banda zurda → arriba
-  if (p.pierna === 'der') return 2 // banda diestra → abajo
-  return 1 // ambidiestro → al centro
+  if (p.pierna === 'izq') return 0 // perfil izquierdo → banda izquierda (arriba)
+  if (p.pierna === 'der') return 2 // perfil derecho → banda derecha (abajo)
+  return 1 // perfil "Ambos" → flexible, al flanco libre
 }
 
 /** Reparte k jugadores a lo ancho del campo (eje Y, en %) dentro del rango de la banda. */

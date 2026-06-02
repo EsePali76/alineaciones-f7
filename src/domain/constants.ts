@@ -15,11 +15,22 @@ export const POSITION_LABEL: Record<PositionCode, string> = Object.fromEntries(
   POSITIONS.map((p) => [p.code, p.label]),
 ) as Record<PositionCode, string>
 
+/**
+ * Perfil preferido: indica en qué banda actúa con naturalidad (carrilero/extremo).
+ * "Ambos" = cómodo en las dos bandas → la app puede colocarlo en cualquier lado.
+ * (Internamente sigue siendo el campo `pierna` por compatibilidad de datos.)
+ */
 export const FOOT_OPTIONS: { value: Foot; label: string }[] = [
-  { value: 'der', label: 'Derecha' },
-  { value: 'izq', label: 'Izquierda' },
-  { value: 'ambas', label: 'Ambidiestro' },
+  { value: 'izq', label: 'Izquierdo' },
+  { value: 'der', label: 'Derecho' },
+  { value: 'ambas', label: 'Ambos' },
 ]
+
+export const FOOT_LABEL: Record<Foot, string> = {
+  izq: 'Izquierdo',
+  der: 'Derecho',
+  ambas: 'Ambos',
+}
 
 export const MIN_RATING = 0
 export const MAX_RATING = 10
@@ -36,24 +47,44 @@ export function ratingLabel(v: number): string {
 /** Valor por defecto cuando un parámetro no está valorado (la media de 0-10). */
 export const DEFAULT_RATING: Rating = 5
 
-/** Parámetros valorables, en orden de aparición en el formulario. */
+/**
+ * Parámetros valorables (voto colaborativo), en orden de aparición.
+ * "general" es el ancla holística y va destacado/separado en la UI.
+ */
 export const RATING_KEYS = [
+  'general',
+  'definicion',
+  'criterio',
   'tecnica',
-  'disparo',
-  'presion',
+  'defensa',
   'velocidad',
   'fisico',
-  'forma',
-  'animo',
 ] as const
 export type RatingKey = (typeof RATING_KEYS)[number]
 
+/** Clave del parámetro ancla (pondera mucho más; se muestra destacado). */
+export const RATING_KEY_ANCLA: RatingKey = 'general'
+
+/** Facetas (todos los parámetros salvo el ancla), en orden. */
+export const RATING_KEYS_FACETAS = RATING_KEYS.filter((k) => k !== RATING_KEY_ANCLA)
+
 export const RATING_KEY_LABEL: Record<RatingKey, string> = {
+  general: 'Valoración general',
+  definicion: 'Definición',
+  criterio: 'Criterio con balón',
   tecnica: 'Técnica',
-  disparo: 'Disparo',
-  presion: 'Presión',
+  defensa: 'Defensa',
   velocidad: 'Velocidad',
   fisico: 'Físico',
-  forma: 'Estado de forma',
-  animo: 'Estado de ánimo',
+}
+
+/** Aclaración corta por parámetro (para alinear interpretaciones al valorar). */
+export const RATING_KEY_HINT: Record<RatingKey, string> = {
+  general: 'En conjunto, ¿cómo de bueno es jugando al fútbol? Pondera bastante más que el resto.',
+  definicion: 'Disparo, remate de cabeza',
+  criterio: 'Pase, desmarque, visión de juego',
+  tecnica: 'Control de balón, regate',
+  defensa: 'Presión, anticipación, recuperación de balón',
+  velocidad: 'Sprint, velocidad punta',
+  fisico: 'Fuerza, resistencia',
 }
