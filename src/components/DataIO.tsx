@@ -77,6 +77,9 @@ export function DataIO() {
     }
   }
 
+  // Toda la gestión de datos (exportar/importar/migrar) es solo para el admin.
+  if (!isAdmin) return null
+
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -87,24 +90,20 @@ export function DataIO() {
       >
         ⬇ Exportar
       </button>
-      {isAdmin && (
-        <>
-          <button
-            onClick={() => fileInput.current?.click()}
-            className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-300 hover:border-slate-400"
-            title="Restaurar desde un archivo JSON (sube a la nube)"
-          >
-            ⬆ Importar
-          </button>
-          <button
-            onClick={migrarLocal}
-            className="rounded border border-amber-700 px-3 py-1.5 text-sm text-amber-300 hover:border-amber-500"
-            title="Sube a la nube los jugadores/alineaciones guardados en este navegador"
-          >
-            ☁ Subir datos locales
-          </button>
-        </>
-      )}
+      <button
+        onClick={() => fileInput.current?.click()}
+        className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-300 hover:border-slate-400"
+        title="Restaurar desde un archivo JSON (sube a la nube)"
+      >
+        ⬆ Importar
+      </button>
+      <button
+        onClick={migrarLocal}
+        className="rounded border border-amber-700 px-3 py-1.5 text-sm text-amber-300 hover:border-amber-500"
+        title="Sube a la nube los jugadores/alineaciones guardados en este navegador"
+      >
+        ☁ Subir datos locales
+      </button>
       <input
         ref={fileInput}
         type="file"
