@@ -49,6 +49,16 @@ export function effectiveCurrent(
   return computeCurrent(data.orderIds, eligible, new Set(data.skippedIds))
 }
 
+/** Quién va DESPUÉS del actual en la cola (cíclico, solo elegibles). null si no hay otro. */
+export function nextCurrent(data: RotationData, eligible: Set<string>): string | null {
+  const order = data.orderIds.filter((id) => eligible.has(id))
+  if (order.length <= 1) return null
+  const cur = effectiveCurrent(data, eligible)
+  const i = cur ? order.indexOf(cur) : -1
+  if (i < 0) return order[0] ?? null
+  return order[(i + 1) % order.length]
+}
+
 /** Pasar turno (o avance del admin): salta al actual y pasa al siguiente, conservando su sitio. */
 export function advancePass(data: RotationData, eligibleOrdered: string[]): RotationData {
   const order = reconcileOrder(data.orderIds, eligibleOrdered)

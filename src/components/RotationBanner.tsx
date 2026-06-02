@@ -10,7 +10,7 @@ import type { PlayerInput } from '../store/playersStore'
  * (cualquier vinculado), avanzar/reiniciar (admin).
  */
 export function RotationBanner() {
-  const { current, isMyTurn } = useTurno()
+  const { current, next, isMyTurn } = useTurno()
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const isLinked = useAuthStore((s) => s.isLinked)
   const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
@@ -39,6 +39,11 @@ export function RotationBanner() {
         🗓️ Esta semana hace la alineación:{' '}
         <b className="text-white">{current ? current.nombre : '— sin asignar —'}</b>
         {isMyTurn && <span className="ml-1 text-emerald-400">· ¡te toca! Ve a “Equipos”.</span>}
+        {next && (
+          <span className="ml-1 text-slate-400">
+            · la próxima: <b className="text-slate-300">{next.nombre}</b>
+          </span>
+        )}
       </span>
 
       <div className="flex flex-wrap items-center gap-2">

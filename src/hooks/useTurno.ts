@@ -2,12 +2,14 @@ import { useMemo } from 'react'
 import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
 import { useAuthStore } from '../store/authStore'
-import { effectiveCurrent } from '../domain/rotation'
+import { effectiveCurrent, nextCurrent } from '../domain/rotation'
 import type { Player } from '../domain/types'
 
 export interface TurnoInfo {
   /** Jugador al que le toca hacer la alineación esta semana (o null). */
   current: Player | null
+  /** Jugador al que le tocará la PRÓXIMA (para avisar con antelación). */
+  next: Player | null
   /** ¿Le toca al usuario actual? */
   isMyTurn: boolean
   /** ¿Está vacía/sin inicializar la rotación? (no hay elegibles o sin sembrar) */
@@ -26,8 +28,11 @@ export function useTurno(): TurnoInfo {
     )
     const currentId = effectiveCurrent(data, eligible)
     const current = currentId ? players.find((p) => p.id === currentId) ?? null : null
+    const nextId = nextCurrent(data, eligible)
+    const next = nextId ? players.find((p) => p.id === nextId) ?? null : null
     return {
       current,
+      next,
       isMyTurn: !!myPlayerId && myPlayerId === currentId,
       vacia: eligible.size === 0,
     }
