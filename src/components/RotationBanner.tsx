@@ -53,19 +53,23 @@ export function RotationBanner() {
           estoyExcluido ? (
             <button
               onClick={() => setExcluido(false)}
-              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+              className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
             >
-              Entrar al listado de alineadores
+              Me gustaría hacer las alineaciones
             </button>
           ) : (
             <button
               onClick={() => {
-                if (confirm('¿Salir del listado de alineadores? No te tocará hacer alineaciones.'))
+                if (
+                  confirm(
+                    '¿Seguro que no quieres entrar en el sorteo de turnos para hacer las alineaciones?',
+                  )
+                )
                   setExcluido(true)
               }}
-              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
+              className="rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
             >
-              Salir del listado
+              No quiero hacer las alineaciones
             </button>
           )
         )}
