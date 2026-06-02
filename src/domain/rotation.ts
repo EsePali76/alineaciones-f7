@@ -49,14 +49,19 @@ export function effectiveCurrent(
   return computeCurrent(data.orderIds, eligible, new Set(data.skippedIds))
 }
 
-/** Quién va DESPUÉS del actual en la cola (cíclico, solo elegibles). null si no hay otro. */
+/**
+ * Quién hará la PRÓXIMA alineación: simula que el actual hace la suya (se va al
+ * final de la cola y empieza ciclo nuevo) y devuelve quién quedaría de turno.
+ * Así, si alguien pasó turno (conserva su sitio), aparece correctamente como el
+ * siguiente, en vez del simple "siguiente cíclico".
+ */
 export function nextCurrent(data: RotationData, eligible: Set<string>): string | null {
   const order = data.orderIds.filter((id) => eligible.has(id))
   if (order.length <= 1) return null
   const cur = effectiveCurrent(data, eligible)
-  const i = cur ? order.indexOf(cur) : -1
-  if (i < 0) return order[0] ?? null
-  return order[(i + 1) % order.length]
+  const sinCur = order.filter((id) => id !== cur)
+  const nuevoOrden = cur ? [...sinCur, cur] : order
+  return nuevoOrden[0] ?? null
 }
 
 /** Pasar turno (o avance del admin): salta al actual y pasa al siguiente, conservando su sitio. */
