@@ -100,8 +100,8 @@ export function RatePlayers() {
     return (
       <div key={key} className="flex items-start gap-3">
         <div className="w-40 shrink-0">
-          <span className="text-slate-300">{RATING_KEY_LABEL[key]}</span>
-          <p className="text-xs text-slate-500">{RATING_KEY_HINT[key]}</p>
+          <span className="font-medium text-slate-100">{RATING_KEY_LABEL[key]}</span>
+          <p className="text-xs text-slate-300">{RATING_KEY_HINT[key]}</p>
         </div>
         <input
           type="number"
@@ -119,7 +119,7 @@ export function RatePlayers() {
           placeholder="—"
           className="w-20 rounded border border-slate-600 bg-slate-900 px-3 py-1.5 disabled:opacity-50"
         />
-        <span className="pt-2 text-xs text-slate-500">
+        <span className="pt-2 text-xs text-slate-400">
           {val === undefined ? 'sin valorar' : ratingLabel(val)}
         </span>
       </div>
