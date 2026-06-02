@@ -17,7 +17,7 @@ import type { RatingKey } from '../domain/constants'
 interface PlayerFormProps {
   /** Valores iniciales (modo edición). Si se omite, formulario en blanco (alta). */
   initial?: PlayerInput
-  onSubmit: (input: PlayerInput) => void
+  onSubmit: (input: PlayerInput) => void | Promise<void>
   onCancel?: () => void
   /**
    * 'full' (admin): identidad + valoraciones + flags.
@@ -94,13 +94,26 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
     )
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [guardando, setGuardando] = useState(false)
+  const [guardado, setGuardado] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const nombre = data.nombre.trim()
     if (!nombre) return
     if (data.posiciones.length === 0) return
-    onSubmit({ ...data, nombre })
-    if (!initial) setData(EMPTY) // limpia tras un alta
+    setGuardando(true)
+    setGuardado(false)
+    try {
+      await onSubmit({ ...data, nombre })
+      setGuardado(true)
+      setTimeout(() => setGuardado(false), 3000)
+      if (!initial) setData(EMPTY) // limpia tras un alta
+    } catch {
+      // El store ya avisa del error; no mostramos "guardado".
+    } finally {
+      setGuardando(false)
+    }
   }
 
   const valid = data.nombre.trim().length > 0 && data.posiciones.length > 0
@@ -316,10 +329,16 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
       <div className="flex gap-3">
         <button
           type="submit"
-          disabled={!valid}
+          disabled={!valid || guardando}
           className="rounded bg-emerald-600 px-4 py-2 font-medium text-white enabled:hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {soloIdentidad ? 'Guardar mis datos' : initial ? 'Guardar cambios' : 'Añadir jugador'}
+          {guardando
+            ? 'Guardando…'
+            : soloIdentidad
+              ? 'Guardar mis datos'
+              : initial
+                ? 'Guardar cambios'
+                : 'Añadir jugador'}
         </button>
         {onCancel && (
           <button
@@ -329,6 +348,9 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
           >
             Cancelar
           </button>
+        )}
+        {guardado && (
+          <span className="self-center text-sm font-medium text-emerald-400">✓ Guardado</span>
         )}
       </div>
     </form>

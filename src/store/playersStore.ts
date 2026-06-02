@@ -57,6 +57,7 @@ export const usePlayersStore = create<PlayersState>((set, get) => ({
     } catch (e) {
       set({ players: prev })
       avisoError(e)
+      throw e // que el llamante sepa que falló (p.ej. para no mostrar "guardado")
     }
   },
 

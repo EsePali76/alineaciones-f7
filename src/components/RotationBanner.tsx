@@ -24,9 +24,13 @@ export function RotationBanner() {
 
   const setExcluido = async (value: boolean) => {
     if (!yo) return
-    await updatePlayer(yo.id, { ...yo, excluidoRotacion: value } as PlayerInput)
-    // Si me autoexcluyo estando de turno, paso para que avance al siguiente.
-    if (value && isMyTurn) await pasarTurno()
+    try {
+      await updatePlayer(yo.id, { ...yo, excluidoRotacion: value } as PlayerInput)
+      // Si me autoexcluyo estando de turno, paso para que avance al siguiente.
+      if (value && isMyTurn) await pasarTurno()
+    } catch {
+      // El store ya avisa del error.
+    }
   }
 
   return (
