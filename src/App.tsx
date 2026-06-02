@@ -19,7 +19,6 @@ import { DataIO } from './components/DataIO'
 import { AccountBar } from './components/AccountBar'
 import { UsersPanel } from './components/admin/UsersPanel'
 import { AdminProxyRating } from './components/admin/AdminProxyRating'
-import { AdminSeedVotes } from './components/admin/AdminSeedVotes'
 
 type Tab = 'plantel' | 'valorar' | 'equipos' | 'estadisticas' | 'historial' | 'usuarios'
 
@@ -161,7 +160,6 @@ function App() {
           {tab === 'usuarios' && isAdmin && (
             <div className="flex flex-col gap-6">
               <UsersPanel />
-              <AdminSeedVotes />
               <AdminProxyRating />
             </div>
           )}
