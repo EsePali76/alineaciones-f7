@@ -62,7 +62,7 @@ export function StatsPanel() {
                 <th className="px-2 py-2 text-center font-medium" title="Racha actual">Racha</th>
                 <th className="px-2 py-2 text-center font-medium" title="Goles">⚽</th>
                 <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
-                <th className="px-2 py-2 text-center font-medium" title="MVPs">🏆</th>
+                <th className="px-2 py-2 text-center font-medium" title="Veces MVP del partido">MVP</th>
                 <th className="px-2 py-2 text-center font-medium" title="Veces de blanco / de rojo">⚪/🔴</th>
                 <th className="px-2 py-2 text-center font-medium" title="Ánimo">Ánimo</th>
               </tr>
