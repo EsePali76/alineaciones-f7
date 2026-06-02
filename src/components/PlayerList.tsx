@@ -69,6 +69,7 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
                       </span>
                     )}
                     {p.tocado && <TocadoIcon className="ml-1" />}
+                    {p.reserva && <span className="ml-2 text-xs text-sky-400">(reserva)</span>}
                     {!p.activo && <span className="ml-2 text-xs text-slate-500">(baja)</span>}
                   </td>
                   <td className="px-3 py-2 text-slate-400">{p.edad ?? '—'}</td>

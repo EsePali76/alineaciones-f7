@@ -12,7 +12,7 @@ import { usePlayersStore } from './playersStore'
 function eligibleOrdered(): string[] {
   return usePlayersStore
     .getState()
-    .players.filter((p) => p.activo && !p.excluidoRotacion)
+    .players.filter((p) => p.activo && !p.excluidoRotacion && !p.reserva)
     .sort((a, b) => a.createdAt - b.createdAt)
     .map((p) => p.id)
 }

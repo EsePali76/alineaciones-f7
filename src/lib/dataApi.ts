@@ -52,6 +52,7 @@ function normalizePlayer(raw: Player): Player {
     ...raw,
     ratings,
     excluidoRotacion: raw.excluidoRotacion ?? false,
+    reserva: raw.reserva ?? false,
     activo: raw.activo ?? true,
     invitado: raw.invitado ?? false,
     tocado: raw.tocado ?? false,

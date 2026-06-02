@@ -36,6 +36,7 @@ const EMPTY: PlayerInput = {
   invitado: false,
   tocado: false,
   excluidoRotacion: false,
+  reserva: false,
   activo: true,
 }
 
@@ -311,6 +312,17 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
           />
           <span title="No entra en la cola para hacer la alineación. No impide ser convocado para jugar.">
             Excluido de la rotación de turnos
+          </span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={data.reserva}
+            onChange={(e) => setData((d) => ({ ...d, reserva: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          <span title="No es fijo del grupo; viene como reserva para completar. Es convocable, pero NUNCA entra en la rotación de alineadores.">
+            Reserva (no fijo · nunca hace alineaciones)
           </span>
         </label>
         <label className="flex items-center gap-2">

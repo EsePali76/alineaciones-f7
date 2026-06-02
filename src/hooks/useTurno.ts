@@ -24,7 +24,7 @@ export function useTurno(): TurnoInfo {
 
   return useMemo(() => {
     const eligible = new Set(
-      players.filter((p) => p.activo && !p.excluidoRotacion).map((p) => p.id),
+      players.filter((p) => p.activo && !p.excluidoRotacion && !p.reserva).map((p) => p.id),
     )
     const currentId = effectiveCurrent(data, eligible)
     const current = currentId ? players.find((p) => p.id === currentId) ?? null : null

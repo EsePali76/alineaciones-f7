@@ -61,6 +61,12 @@ export interface Player {
    * para jugar. Lo marca el Admin o el propio usuario (autoexclusión).
    */
   excluidoRotacion: boolean
+  /**
+   * Reserva: no es un fijo del grupo; viene como reserva habitual cuando no se
+   * completan los 14 con los fijos. Sigue siendo convocable, pero NUNCA entra en
+   * la rotación de alineadores (es menos habitual y no conoce bien al grupo).
+   */
+  reserva: boolean
   /** Si está en el plantel activo (false = dado de baja, no aparece para convocar). */
   activo: boolean
   createdAt: number
