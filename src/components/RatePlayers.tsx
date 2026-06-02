@@ -166,10 +166,13 @@ export function RatePlayers() {
             ) : (
               <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
                 <h3 className="text-base font-semibold">{jugador.nombre}</h3>
-                <div className="rounded-lg border border-amber-600/50 bg-amber-600/10 p-3">
+                <div className="rounded-lg border-2 border-amber-400 bg-amber-500/20 p-3 shadow-[0_0_12px_-2px_rgba(251,191,36,0.4)]">
                   {ratingRow(RATING_KEY_ANCLA)}
                 </div>
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 rounded-lg border border-slate-600 bg-slate-800/60 p-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Modificadores
+                  </span>
                   {RATING_KEYS_FACETAS.map((key) => ratingRow(key))}
                 </div>
               </div>

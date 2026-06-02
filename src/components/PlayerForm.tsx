@@ -245,13 +245,18 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
           <span className="text-amber-400">· sin valorar = 5 (media)</span>
         </span>
 
-        {/* Ancla: destacada y separada porque pondera bastante más */}
-        <div className="rounded-lg border border-amber-600/50 bg-amber-600/10 p-3">
+        {/* Ancla: destacada (la que más pondera) */}
+        <div className="rounded-lg border-2 border-amber-400 bg-amber-500/20 p-3 shadow-[0_0_12px_-2px_rgba(251,191,36,0.4)]">
           {ratingRow(RATING_KEY_ANCLA)}
         </div>
 
-        {/* Facetas */}
-        <div className="flex flex-col gap-3">{RATING_KEYS_FACETAS.map((key) => ratingRow(key))}</div>
+        {/* Facetas = modificadores */}
+        <div className="flex flex-col gap-3 rounded-lg border border-slate-600 bg-slate-800/60 p-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Modificadores
+          </span>
+          {RATING_KEYS_FACETAS.map((key) => ratingRow(key))}
+        </div>
       </div>
       )}
 
