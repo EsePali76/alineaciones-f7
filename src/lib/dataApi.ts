@@ -71,6 +71,19 @@ export async function upsertPlayer(player: Player): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Actualiza un jugador EXISTENTE con UPDATE real (no upsert). Importante para RLS:
+ * el upsert se evalúa como INSERT (solo admin), pero un UPDATE deja que el dueño
+ * edite su propio jugador (política players_update).
+ */
+export async function updatePlayer(player: Player): Promise<void> {
+  const { error } = await supabase
+    .from('players')
+    .update({ data: player, updated_at: new Date().toISOString() })
+    .eq('id', player.id)
+  if (error) throw error
+}
+
 export async function deletePlayer(id: string): Promise<void> {
   const { error } = await supabase.from('players').delete().eq('id', id)
   if (error) throw error

@@ -53,7 +53,7 @@ export const usePlayersStore = create<PlayersState>((set, get) => ({
     const player = updated.find((p) => p.id === id)
     set({ players: updated })
     try {
-      if (player) await api.upsertPlayer(player)
+      if (player) await api.updatePlayer(player)
     } catch (e) {
       set({ players: prev })
       avisoError(e)
