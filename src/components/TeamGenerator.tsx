@@ -8,7 +8,6 @@ import { useTurno } from '../hooks/useTurno'
 import type { Player } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore } from '../domain/scoring'
-import { formatForWhatsApp } from '../domain/whatsapp'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
 import { FieldView } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
@@ -41,7 +40,6 @@ export function TeamGenerator() {
   const setBalance = useGeneratorStore((s) => s.setBalance)
   const setConfirmada = useGeneratorStore((s) => s.setConfirmada)
 
-  const [copiado, setCopiado] = useState(false)
 
   const disponibles = useMemo(
     () => players.filter((p) => p.activo).sort((a, b) => a.nombre.localeCompare(b.nombre)),
@@ -101,7 +99,6 @@ export function TeamGenerator() {
     // Pasa el historial de alineaciones confirmadas para evitar repetir parejas.
     const result = balanceTeams(seleccionados, { history: lineups })
     setBalance(result)
-    setCopiado(false)
     setConfirmada(false)
     setConfirmedLineupId(null) // nueva alineación → ya no re-confirma la anterior
     // Nueva alineación → descarta cualquier colocación manual previa.
@@ -142,19 +139,6 @@ export function TeamGenerator() {
     setPlacementA(null)
     setPlacementB(null)
     setConfirmada(false)
-  }
-
-  const copiar = async () => {
-    if (!balance) return
-    const texto = formatForWhatsApp(balance)
-    try {
-      await navigator.clipboard.writeText(texto)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2500)
-    } catch {
-      // Fallback: si el portapapeles no está disponible, lo mostramos para copiar a mano.
-      window.prompt('Copia el texto manualmente:', texto)
-    }
   }
 
   return (
@@ -272,8 +256,6 @@ export function TeamGenerator() {
           balance={balanceVivo}
           formacionA={formacionA}
           formacionB={formacionB}
-          onCopy={copiar}
-          copiado={copiado}
           onConfirm={confirmar}
           confirmada={confirmada}
           canConfirm={puedeConfirmar}
@@ -322,8 +304,6 @@ function BalanceResult({
   balance,
   formacionA,
   formacionB,
-  onCopy,
-  copiado,
   onConfirm,
   confirmada,
   canConfirm,
@@ -332,8 +312,6 @@ function BalanceResult({
   balance: TeamBalance
   formacionA: Formacion
   formacionB: Formacion
-  onCopy: () => void
-  copiado: boolean
   onConfirm: () => void
   confirmada: boolean
   canConfirm: boolean
@@ -383,12 +361,6 @@ function BalanceResult({
               {confirmada ? '✓ Confirmada' : '✅ Confirmar alineación'}
             </button>
           )}
-          <button
-            onClick={onCopy}
-            className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
-          >
-            {copiado ? '✓ Copiado' : '📋 Copiar texto'}
-          </button>
           <button
             onClick={copiarImagen}
             className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
