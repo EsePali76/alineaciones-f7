@@ -50,7 +50,8 @@ export function UsersPanel() {
       await refreshMyProfile() // por si me afecta a mí mismo
     } catch (e) {
       console.error(e)
-      alert('No se pudo completar la acción. ¿Sigues siendo admin?')
+      const msg = e instanceof Error ? e.message : String(e)
+      alert('No se pudo completar la acción:\n\n' + msg)
     }
   }
 
