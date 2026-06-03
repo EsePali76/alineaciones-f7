@@ -88,18 +88,59 @@ insert into public.rotation (id) values (1) on conflict (id) do nothing;
 -- ---------------------------------------------------------------------------
 -- 5) VISTA DE MEDIAS  (expone solo agregados → preserva el anonimato)
 --    Se ejecuta con privilegios del propietario (definer) → ve todos los votos.
+--    Usa MEDIA RECORTADA (trimmed mean) proporcional al nº de votos, para que
+--    votos extremos no descuadren el reparto. Transparente para el usuario.
 -- ---------------------------------------------------------------------------
+-- Helper: media recortada de un array de numerics (ignora nulos).
+--   <5 votos → sin recorte · 5-9 → 1 por extremo · ≥10 → 15% (floor) por extremo
+create or replace function public.trimmed_mean(vals numeric[])
+returns numeric language plpgsql immutable as $$
+declare
+  arr numeric[];
+  n   int;
+  k   int;
+begin
+  select array_agg(v order by v) into arr
+  from unnest(vals) as v
+  where v is not null;
+
+  n := coalesce(array_length(arr, 1), 0);
+  if n = 0 then
+    return null;
+  end if;
+
+  if n < 5 then
+    k := 0;
+  elsif n < 10 then
+    k := 1;
+  else
+    k := floor(n * 0.15);
+  end if;
+
+  if 2 * k >= n then
+    k := 0;
+  end if;
+
+  return (
+    select avg(arr[i])
+    from generate_series(k + 1, n - k) as i
+  );
+end;
+$$;
+
+grant execute on function public.trimmed_mean(numeric[]) to anon, authenticated;
+
 create or replace view public.player_rating_averages as
 select
-  ratee_player_id                              as player_id,
-  count(*)                                     as num_votos,
-  avg((values->>'general')::numeric)           as general,
-  avg((values->>'definicion')::numeric)        as definicion,
-  avg((values->>'criterio')::numeric)          as criterio,
-  avg((values->>'tecnica')::numeric)           as tecnica,
-  avg((values->>'defensa')::numeric)           as defensa,
-  avg((values->>'velocidad')::numeric)         as velocidad,
-  avg((values->>'fisico')::numeric)            as fisico
+  ratee_player_id                                                    as player_id,
+  count(*)                                                           as num_votos,
+  public.trimmed_mean(array_agg((values->>'general')::numeric))      as general,
+  public.trimmed_mean(array_agg((values->>'definicion')::numeric))   as definicion,
+  public.trimmed_mean(array_agg((values->>'criterio')::numeric))     as criterio,
+  public.trimmed_mean(array_agg((values->>'tecnica')::numeric))      as tecnica,
+  public.trimmed_mean(array_agg((values->>'defensa')::numeric))      as defensa,
+  public.trimmed_mean(array_agg((values->>'velocidad')::numeric))    as velocidad,
+  public.trimmed_mean(array_agg((values->>'fisico')::numeric))       as fisico
 from public.ratings
 group by ratee_player_id;
 
