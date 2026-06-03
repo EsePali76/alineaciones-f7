@@ -39,7 +39,7 @@ export function RotationBanner() {
       <div className="flex flex-col gap-1">
         <span className="flex items-center gap-2 text-slate-200">
           <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
-          🗓️ Esta semana hace la alineación:
+          🗓️ La siguiente alineación es de...
         </span>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-5">
           <b className="text-xl text-red-400">{current ? current.nombre : '— sin asignar —'}</b>
@@ -105,7 +105,7 @@ export function RotationBanner() {
         </div>
         {next && (
           <span className="pl-5 text-sm text-slate-400">
-            La próxima: <b className="text-slate-300">{next.nombre}</b>
+            ... y la próxima es de... <b className="text-slate-300">{next.nombre}</b>
           </span>
         )}
       </div>
