@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePlayersStore } from '../store/playersStore'
 import { useRatingsStore } from '../store/ratingsStore'
 import { useAuthStore } from '../store/authStore'
+import { useRotationStore } from '../store/rotationStore'
 import type { PlayerRatings, Rating } from '../domain/types'
 import {
   RATING_KEY_ANCLA,
@@ -27,6 +28,7 @@ export function RatePlayers() {
   const loadMine = useRatingsStore((s) => s.loadMine)
   const saveMine = useRatingsStore((s) => s.saveMine)
   const finalize = useRatingsStore((s) => s.finalize)
+  const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   // Borrador en edición del jugador seleccionado (no se guarda hasta pulsar Guardar).
@@ -39,6 +41,9 @@ export function RatePlayers() {
   }, [loadMine])
 
   const finalizado = profile?.ratingsFinalized ?? false
+  // Durante el plazo de re-evaluación (abierto por el admin) se puede editar aunque
+  // hayas finalizado. El bloqueo real solo aplica si finalizaste y NO hay plazo abierto.
+  const bloqueado = finalizado && !ratingsOpen
 
   const aValorar = useMemo(
     () =>
@@ -72,7 +77,7 @@ export function RatePlayers() {
   const sucio = JSON.stringify(draft) !== JSON.stringify(guardado)
 
   const setValor = (key: RatingKey, value: Rating | undefined) => {
-    if (finalizado) return
+    if (bloqueado) return
     setGuardadoOk(false)
     setDraft((d) => {
       const n = { ...d }
@@ -108,7 +113,7 @@ export function RatePlayers() {
           min={MIN_RATING}
           max={MAX_RATING}
           step={1}
-          disabled={finalizado}
+          disabled={bloqueado}
           value={val ?? ''}
           onChange={(e) => {
             const raw = e.target.value
@@ -138,9 +143,16 @@ export function RatePlayers() {
         </p>
       </div>
 
-      {finalizado && (
+      {bloqueado && (
         <p className="rounded-lg border border-emerald-700/50 bg-emerald-900/20 p-3 text-sm text-emerald-300">
           🔒 Has finalizado tus valoraciones. Si quieres cambiar algo, pídeselo al admin.
+        </p>
+      )}
+
+      {finalizado && ratingsOpen && (
+        <p className="rounded-lg border border-sky-600/50 bg-sky-900/20 p-3 text-sm text-sky-200">
+          📝 Plazo de reevaluación abierto: aunque ya finalizaste, puedes revisar y ajustar tus
+          valoraciones mientras esté activo.
         </p>
       )}
 
@@ -208,7 +220,7 @@ export function RatePlayers() {
                 </div>
 
                 {/* Guardar */}
-                {!finalizado && (
+                {!bloqueado && (
                   <div className="flex items-center gap-3">
                     <button
                       onClick={guardar}

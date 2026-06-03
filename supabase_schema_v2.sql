@@ -60,6 +60,12 @@ returns text language sql security definer stable set search_path = public as $$
   select player_id from public.profiles where id = auth.uid();
 $$;
 
+-- ¿Está abierta la ventana global de re-evaluación de valoraciones?
+create or replace function public.ratings_open()
+returns boolean language sql security definer stable set search_path = public as $$
+  select coalesce((select ratings_open from public.rotation where id = 1), false);
+$$;
+
 -- ---------------------------------------------------------------------------
 -- 3) RATINGS  (votos colaborativos anónimos)
 --    1 fila por (valorador, valorado). values = jsonb con los 7 parámetros.
@@ -81,9 +87,14 @@ create table if not exists public.rotation (
   current_player_id text references public.players(id) on delete set null,
   order_ids         jsonb not null default '[]'::jsonb,  -- orden de la cola (ids)
   skipped_ids       jsonb not null default '[]'::jsonb,  -- pasaron turno (conservan sitio)
+  -- Ventana global de re-evaluación: cuando es true, todos pueden revisar/editar
+  -- sus votos aunque los hubieran finalizado. Solo la conmuta el admin (RPC).
+  ratings_open      boolean not null default false,
   updated_at        timestamptz not null default now()
 );
 insert into public.rotation (id) values (1) on conflict (id) do nothing;
+-- Idempotente para instalaciones existentes (la tabla ya estaba creada).
+alter table public.rotation add column if not exists ratings_open boolean not null default false;
 
 -- ---------------------------------------------------------------------------
 -- 5) VISTA DE MEDIAS  (expone solo agregados → preserva el anonimato)
@@ -180,6 +191,14 @@ begin
   update public.profiles set ratings_finalized = false where id = target;
 end; $$;
 
+-- Admin abre/cierra la ventana global de re-evaluación (plazo de reevaluación).
+create or replace function public.admin_set_ratings_open(p_open boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Solo admin'; end if;
+  update public.rotation set ratings_open = p_open, updated_at = now() where id = 1;
+end; $$;
+
 -- Admin borra la cuenta de un usuario (cascada: profile + ratings; el jugador se mantiene).
 create or replace function public.admin_delete_user(target uuid)
 returns void language plpgsql security definer set search_path = public as $$
@@ -194,6 +213,7 @@ grant execute on function
   public.admin_link_player(uuid, text),
   public.admin_set_role(uuid, text),
   public.admin_reset_ratings(uuid),
+  public.admin_set_ratings_open(boolean),
   public.admin_delete_user(uuid)
 to authenticated;
 
@@ -263,7 +283,11 @@ create policy ratings_insert on public.ratings
     or (
       rater_id = auth.uid()
       and ratee_player_id <> public.my_player_id()
-      and not coalesce((select ratings_finalized from public.profiles where id = auth.uid()), false)
+      -- editable si NO has finalizado, o si la ventana global de revisión está abierta.
+      and (
+        public.ratings_open()
+        or not coalesce((select ratings_finalized from public.profiles where id = auth.uid()), false)
+      )
     )
   );
 create policy ratings_update on public.ratings
@@ -273,7 +297,10 @@ create policy ratings_update on public.ratings
     or (
       rater_id = auth.uid()
       and ratee_player_id <> public.my_player_id()
-      and not coalesce((select ratings_finalized from public.profiles where id = auth.uid()), false)
+      and (
+        public.ratings_open()
+        or not coalesce((select ratings_finalized from public.profiles where id = auth.uid()), false)
+      )
     )
   );
 create policy ratings_delete on public.ratings for delete using (public.is_admin());

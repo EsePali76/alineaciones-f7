@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePlayersStore } from '../../store/playersStore'
 import { useRatingsStore } from '../../store/ratingsStore'
+import { useRotationStore } from '../../store/rotationStore'
 import { fetchAllProfiles, type Profile } from '../../lib/authApi'
 import { fetchRatingsOf, adminUpsertRating } from '../../lib/ratingsApi'
 import type { PlayerRatings, Rating } from '../../domain/types'
@@ -74,7 +75,12 @@ export function AdminProxyRating() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+    <div className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">Valoraciones</h2>
+
+      <RatingsWindowControl />
+
+      <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
       <div>
         <h3 className="text-base font-semibold">Editar voto de un usuario (a ciegas)</h3>
         <p className="text-sm text-slate-400">
@@ -162,6 +168,69 @@ export function AdminProxyRating() {
           </div>
         </>
       )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Plazo de re-evaluación: el admin abre/cierra una ventana global en la que TODOS
+ * pueden revisar y ajustar sus valoraciones aunque ya las hubieran finalizado.
+ * Mientras está abierta se avisa a cada usuario bajo el banner de turno.
+ */
+function RatingsWindowControl() {
+  const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
+  const setRatingsOpen = useRotationStore((s) => s.setRatingsOpen)
+  const [guardando, setGuardando] = useState(false)
+
+  const cambiar = async (open: boolean) => {
+    setGuardando(true)
+    try {
+      await setRatingsOpen(open)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+      <div>
+        <h3 className="text-base font-semibold">Plazo de reevaluación</h3>
+        <p className="text-sm text-slate-400">
+          Al abrirlo, cualquier usuario (también los que ya finalizaron) puede revisar y ajustar sus
+          valoraciones. Se avisa a cada uno bajo el banner de turno. Ciérralo cuando termine el plazo.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <span
+          className={
+            'rounded-full px-3 py-1 text-xs font-medium ' +
+            (ratingsOpen
+              ? 'bg-sky-900/40 text-sky-300 ring-1 ring-sky-500/50'
+              : 'bg-slate-700/60 text-slate-300')
+          }
+        >
+          {ratingsOpen ? '● Abierto' : '○ Cerrado'}
+        </span>
+
+        <button
+          onClick={() => cambiar(true)}
+          disabled={guardando || ratingsOpen}
+          className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white enabled:hover:bg-sky-500 disabled:opacity-50"
+        >
+          Reabrir valoraciones
+        </button>
+        <button
+          onClick={() => cambiar(false)}
+          disabled={guardando || !ratingsOpen}
+          className="rounded border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 enabled:hover:border-slate-400 disabled:opacity-50"
+        >
+          Cerrar valoraciones
+        </button>
+      </div>
     </div>
   )
 }

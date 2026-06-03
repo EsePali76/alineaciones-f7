@@ -29,6 +29,8 @@ function eligibleShuffled(): string[] {
 
 interface RotationState {
   data: RotationData
+  /** Ventana global de re-evaluación abierta (todos pueden revisar sus votos). */
+  ratingsOpen: boolean
   loaded: boolean
   load: () => Promise<void>
   /** Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa. */
@@ -37,6 +39,8 @@ interface RotationState {
   reiniciar: () => Promise<void>
   /** Tras confirmar una alineación: el autor va al final y empieza ciclo nuevo. */
   alConfirmar: (doerId: string) => Promise<void>
+  /** Abre/cierra el plazo de re-evaluación de valoraciones (admin). */
+  setRatingsOpen: (open: boolean) => Promise<void>
 }
 
 async function persist(set: (p: Partial<RotationState>) => void, data: RotationData) {
@@ -46,11 +50,12 @@ async function persist(set: (p: Partial<RotationState>) => void, data: RotationD
 
 export const useRotationStore = create<RotationState>((set, get) => ({
   data: { currentPlayerId: null, orderIds: [], skippedIds: [] },
+  ratingsOpen: false,
   loaded: false,
 
   load: async () => {
-    const data = await api.fetchRotation()
-    set({ data, loaded: true })
+    const { rotation, ratingsOpen } = await api.fetchRotation()
+    set({ data: rotation, ratingsOpen, loaded: true })
   },
 
   pasarTurno: async () => {
@@ -67,5 +72,16 @@ export const useRotationStore = create<RotationState>((set, get) => ({
   alConfirmar: async (doerId) => {
     const next = advanceAfterConfirm(get().data, doerId, eligibleOrdered())
     await persist(set, next)
+  },
+
+  setRatingsOpen: async (open) => {
+    set({ ratingsOpen: open })
+    try {
+      await api.setRatingsOpen(open)
+    } catch (e) {
+      // Revierte el optimista si la RPC falla.
+      set({ ratingsOpen: !open })
+      throw e
+    }
   },
 }))

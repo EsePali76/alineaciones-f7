@@ -18,6 +18,7 @@ export function RotationBanner() {
   const updatePlayer = usePlayersStore((s) => s.updatePlayer)
   const pasarTurno = useRotationStore((s) => s.pasarTurno)
   const reiniciar = useRotationStore((s) => s.reiniciar)
+  const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
 
   const yo = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
   const estoyExcluido = yo?.excluidoRotacion ?? false
@@ -108,6 +109,14 @@ export function RotationBanner() {
           </span>
         )}
       </div>
+
+      {/* Aviso del plazo de re-evaluación de valoraciones (lo abre el admin). */}
+      {ratingsOpen && isLinked && (
+        <div className="rounded-md border border-sky-500/50 bg-sky-900/30 px-3 py-2 text-sm text-sky-200">
+          📝 <b>Plazo de reevaluación abierto:</b> puedes revisar y ajustar tus valoraciones en la
+          pestaña «Valorar» mientras esté activo.
+        </div>
+      )}
 
       {isAdmin && (
         <button
