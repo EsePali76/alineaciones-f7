@@ -7,7 +7,6 @@ import {
   clasificacionGoleadores,
   type TeamStats,
 } from '../domain/stats'
-import { animoLabel } from '../domain/animo'
 import { temporadasDisponibles, filtrarPorTemporada, TODAS } from '../domain/season'
 import { SeasonPicker } from './SeasonPicker'
 
@@ -135,38 +134,38 @@ export function StatsPanel() {
                 <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
                 <th className="px-2 py-2 text-center font-medium" title="Victorias-Empates-Derrotas">V-E-D</th>
                 <th className="px-2 py-2 text-center font-medium" title="% de victorias">%V</th>
-                <th className="px-2 py-2 text-center font-medium" title="Racha actual">Racha</th>
+                <th
+                  className="px-2 py-2 text-center font-medium"
+                  title={modo === 'totales' ? 'Mejor racha de victorias / peor de derrotas' : 'Racha actual'}
+                >
+                  Racha
+                </th>
                 <th className="px-2 py-2 text-center font-medium" title="Goles">⚽</th>
                 <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
                 <th className="px-2 py-2 text-center font-medium" title="Veces MVP del partido">MVP</th>
                 <th className="px-2 py-2 text-center font-medium" title="Veces de blanco / de rojo">⚪/🔴</th>
-                <th className="px-2 py-2 text-center font-medium" title="Ánimo">Ánimo</th>
               </tr>
             </thead>
             <tbody>
-              {filas.map((s) => {
-                const animo = players.find((p) => p.id === s.playerId)?.animoCalculado
-                return (
-                  <tr key={s.playerId} className="border-t border-slate-700/60">
-                    <td className="px-3 py-2 font-medium">{nombre(s.playerId)}</td>
-                    <td className="px-2 py-2 text-center text-slate-300">{s.partidos}</td>
-                    <td className="px-2 py-2 text-center text-slate-300">
-                      {s.victorias}-{s.empates}-{s.derrotas}
-                    </td>
-                    <td className="px-2 py-2 text-center text-slate-300">{s.pctVictorias}%</td>
-                    <td className="px-2 py-2 text-center">{rachaTexto(s.racha)}</td>
-                    <td className="px-2 py-2 text-center text-slate-300">{s.goles || '—'}</td>
-                    <td className="px-2 py-2 text-center text-slate-300">{s.asistencias || '—'}</td>
-                    <td className="px-2 py-2 text-center text-slate-300">{s.mvps || '—'}</td>
-                    <td className="px-2 py-2 text-center text-slate-400">
-                      {s.vecesBlanco}/{s.vecesRojo}
-                    </td>
-                    <td className="px-2 py-2 whitespace-nowrap text-center text-slate-300" title={animo != null ? animoLabel(animo).texto : ''}>
-                      {animo != null ? `${animoLabel(animo).emoji} ${animo.toFixed(1)}` : '—'}
-                    </td>
-                  </tr>
-                )
-              })}
+              {filas.map((s) => (
+                <tr key={s.playerId} className="border-t border-slate-700/60">
+                  <td className="px-3 py-2 font-medium">{nombre(s.playerId)}</td>
+                  <td className="px-2 py-2 text-center text-slate-300">{s.partidos}</td>
+                  <td className="px-2 py-2 text-center text-slate-300">
+                    {s.victorias}-{s.empates}-{s.derrotas}
+                  </td>
+                  <td className="px-2 py-2 text-center text-slate-300">{s.pctVictorias}%</td>
+                  <td className="px-2 py-2 whitespace-nowrap text-center">
+                    {modo === 'totales' ? mejoresRachas(s.mejorRachaV, s.peorRachaD) : rachaTexto(s.racha)}
+                  </td>
+                  <td className="px-2 py-2 text-center text-slate-300">{s.goles || '—'}</td>
+                  <td className="px-2 py-2 text-center text-slate-300">{s.asistencias || '—'}</td>
+                  <td className="px-2 py-2 text-center text-slate-300">{s.mvps || '—'}</td>
+                  <td className="px-2 py-2 text-center text-slate-400">
+                    {s.vecesBlanco}/{s.vecesRojo}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -179,8 +178,22 @@ export function StatsPanel() {
 
 function rachaTexto(racha: number) {
   if (racha > 0) return <span className="font-medium text-emerald-400">{racha}V 🔥</span>
-  if (racha < 0) return <span className="font-medium text-red-400">{-racha}D</span>
+  if (racha < 0) return <span className="font-medium text-red-400">{-racha}D 💀</span>
   return <span className="text-slate-500">—</span>
+}
+
+// En "Totales": mejor racha de victorias y peor de derrotas.
+function mejoresRachas(mejorV: number, peorD: number) {
+  const v = mejorV >= 1 ? <span className="font-medium text-emerald-400">{mejorV}V 🔥</span> : null
+  const d = peorD >= 1 ? <span className="font-medium text-red-400">{peorD}D 💀</span> : null
+  if (!v && !d) return <span className="text-slate-500">—</span>
+  return (
+    <span className="inline-flex items-center justify-center gap-1">
+      {v ?? <span className="text-slate-600">—</span>}
+      <span className="text-slate-600">/</span>
+      {d ?? <span className="text-slate-600">—</span>}
+    </span>
+  )
 }
 
 function TeamCard({ titulo, stats, acento }: { titulo: string; stats: TeamStats; acento: string }) {

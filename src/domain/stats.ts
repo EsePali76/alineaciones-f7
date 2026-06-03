@@ -54,6 +54,10 @@ export interface PlayerStats {
   vecesRojo: number
   /** Racha actual con signo: +3 = 3 victorias seguidas, -2 = 2 derrotas; 0 = sin racha. */
   racha: number
+  /** Mejor racha de victorias del histórico filtrado (nº de victorias seguidas). */
+  mejorRachaV: number
+  /** Peor racha de derrotas del histórico filtrado (nº de derrotas seguidas, valor positivo). */
+  peorRachaD: number
 }
 
 interface MatchOfPlayer {
@@ -111,6 +115,8 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
       vecesBlanco: 0,
       vecesRojo: 0,
       racha: 0,
+      mejorRachaV: 0,
+      peorRachaD: 0,
     }
     for (const m of partidos) {
       if (m.signo > 0) s.victorias++
@@ -125,7 +131,7 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
     }
     s.pctVictorias = s.partidos > 0 ? Math.round((s.victorias / s.partidos) * 100) : 0
 
-    // Racha: desde el más reciente, mientras el signo se mantenga (el empate la corta).
+    // Racha actual: desde el más reciente, mientras el signo se mantenga (el empate la corta).
     const primero = partidos[0]?.signo ?? 0
     if (primero !== 0) {
       let racha = 0
@@ -134,6 +140,16 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
         else break
       }
       s.racha = racha
+    }
+
+    // Mejores rachas históricas: recorrido consecutivo (el sentido no afecta al máximo).
+    let runV = 0
+    let runD = 0
+    for (const m of partidos) {
+      runV = m.signo > 0 ? runV + 1 : 0
+      runD = m.signo < 0 ? runD + 1 : 0
+      if (runV > s.mejorRachaV) s.mejorRachaV = runV
+      if (runD > s.peorRachaD) s.peorRachaD = runD
     }
     map.set(id, s)
   }
