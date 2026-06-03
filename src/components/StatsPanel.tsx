@@ -18,12 +18,34 @@ import { SeasonPicker } from './SeasonPicker'
 
 type Sub = 'equipo' | 'jugador' | 'menciones'
 type Modo = 'temporada' | 'totales'
+type JugSortKey =
+  | 'nombre'
+  | 'partidos'
+  | 'victorias'
+  | 'pctVictorias'
+  | 'racha'
+  | 'goles'
+  | 'asistencias'
+  | 'mvps'
+type SortDir = 'asc' | 'desc'
 
 export function StatsPanel() {
   const lineups = useLineupsStore((s) => s.lineups)
   const players = useEffectivePlayers()
   const [sub, setSub] = useState<Sub>('jugador')
   const [modo, setModo] = useState<Modo>('temporada')
+  const [jugSort, setJugSort] = useState<JugSortKey>('pctVictorias')
+  const [jugDir, setJugDir] = useState<SortDir>('desc')
+
+  /** Cambia de columna (texto→asc, números→desc) o alterna dirección si ya está activa. */
+  const toggleJug = (key: JugSortKey) => {
+    if (key === jugSort) setJugDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else {
+      setJugSort(key)
+      setJugDir(key === 'nombre' ? 'asc' : 'desc')
+    }
+  }
+  const jugArrow = (key: JugSortKey) => (jugSort === key ? (jugDir === 'asc' ? ' ▲' : ' ▼') : '')
 
   const temporadas = useMemo(() => temporadasDisponibles(lineups), [lineups])
   const [temporada, setTemporada] = useState<string>(() => temporadasDisponibles(lineups)[0] ?? TODAS)
@@ -53,10 +75,42 @@ export function StatsPanel() {
   const nombre = (id: string) => players.find((p) => p.id === id)?.nombre ?? '(?)'
 
   const filas = useMemo(() => {
-    return [...statsArr].sort(
-      (a, b) => b.pctVictorias - a.pctVictorias || b.partidos - a.partidos,
-    )
-  }, [statsArr])
+    // Valor de ordenación de cada jugador según la columna activa.
+    const val = (s: PlayerStats): number | string => {
+      switch (jugSort) {
+        case 'nombre':
+          return nombre(s.playerId).toLowerCase()
+        case 'partidos':
+          return s.partidos
+        case 'victorias':
+          return s.victorias
+        case 'pctVictorias':
+          return s.pctVictorias
+        case 'racha':
+          // En Totales se muestra la mejor racha de victorias; en temporada, la actual.
+          return modo === 'totales' ? s.mejorRachaV : s.racha
+        case 'goles':
+          return s.goles
+        case 'asistencias':
+          return s.asistencias
+        case 'mvps':
+          return s.mvps
+      }
+    }
+    return [...statsArr].sort((a, b) => {
+      const va = val(a)
+      const vb = val(b)
+      let cmp =
+        typeof va === 'string' || typeof vb === 'string'
+          ? String(va).localeCompare(String(vb))
+          : va - vb
+      cmp = jugDir === 'asc' ? cmp : -cmp
+      // Desempate fijo: más partidos primero.
+      return cmp !== 0 ? cmp : b.partidos - a.partidos
+    })
+    // `nombre` depende de `players`; se incluye vía statsArr/jugSort.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statsArr, jugSort, jugDir, modo])
 
   return (
     <div className="flex flex-col gap-4">
@@ -150,19 +204,49 @@ export function StatsPanel() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-slate-800 text-left text-slate-400">
-                <th className="px-3 py-2 font-medium">Jugador</th>
-                <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
-                <th className="px-2 py-2 text-center font-medium" title="Victorias-Empates-Derrotas">V-E-D</th>
-                <th className="px-2 py-2 text-center font-medium" title="% de victorias">%V</th>
+                <th className="px-3 py-2 font-medium">
+                  <button onClick={() => toggleJug('nombre')} className="font-medium hover:text-slate-200">
+                    Jugador{jugArrow('nombre')}
+                  </button>
+                </th>
+                <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">
+                  <button onClick={() => toggleJug('partidos')} className="font-medium hover:text-slate-200">
+                    PJ{jugArrow('partidos')}
+                  </button>
+                </th>
+                <th className="px-2 py-2 text-center font-medium" title="Victorias (ordena por victorias)">
+                  <button onClick={() => toggleJug('victorias')} className="font-medium hover:text-slate-200">
+                    V-E-D{jugArrow('victorias')}
+                  </button>
+                </th>
+                <th className="px-2 py-2 text-center font-medium" title="% de victorias">
+                  <button onClick={() => toggleJug('pctVictorias')} className="font-medium hover:text-slate-200">
+                    %V{jugArrow('pctVictorias')}
+                  </button>
+                </th>
                 <th
                   className="px-2 py-2 text-center font-medium"
                   title={modo === 'totales' ? 'Mejor racha de victorias / peor de derrotas' : 'Racha actual'}
                 >
-                  Racha
+                  <button onClick={() => toggleJug('racha')} className="font-medium hover:text-slate-200">
+                    Racha{jugArrow('racha')}
+                  </button>
                 </th>
-                <th className="px-2 py-2 text-center font-medium" title="Goles">⚽</th>
-                <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
-                <th className="px-2 py-2 text-center font-medium" title="Veces MVP del partido">MVP</th>
+                <th className="px-2 py-2 text-center font-medium" title="Goles">
+                  <button onClick={() => toggleJug('goles')} className="font-medium hover:text-slate-200">
+                    ⚽{jugArrow('goles')}
+                  </button>
+                </th>
+                <th className="px-2 py-2 text-center font-medium" title="Asistencias">
+                  <button onClick={() => toggleJug('asistencias')} className="font-medium hover:text-slate-200">
+                    🅰️{jugArrow('asistencias')}
+                  </button>
+                </th>
+                <th className="px-2 py-2 text-center font-medium" title="Veces MVP del partido">
+                  <button onClick={() => toggleJug('mvps')} className="font-medium hover:text-slate-200">
+                    MVP{jugArrow('mvps')}
+                  </button>
+                </th>
                 <th className="px-2 py-2 text-center font-medium" title="Veces de blanco / de rojo">⚪/🔴</th>
               </tr>
             </thead>

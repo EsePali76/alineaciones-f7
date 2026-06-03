@@ -22,7 +22,7 @@ function mediaValoracion(p: Player): number | null {
   return present.reduce((a, b) => a + b, 0) / present.length
 }
 
-type SortKey = 'nombre' | 'media'
+type SortKey = 'nombre' | 'edad' | 'media'
 type SortDir = 'asc' | 'desc'
 
 export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListProps) {
@@ -61,6 +61,14 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
       else if (ma === null) return 1
       else if (mb === null) return -1
       else cmp = ma - mb
+    } else if (sortKey === 'edad') {
+      // Sin edad siempre al final, independientemente de la dirección.
+      const ea = a.edad ?? null
+      const eb = b.edad ?? null
+      if (ea === null && eb === null) cmp = 0
+      else if (ea === null) return 1
+      else if (eb === null) return -1
+      else cmp = ea - eb
     } else {
       cmp = a.nombre.localeCompare(b.nombre)
     }
@@ -82,7 +90,14 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
                   Nombre{sortArrow('nombre')}
                 </button>
               </th>
-              <th className="px-3 py-2 font-medium">Edad</th>
+              <th className="px-3 py-2 font-medium">
+                <button
+                  onClick={() => toggleSort('edad')}
+                  className="font-medium hover:text-slate-200"
+                >
+                  Edad{sortArrow('edad')}
+                </button>
+              </th>
               <th className="px-3 py-2 font-medium">Posiciones</th>
               <th className="px-3 py-2 font-medium">Perfil</th>
               <th className="px-3 py-2 font-medium">
