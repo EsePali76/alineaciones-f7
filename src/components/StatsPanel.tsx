@@ -123,22 +123,25 @@ export function StatsPanel() {
                 destacado="asistencias"
                 vacio="Aún no hay asistencias registradas."
               />
-              <MencionTable
-                titulo="🚀 En los equipos más goleadores"
-                subtitulo={`Media de goles a favor por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
-                rows={masGoleadores}
-                nombre={nombre}
-                colLabel="GF/P"
-                vacio={`Nadie llega a ${MIN_PARTIDOS_MENCION} partidos todavía.`}
-              />
-              <MencionTable
-                titulo="🛡️ Menos goleados"
-                subtitulo={`Media de goles en contra por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
-                rows={menosGoleados}
-                nombre={nombre}
-                colLabel="GC/P"
-                vacio={`Nadie llega a ${MIN_PARTIDOS_MENCION} partidos todavía.`}
-              />
+              {/* Las tablas de media solo aparecen si hay alguien con el mínimo de PJ. */}
+              {masGoleadores.length > 0 && (
+                <MencionTable
+                  titulo="🚀 En los equipos más goleadores"
+                  subtitulo={`Media de goles a favor por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
+                  rows={masGoleadores}
+                  nombre={nombre}
+                  colLabel="GF/P"
+                />
+              )}
+              {menosGoleados.length > 0 && (
+                <MencionTable
+                  titulo="🛡️ Menos goleados"
+                  subtitulo={`Media de goles en contra por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
+                  rows={menosGoleados}
+                  nombre={nombre}
+                  colLabel="GC/P"
+                />
+              )}
             </div>
           )}
 
@@ -213,7 +216,7 @@ function mejoresRachas(mejorV: number, peorD: number) {
   )
 }
 
-/** Tabla de ranking por goles o asistencias (muestra goles, asistencias y PJ). */
+/** Tabla de ranking por goles o asistencias (solo la columna que aplica + PJ). */
 function ScorerTable({
   titulo,
   rows,
@@ -227,6 +230,7 @@ function ScorerTable({
   destacado: 'goles' | 'asistencias'
   vacio: string
 }) {
+  const col = destacado === 'goles' ? { emoji: '⚽', title: 'Goles' } : { emoji: '🅰️', title: 'Asistencias' }
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold text-slate-200">{titulo}</h3>
@@ -241,8 +245,7 @@ function ScorerTable({
               <tr className="bg-slate-800 text-left text-slate-400">
                 <th className="py-2 pl-3 pr-1 font-medium">#</th>
                 <th className="py-2 pl-1 pr-3 font-medium">Jugador</th>
-                <th className="px-2 py-2 text-center font-medium" title="Goles">⚽</th>
-                <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
+                <th className="px-2 py-2 text-center font-medium" title={col.title}>{col.emoji}</th>
                 <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
               </tr>
             </thead>
@@ -251,21 +254,8 @@ function ScorerTable({
                 <tr key={s.playerId} className="border-t border-slate-700/60">
                   <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
                   <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
-                  <td
-                    className={
-                      'px-2 py-2 text-center ' +
-                      (destacado === 'goles' ? 'font-semibold text-slate-200' : 'text-slate-300')
-                    }
-                  >
-                    {s.goles || '—'}
-                  </td>
-                  <td
-                    className={
-                      'px-2 py-2 text-center ' +
-                      (destacado === 'asistencias' ? 'font-semibold text-slate-200' : 'text-slate-300')
-                    }
-                  >
-                    {s.asistencias || '—'}
+                  <td className="px-2 py-2 text-center font-semibold text-slate-200">
+                    {destacado === 'goles' ? s.goles : s.asistencias}
                   </td>
                   <td className="px-2 py-2 text-center text-slate-400">{s.partidos}</td>
                 </tr>
@@ -285,14 +275,12 @@ function MencionTable({
   rows,
   nombre,
   colLabel,
-  vacio,
 }: {
   titulo: string
   subtitulo: string
   rows: MencionEquipo[]
   nombre: (id: string) => string
   colLabel: string
-  vacio: string
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -300,38 +288,32 @@ function MencionTable({
         <h3 className="text-sm font-semibold text-slate-200">{titulo}</h3>
         <p className="text-xs text-slate-500">{subtitulo}</p>
       </div>
-      {rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">
-          {vacio}
-        </p>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-700">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-800 text-left text-slate-400">
-                <th className="py-2 pl-3 pr-1 font-medium">#</th>
-                <th className="py-2 pl-1 pr-3 font-medium">Jugador</th>
-                <th className="px-2 py-2 text-center font-medium" title="Media por partido">
-                  {colLabel}
-                </th>
-                <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
+      <div className="overflow-x-auto rounded-lg border border-slate-700">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-slate-800 text-left text-slate-400">
+              <th className="py-2 pl-3 pr-1 font-medium">#</th>
+              <th className="py-2 pl-1 pr-3 font-medium">Jugador</th>
+              <th className="px-2 py-2 text-center font-medium" title="Media por partido">
+                {colLabel}
+              </th>
+              <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((s, i) => (
+              <tr key={s.playerId} className="border-t border-slate-700/60">
+                <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
+                <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
+                <td className="px-2 py-2 text-center font-semibold text-slate-200">
+                  {s.media.toFixed(2)}
+                </td>
+                <td className="px-2 py-2 text-center text-slate-400">{s.partidos}</td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((s, i) => (
-                <tr key={s.playerId} className="border-t border-slate-700/60">
-                  <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
-                  <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
-                  <td className="px-2 py-2 text-center font-semibold text-slate-200">
-                    {s.media.toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2 text-center text-slate-400">{s.partidos}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
