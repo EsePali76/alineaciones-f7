@@ -34,22 +34,26 @@ export function RotationBanner() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-2 border-emerald-500/60 bg-emerald-900/30 px-4 py-3 text-base shadow-md shadow-emerald-900/40">
-      <span className="flex items-center gap-2 text-slate-200">
-        <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
-        🗓️ Esta semana hace la alineación:{' '}
-        <b className="text-lg text-red-400">{current ? current.nombre : '— sin asignar —'}</b>
-        {isMyTurn && (
-          <span className="animate-pulse font-semibold text-emerald-300">
-            · ¡te toca! Ve a “Equipos”.
-          </span>
-        )}
+    <div className="flex flex-col gap-3 rounded-lg border-2 border-emerald-500/60 bg-emerald-900/30 px-4 py-3 text-base shadow-md shadow-emerald-900/40">
+      <div className="flex flex-col gap-1">
+        <span className="flex items-center gap-2 text-slate-200">
+          <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
+          🗓️ Esta semana hace la alineación:
+        </span>
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pl-5">
+          <b className="text-xl text-red-400">{current ? current.nombre : '— sin asignar —'}</b>
+          {isMyTurn && (
+            <span className="animate-pulse font-semibold text-emerald-300">
+              ¡te toca! Ve a “Equipos”.
+            </span>
+          )}
+        </div>
         {next && (
-          <span className="ml-1 text-sm text-slate-400">
-            · la próxima: <b className="text-slate-300">{next.nombre}</b>
+          <span className="pl-5 text-sm text-slate-400">
+            La próxima: <b className="text-slate-300">{next.nombre}</b>
           </span>
         )}
-      </span>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {isMyTurn && (
