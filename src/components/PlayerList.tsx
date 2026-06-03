@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Player } from '../domain/types'
 import { POSITION_LABEL, FOOT_LABEL, RATING_KEYS, DEFAULT_RATING } from '../domain/constants'
 import { animoLabel } from '../domain/animo'
@@ -21,7 +22,25 @@ function mediaValoracion(p: Player): number | null {
   return present.reduce((a, b) => a + b, 0) / present.length
 }
 
+type SortKey = 'nombre' | 'media'
+type SortDir = 'asc' | 'desc'
+
 export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListProps) {
+  const [sortKey, setSortKey] = useState<SortKey>('nombre')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  /** Cambia de columna (empieza asc) o alterna dirección si ya está activa. */
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
+
   if (players.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-500">
@@ -32,7 +51,21 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
     )
   }
 
-  const ordenados = [...players].sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const ordenados = [...players].sort((a, b) => {
+    let cmp: number
+    if (sortKey === 'media') {
+      const ma = mediaValoracion(a)
+      const mb = mediaValoracion(b)
+      // Sin media (null) siempre al final, independientemente de la dirección.
+      if (ma === null && mb === null) cmp = 0
+      else if (ma === null) return 1
+      else if (mb === null) return -1
+      else cmp = ma - mb
+    } else {
+      cmp = a.nombre.localeCompare(b.nombre)
+    }
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   return (
     <div className="flex flex-col gap-2">
@@ -41,11 +74,25 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-slate-800 text-left text-slate-400">
-              <th className="px-3 py-2 font-medium">Nombre</th>
+              <th className="px-3 py-2 font-medium">
+                <button
+                  onClick={() => toggleSort('nombre')}
+                  className="font-medium hover:text-slate-200"
+                >
+                  Nombre{sortArrow('nombre')}
+                </button>
+              </th>
               <th className="px-3 py-2 font-medium">Edad</th>
               <th className="px-3 py-2 font-medium">Posiciones</th>
               <th className="px-3 py-2 font-medium">Perfil</th>
-              <th className="px-3 py-2 font-medium">Media</th>
+              <th className="px-3 py-2 font-medium">
+                <button
+                  onClick={() => toggleSort('media')}
+                  className="font-medium hover:text-slate-200"
+                >
+                  Media{sortArrow('media')}
+                </button>
+              </th>
               <th className="px-3 py-2 font-medium">Ánimo</th>
               {isAdmin && <th className="px-3 py-2 font-medium"></th>}
             </tr>
