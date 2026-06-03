@@ -245,7 +245,7 @@ function ScorerTable({
               <tr className="bg-slate-800 text-left text-slate-400">
                 <th className="py-2 pl-3 pr-1 font-medium">#</th>
                 <th className="w-full py-2 pl-1 pr-3 font-medium">Jugador</th>
-                <th className="px-3 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
+                <th className="py-2 pl-3 pr-6 text-center font-medium" title="Partidos jugados">PJ</th>
                 <th className="px-3 py-2 text-center font-medium" title={col.title}>{col.emoji}</th>
               </tr>
             </thead>
@@ -254,7 +254,7 @@ function ScorerTable({
                 <tr key={s.playerId} className="border-t border-slate-700/60">
                   <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
                   <td className="w-full py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
-                  <td className="px-3 py-2 text-center text-slate-400">{s.partidos}</td>
+                  <td className="py-2 pl-3 pr-6 text-center text-slate-400">{s.partidos}</td>
                   <td className="px-3 py-2 text-center font-semibold text-slate-200">
                     {destacado === 'goles' ? s.goles : s.asistencias}
                   </td>
