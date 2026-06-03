@@ -77,6 +77,16 @@ function posiciones(team: Player[], lado: 'A' | 'B', formacion: Formacion): Punt
   return puntos
 }
 
+/**
+ * Orden de puestos AUTOMÁTICO de un equipo (ids en el orden en que se dibujan las
+ * fichas). Sirve para "congelar" la colocación al confirmar aunque no se haya movido
+ * ninguna ficha, de modo que el historial reproduzca el campo idéntico para siempre,
+ * independientemente de cómo cambien después las valoraciones de los jugadores.
+ */
+export function ordenAutomatico(team: Player[], lado: 'A' | 'B', formacion: Formacion): string[] {
+  return posiciones(team, lado, formacion).map((p) => p.player.id)
+}
+
 /** Aplica una colocación manual (placement) sobre los puntos automáticos, si es válida. */
 function aplicarPlacement(auto: Punto[], placement: string[] | null): Punto[] {
   if (!placement || placement.length !== auto.length) return auto
@@ -93,12 +103,15 @@ function Ficha({
   onSwap,
   onCrossSwap,
   readOnly = false,
+  marca,
 }: {
   punto: Punto
   lado: 'A' | 'B'
   onSwap: (lado: 'A' | 'B', dragId: string, dropId: string) => void
   onCrossSwap: (dragId: string, dropId: string) => void
   readOnly?: boolean
+  /** Goles/asistencias del jugador en este partido (solo en la vista del historial). */
+  marca?: { goles: number; asist: number }
 }) {
   const { player, x, y } = punto
   const color = lado === 'A' ? 'bg-white border-slate-300' : 'bg-red-600 border-red-300'
@@ -141,6 +154,18 @@ function Ficha({
         {player.invitado && <span className="text-amber-300">*</span>}
         {player.tocado && <TocadoIcon className="ml-0.5" />}
       </span>
+      {marca && (marca.goles > 0 || marca.asist > 0) && (
+        <span className="mt-0.5 flex max-w-[5em] flex-wrap justify-center gap-px text-[0.85rem] leading-none">
+          {Array.from({ length: marca.goles }, (_, i) => (
+            <span key={`g${i}`} className="text-[1.05rem]">
+              ⚽
+            </span>
+          ))}
+          {Array.from({ length: marca.asist }, (_, i) => (
+            <span key={`a${i}`}>🅰️</span>
+          ))}
+        </span>
+      )}
     </div>
   )
 }
@@ -153,6 +178,7 @@ export function FieldView({
   readOnly = false,
   placementA: placementAProp,
   placementB: placementBProp,
+  marcas,
 }: {
   balance: TeamBalance
   formacionA: Formacion
@@ -163,6 +189,8 @@ export function FieldView({
   /** Colocación a usar (si no, se toma del store de generación). */
   placementA?: string[] | null
   placementB?: string[] | null
+  /** Goles/asistencias por jugador, para pintar ⚽/🅰️ sobre cada ficha (vista de historial). */
+  marcas?: Map<string, { goles: number; asist: number }>
 }) {
   const storePlacementA = useGeneratorStore((s) => s.placementA)
   const storePlacementB = useGeneratorStore((s) => s.placementB)
@@ -220,10 +248,10 @@ export function FieldView({
 
         {/* Jugadores */}
         {puntosA.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="A" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} />
+          <Ficha key={pt.player.id} punto={pt} lado="A" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} />
         ))}
         {puntosB.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="B" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} />
+          <Ficha key={pt.player.id} punto={pt} lado="B" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} />
         ))}
 
         {/* Etiquetas de equipo */}

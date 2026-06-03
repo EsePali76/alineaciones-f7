@@ -9,7 +9,7 @@ import type { Player } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore } from '../domain/scoring'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
-import { FieldView } from './FieldView'
+import { FieldView, ordenAutomatico } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
 
 export function TeamGenerator() {
@@ -112,15 +112,21 @@ export function TeamGenerator() {
     if (!balanceVivo) return
     const teamAids = balanceVivo.teamA.map((p) => p.id)
     const teamBids = balanceVivo.teamB.map((p) => p.id)
+    // Congela la colocación: si no se han movido fichas, guarda el orden AUTOMÁTICO
+    // actual para que el historial reproduzca el campo idéntico aunque luego cambien
+    // las valoraciones de los jugadores.
     const meta = {
       formacionA: formacionNombreA,
       formacionB: formacionNombreB,
-      placementA,
-      placementB,
+      placementA: placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA),
+      placementB: placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB),
     }
-    if (confirmedLineupId) {
+    // Solo se actualiza si el partido referenciado SIGUE existiendo; si se borró del
+    // historial, el id quedó huérfano → hay que crear uno nuevo (si no, no pasaría nada).
+    const existe = !!confirmedLineupId && lineups.some((l) => l.id === confirmedLineupId)
+    if (existe) {
       // Re-confirmar: actualiza la misma alineación (el autor puede editar y reconfirmar).
-      await updateLineupTeams(confirmedLineupId, teamAids, teamBids, meta)
+      await updateLineupTeams(confirmedLineupId!, teamAids, teamBids, meta)
     } else {
       const madeBy = turnoActual?.id ?? myPlayerId ?? undefined
       const id = await addLineup(teamAids, teamBids, { ...meta, madeBy })
@@ -362,11 +368,18 @@ function BalanceResult({
           {canConfirm && (
             <button
               onClick={onConfirm}
-              disabled={confirmada}
-              className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white enabled:hover:bg-emerald-500 disabled:cursor-default disabled:opacity-50"
-              title="Guarda esta alineación en el historial para evitar repetirla en el futuro"
+              className={
+                confirmada
+                  ? 'rounded border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-600/10'
+                  : 'rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500'
+              }
+              title={
+                confirmada
+                  ? 'Ya está confirmada. Púlsala para volver a guardarla con la colocación actual.'
+                  : 'Guarda esta alineación en el historial para evitar repetirla en el futuro'
+              }
             >
-              {confirmada ? '✓ Confirmada' : '✅ Confirmar alineación'}
+              {confirmada ? '✓ Confirmada · actualizar' : '✅ Confirmar alineación'}
             </button>
           )}
           <button

@@ -34,13 +34,18 @@ export function RotationBanner() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-700 bg-slate-800/40 px-4 py-2 text-sm">
-      <span className="text-slate-300">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-2 border-emerald-500/60 bg-emerald-900/30 px-4 py-3 text-base shadow-md shadow-emerald-900/40">
+      <span className="flex items-center gap-2 text-slate-200">
+        <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
         🗓️ Esta semana hace la alineación:{' '}
-        <b className="text-white">{current ? current.nombre : '— sin asignar —'}</b>
-        {isMyTurn && <span className="ml-1 text-emerald-400">· ¡te toca! Ve a “Equipos”.</span>}
+        <b className="text-lg text-red-400">{current ? current.nombre : '— sin asignar —'}</b>
+        {isMyTurn && (
+          <span className="animate-pulse font-semibold text-emerald-300">
+            · ¡te toca! Ve a “Equipos”.
+          </span>
+        )}
         {next && (
-          <span className="ml-1 text-slate-400">
+          <span className="ml-1 text-sm text-slate-400">
             · la próxima: <b className="text-slate-300">{next.nombre}</b>
           </span>
         )}
@@ -84,26 +89,27 @@ export function RotationBanner() {
         )}
 
         {isAdmin && (
-          <>
-            <button
-              onClick={() => pasarTurno()}
-              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-              title="Pasa al siguiente (p.ej. si el del turno no responde)"
-            >
-              Avanzar turno
-            </button>
-            <button
-              onClick={() => {
-                if (confirm('¿Reiniciar la rotación en ORDEN ALEATORIO con los elegibles actuales?'))
-                  reiniciar()
-              }}
-              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
-            >
-              Reiniciar rotación (aleatorio)
-            </button>
-          </>
+          <button
+            onClick={() => pasarTurno()}
+            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+            title="Pasa al siguiente (p.ej. si el del turno no responde)"
+          >
+            Avanzar turno
+          </button>
         )}
       </div>
+
+      {isAdmin && (
+        <button
+          onClick={() => {
+            if (confirm('¿Reiniciar la rotación en ORDEN ALEATORIO con los elegibles actuales?'))
+              reiniciar()
+          }}
+          className="ml-auto rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
+        >
+          Reiniciar rotación (aleatorio)
+        </button>
+      )}
     </div>
   )
 }

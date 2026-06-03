@@ -1,5 +1,6 @@
 import type { ConfirmedLineup } from './types'
 import { mvpEfectivo } from './animo'
+import { goleadoresDe, asistenciasDe } from './result'
 
 /** Estadísticas acumuladas de un color de equipo (blanco = A, rojo = B). */
 export interface TeamStats {
@@ -71,7 +72,10 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
   const recientes = [...lineups].filter((l) => l.resultado).sort((a, b) => b.fecha - a.fecha)
 
   for (const l of recientes) {
-    const { golesA, golesB, goleadores, asistencias } = l.resultado!
+    const r = l.resultado!
+    const { golesA, golesB } = r
+    const goleadores = goleadoresDe(r)
+    const asistencias = asistenciasDe(r)
     const add = (id: string, enA: boolean) => {
       const gf = enA ? golesA : golesB
       const gc = enA ? golesB : golesA
@@ -141,4 +145,17 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
   }
 
   return map
+}
+
+/**
+ * Clasificación de goleadores: jugadores con al menos un gol, ordenados por goles
+ * (desempate por asistencias y menos partidos). Deriva de statsPorJugador.
+ */
+export function clasificacionGoleadores(lineups: ConfirmedLineup[]): PlayerStats[] {
+  return [...statsPorJugador(lineups).values()]
+    .filter((s) => s.goles > 0)
+    .sort(
+      (a, b) =>
+        b.goles - a.goles || b.asistencias - a.asistencias || a.partidos - b.partidos,
+    )
 }

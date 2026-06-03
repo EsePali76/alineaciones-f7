@@ -66,7 +66,7 @@ function App() {
 
   // Si una pestaña restringida queda seleccionada y pierdes el permiso, vuelve a Plantel.
   useEffect(() => {
-    if (!isAdmin && (tab === 'historial' || tab === 'usuarios')) setTab('plantel')
+    if (!isAdmin && tab === 'usuarios') setTab('plantel')
     if (!isLinked && tab === 'valorar') setTab('plantel')
     if (!puedeEquipos && tab === 'equipos') setTab('plantel')
   }, [isAdmin, isLinked, puedeEquipos, tab])
@@ -118,6 +118,9 @@ function App() {
 
       {authReady && isLoggedIn && playersLoaded && (
         <>
+          {/* Turno: por encima de las pestañas para que no pase desapercibido */}
+          <RotationBanner />
+
           {/* Pestañas */}
           <nav className="flex gap-1 border-b border-slate-700">
             <TabButton active={tab === 'plantel'} onClick={() => setTab('plantel')}>
@@ -133,22 +136,18 @@ function App() {
                 Equipos
               </TabButton>
             )}
+            <TabButton active={tab === 'historial'} onClick={() => setTab('historial')}>
+              Partidos
+            </TabButton>
             <TabButton active={tab === 'estadisticas'} onClick={() => setTab('estadisticas')}>
               Estadísticas
             </TabButton>
-            {isAdmin && (
-              <TabButton active={tab === 'historial'} onClick={() => setTab('historial')}>
-                Historial
-              </TabButton>
-            )}
             {isAdmin && (
               <TabButton active={tab === 'usuarios'} onClick={() => setTab('usuarios')}>
                 Usuarios
               </TabButton>
             )}
           </nav>
-
-          <RotationBanner />
 
           {tab === 'plantel' && (
             <>
@@ -185,7 +184,7 @@ function App() {
               <ConfirmedLineupView lineup={pendingLineup} />
             ) : null)}
           {tab === 'estadisticas' && <StatsPanel />}
-          {tab === 'historial' && isAdmin && <HistoryList />}
+          {tab === 'historial' && <HistoryList />}
           {tab === 'usuarios' && isAdmin && (
             <div className="flex flex-col gap-6">
               <UsersPanel />

@@ -1,4 +1,5 @@
 import type { ConfirmedLineup } from './types'
+import { goleadoresDe, asistenciasDe } from './result'
 
 /**
  * Estado de ánimo AUTOMÁTICO (0-10), calculado de la racha de resultados.
@@ -29,8 +30,8 @@ export function mvpDelPartido(l: ConfirmedLineup): string | null {
   const r = l.resultado
   if (!r || r.golesA === r.golesB) return null
   const ganadores = r.golesA > r.golesB ? l.teamA : l.teamB
-  const goleadores = r.goleadores ?? {}
-  const asistencias = r.asistencias ?? {}
+  const goleadores = goleadoresDe(r)
+  const asistencias = asistenciasDe(r)
   const ranking = ganadores
     .map((id) => ({
       id,

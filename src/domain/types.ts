@@ -101,13 +101,28 @@ export interface ConfirmedLineup {
   resultado?: MatchResult
 }
 
+/** Un gol concreto del partido: a qué equipo, quién lo metió y quién lo asistió. */
+export interface GoalEvent {
+  /** Equipo que marca: 'A' = ⚪ blanco, 'B' = 🔴 rojo. */
+  equipo: 'A' | 'B'
+  /** Goleador (playerId). Opcional: puede no recordarse quién marcó. */
+  autor?: string
+  /** Asistente (playerId), si lo hubo. */
+  asistente?: string
+}
+
 /** Marcador de un partido. golesA = equipo A (⚪), golesB = equipo B (🔴). */
 export interface MatchResult {
   golesA: number
   golesB: number
-  /** Goles por jugador (playerId → nº de goles). Opcional. */
+  /**
+   * Goles del partido en orden, cada uno con autor y asistente. Fuente de verdad
+   * del nuevo modelo: goleadores/asistencias se derivan de aquí (ver domain/result.ts).
+   */
+  goles?: GoalEvent[]
+  /** [Legado] Goles por jugador (playerId → nº). Solo en partidos antiguos sin `goles`. */
   goleadores?: Record<string, number>
-  /** Asistencias por jugador (playerId → nº de asistencias). Opcional. */
+  /** [Legado] Asistencias por jugador (playerId → nº). Solo en partidos antiguos sin `goles`. */
   asistencias?: Record<string, number>
   /** MVP asignado a mano por el admin (playerId). Si está, manda sobre el automático. */
   mvp?: string

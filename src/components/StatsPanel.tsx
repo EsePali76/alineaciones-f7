@@ -1,19 +1,44 @@
 import { useMemo, useState } from 'react'
 import { useLineupsStore } from '../store/lineupsStore'
 import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
-import { statsPorEquipo, statsPorJugador, type TeamStats } from '../domain/stats'
+import {
+  statsPorEquipo,
+  statsPorJugador,
+  clasificacionGoleadores,
+  type TeamStats,
+} from '../domain/stats'
 import { animoLabel } from '../domain/animo'
+import { temporadasDisponibles, filtrarPorTemporada, TODAS } from '../domain/season'
+import { SeasonPicker } from './SeasonPicker'
 
-type Sub = 'equipo' | 'jugador'
+type Sub = 'equipo' | 'jugador' | 'goleadores'
+type Modo = 'temporada' | 'totales'
 
 export function StatsPanel() {
   const lineups = useLineupsStore((s) => s.lineups)
   const players = useEffectivePlayers()
   const [sub, setSub] = useState<Sub>('jugador')
+  const [modo, setModo] = useState<Modo>('temporada')
 
-  const conResultado = useMemo(() => lineups.filter((l) => l.resultado), [lineups])
-  const equipos = useMemo(() => statsPorEquipo(lineups), [lineups])
-  const porJugador = useMemo(() => statsPorJugador(lineups), [lineups])
+  const temporadas = useMemo(() => temporadasDisponibles(lineups), [lineups])
+  const [temporada, setTemporada] = useState<string>(() => temporadasDisponibles(lineups)[0] ?? TODAS)
+
+  // La temporada elegida debe ser siempre una válida (las alineaciones cargan async,
+  // así que el valor inicial puede quedar obsoleto); si no, cae a la más reciente.
+  const temporadaSel = temporadas.includes(temporada) ? temporada : temporadas[0] ?? TODAS
+
+  // En "Totales" se agregan todas las temporadas; en "Por temporada", la elegida.
+  const temporadaActiva = modo === 'totales' ? TODAS : temporadaSel
+
+  // Las stats se calculan sobre las alineaciones de la temporada elegida (o todas).
+  const lineupsTemp = useMemo(
+    () => filtrarPorTemporada(lineups, temporadaActiva),
+    [lineups, temporadaActiva],
+  )
+  const conResultado = useMemo(() => lineupsTemp.filter((l) => l.resultado), [lineupsTemp])
+  const equipos = useMemo(() => statsPorEquipo(lineupsTemp), [lineupsTemp])
+  const porJugador = useMemo(() => statsPorJugador(lineupsTemp), [lineupsTemp])
+  const goleadores = useMemo(() => clasificacionGoleadores(lineupsTemp), [lineupsTemp])
 
   const nombre = (id: string) => players.find((p) => p.id === id)?.nombre ?? '(?)'
 
@@ -23,34 +48,85 @@ export function StatsPanel() {
     )
   }, [porJugador])
 
-  if (conResultado.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-500">
-        Aún no hay partidos con resultado. Cuando el admin registre marcadores, aquí saldrán las
-        estadísticas.
-      </p>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-1">
-        <SubTab active={sub === 'jugador'} onClick={() => setSub('jugador')}>
-          Por jugador
+      {/* Nivel 1: agregado total vs. una temporada concreta */}
+      <div className="flex flex-wrap gap-1 border-b border-slate-700/60 pb-2">
+        <SubTab active={modo === 'temporada'} onClick={() => setModo('temporada')}>
+          Por temporada
         </SubTab>
-        <SubTab active={sub === 'equipo'} onClick={() => setSub('equipo')}>
-          Por equipo
+        <SubTab active={modo === 'totales'} onClick={() => setModo('totales')}>
+          Totales
         </SubTab>
       </div>
 
-      {sub === 'equipo' && (
-        <div className="grid gap-3 md:grid-cols-2">
-          <TeamCard titulo="⚪ Blanco" stats={equipos.blanco} acento="text-slate-100" />
-          <TeamCard titulo="🔴 Rojo" stats={equipos.rojo} acento="text-red-400" />
-        </div>
+      {modo === 'temporada' && (
+        <SeasonPicker
+          temporadas={temporadas}
+          valor={temporadaSel}
+          onChange={setTemporada}
+          incluirTotales={false}
+          siempreVisible
+        />
       )}
 
-      {sub === 'jugador' && (
+      {conResultado.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-500">
+          {modo === 'totales'
+            ? 'Aún no hay partidos con resultado. Cuando se registren marcadores, aquí saldrán las estadísticas.'
+            : `No hay partidos con resultado en la temporada ${temporadaSel}.`}
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1">
+            <SubTab active={sub === 'jugador'} onClick={() => setSub('jugador')}>
+              Por jugador
+            </SubTab>
+            <SubTab active={sub === 'equipo'} onClick={() => setSub('equipo')}>
+              Por equipo
+            </SubTab>
+            <SubTab active={sub === 'goleadores'} onClick={() => setSub('goleadores')}>
+              Goleadores
+            </SubTab>
+          </div>
+
+          {sub === 'equipo' && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <TeamCard titulo="⚪ Blanco" stats={equipos.blanco} acento="text-slate-100" />
+              <TeamCard titulo="🔴 Rojo" stats={equipos.rojo} acento="text-red-400" />
+            </div>
+          )}
+
+          {sub === 'goleadores' && (
+            <div className="overflow-x-auto rounded-lg border border-slate-700">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-800 text-left text-slate-400">
+                    <th className="py-2 pl-3 pr-1 font-medium">#</th>
+                    <th className="py-2 pl-1 pr-3 font-medium">Jugador</th>
+                    <th className="px-2 py-2 text-center font-medium" title="Goles">
+                      <span className="text-[1.35rem]">⚽</span>
+                    </th>
+                    <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
+                    <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {goleadores.map((s, i) => (
+                    <tr key={s.playerId} className="border-t border-slate-700/60">
+                      <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
+                      <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
+                      <td className="px-2 py-2 text-center font-semibold text-slate-200">{s.goles}</td>
+                      <td className="px-2 py-2 text-center text-slate-300">{s.asistencias || '—'}</td>
+                      <td className="px-2 py-2 text-center text-slate-400">{s.partidos}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {sub === 'jugador' && (
         <div className="overflow-x-auto rounded-lg border border-slate-700">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -94,6 +170,8 @@ export function StatsPanel() {
             </tbody>
           </table>
         </div>
+          )}
+        </>
       )}
     </div>
   )
