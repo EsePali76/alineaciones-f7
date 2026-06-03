@@ -41,7 +41,7 @@ export function DataIO() {
   if (!isAdmin) return null
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="ml-auto flex flex-wrap justify-end gap-2">
       <button
         onClick={exportar}
         disabled={players.length === 0}
