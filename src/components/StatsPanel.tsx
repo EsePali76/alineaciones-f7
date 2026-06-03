@@ -4,13 +4,19 @@ import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
 import {
   statsPorEquipo,
   statsPorJugador,
-  clasificacionGoleadores,
+  ordenarGoleadores,
+  ordenarAsistentes,
+  equiposMasGoleadores,
+  equiposMenosGoleados,
+  MIN_PARTIDOS_MENCION,
+  type PlayerStats,
+  type MencionEquipo,
   type TeamStats,
 } from '../domain/stats'
 import { temporadasDisponibles, filtrarPorTemporada, TODAS } from '../domain/season'
 import { SeasonPicker } from './SeasonPicker'
 
-type Sub = 'equipo' | 'jugador' | 'goleadores'
+type Sub = 'equipo' | 'jugador' | 'menciones'
 type Modo = 'temporada' | 'totales'
 
 export function StatsPanel() {
@@ -37,15 +43,20 @@ export function StatsPanel() {
   const conResultado = useMemo(() => lineupsTemp.filter((l) => l.resultado), [lineupsTemp])
   const equipos = useMemo(() => statsPorEquipo(lineupsTemp), [lineupsTemp])
   const porJugador = useMemo(() => statsPorJugador(lineupsTemp), [lineupsTemp])
-  const goleadores = useMemo(() => clasificacionGoleadores(lineupsTemp), [lineupsTemp])
+  const statsArr = useMemo(() => [...porJugador.values()], [porJugador])
+
+  const goleadores = useMemo(() => ordenarGoleadores(statsArr), [statsArr])
+  const asistentes = useMemo(() => ordenarAsistentes(statsArr), [statsArr])
+  const masGoleadores = useMemo(() => equiposMasGoleadores(statsArr), [statsArr])
+  const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr), [statsArr])
 
   const nombre = (id: string) => players.find((p) => p.id === id)?.nombre ?? '(?)'
 
   const filas = useMemo(() => {
-    return [...porJugador.values()].sort(
+    return [...statsArr].sort(
       (a, b) => b.pctVictorias - a.pctVictorias || b.partidos - a.partidos,
     )
-  }, [porJugador])
+  }, [statsArr])
 
   return (
     <div className="flex flex-col gap-4">
@@ -84,8 +95,8 @@ export function StatsPanel() {
             <SubTab active={sub === 'equipo'} onClick={() => setSub('equipo')}>
               Por equipo
             </SubTab>
-            <SubTab active={sub === 'goleadores'} onClick={() => setSub('goleadores')}>
-              Goleadores
+            <SubTab active={sub === 'menciones'} onClick={() => setSub('menciones')}>
+              Menciones
             </SubTab>
           </div>
 
@@ -96,32 +107,38 @@ export function StatsPanel() {
             </div>
           )}
 
-          {sub === 'goleadores' && (
-            <div className="overflow-x-auto rounded-lg border border-slate-700">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-800 text-left text-slate-400">
-                    <th className="py-2 pl-3 pr-1 font-medium">#</th>
-                    <th className="py-2 pl-1 pr-3 font-medium">Jugador</th>
-                    <th className="px-2 py-2 text-center font-medium" title="Goles">
-                      <span className="text-[1.35rem]">⚽</span>
-                    </th>
-                    <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
-                    <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {goleadores.map((s, i) => (
-                    <tr key={s.playerId} className="border-t border-slate-700/60">
-                      <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
-                      <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
-                      <td className="px-2 py-2 text-center font-semibold text-slate-200">{s.goles}</td>
-                      <td className="px-2 py-2 text-center text-slate-300">{s.asistencias || '—'}</td>
-                      <td className="px-2 py-2 text-center text-slate-400">{s.partidos}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {sub === 'menciones' && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <ScorerTable
+                titulo="⚽ Goleadores"
+                rows={goleadores}
+                nombre={nombre}
+                destacado="goles"
+                vacio="Aún no hay goles registrados."
+              />
+              <ScorerTable
+                titulo="🅰️ Asistentes"
+                rows={asistentes}
+                nombre={nombre}
+                destacado="asistencias"
+                vacio="Aún no hay asistencias registradas."
+              />
+              <MencionTable
+                titulo="🚀 En los equipos más goleadores"
+                subtitulo={`Media de goles a favor por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
+                rows={masGoleadores}
+                nombre={nombre}
+                colLabel="GF/P"
+                vacio={`Nadie llega a ${MIN_PARTIDOS_MENCION} partidos todavía.`}
+              />
+              <MencionTable
+                titulo="🛡️ Menos goleados"
+                subtitulo={`Media de goles en contra por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
+                rows={menosGoleados}
+                nombre={nombre}
+                colLabel="GC/P"
+                vacio={`Nadie llega a ${MIN_PARTIDOS_MENCION} partidos todavía.`}
+              />
             </div>
           )}
 
@@ -193,6 +210,129 @@ function mejoresRachas(mejorV: number, peorD: number) {
       <span className="text-slate-600">/</span>
       {d ?? <span className="text-slate-600">—</span>}
     </span>
+  )
+}
+
+/** Tabla de ranking por goles o asistencias (muestra goles, asistencias y PJ). */
+function ScorerTable({
+  titulo,
+  rows,
+  nombre,
+  destacado,
+  vacio,
+}: {
+  titulo: string
+  rows: PlayerStats[]
+  nombre: (id: string) => string
+  destacado: 'goles' | 'asistencias'
+  vacio: string
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-slate-200">{titulo}</h3>
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">
+          {vacio}
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-700">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-slate-800 text-left text-slate-400">
+                <th className="py-2 pl-3 pr-1 font-medium">#</th>
+                <th className="py-2 pl-1 pr-3 font-medium">Jugador</th>
+                <th className="px-2 py-2 text-center font-medium" title="Goles">⚽</th>
+                <th className="px-2 py-2 text-center font-medium" title="Asistencias">🅰️</th>
+                <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((s, i) => (
+                <tr key={s.playerId} className="border-t border-slate-700/60">
+                  <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
+                  <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
+                  <td
+                    className={
+                      'px-2 py-2 text-center ' +
+                      (destacado === 'goles' ? 'font-semibold text-slate-200' : 'text-slate-300')
+                    }
+                  >
+                    {s.goles || '—'}
+                  </td>
+                  <td
+                    className={
+                      'px-2 py-2 text-center ' +
+                      (destacado === 'asistencias' ? 'font-semibold text-slate-200' : 'text-slate-300')
+                    }
+                  >
+                    {s.asistencias || '—'}
+                  </td>
+                  <td className="px-2 py-2 text-center text-slate-400">{s.partidos}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Tabla de ranking por media de goles del equipo del jugador (a favor o en contra). */
+function MencionTable({
+  titulo,
+  subtitulo,
+  rows,
+  nombre,
+  colLabel,
+  vacio,
+}: {
+  titulo: string
+  subtitulo: string
+  rows: MencionEquipo[]
+  nombre: (id: string) => string
+  colLabel: string
+  vacio: string
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-200">{titulo}</h3>
+        <p className="text-xs text-slate-500">{subtitulo}</p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">
+          {vacio}
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-700">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-slate-800 text-left text-slate-400">
+                <th className="py-2 pl-3 pr-1 font-medium">#</th>
+                <th className="py-2 pl-1 pr-3 font-medium">Jugador</th>
+                <th className="px-2 py-2 text-center font-medium" title="Media por partido">
+                  {colLabel}
+                </th>
+                <th className="px-2 py-2 text-center font-medium" title="Partidos jugados">PJ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((s, i) => (
+                <tr key={s.playerId} className="border-t border-slate-700/60">
+                  <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
+                  <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-slate-200">
+                    {s.media.toFixed(2)}
+                  </td>
+                  <td className="px-2 py-2 text-center text-slate-400">{s.partidos}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   )
 }
 

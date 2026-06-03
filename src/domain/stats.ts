@@ -165,13 +165,57 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
 
 /**
  * Clasificación de goleadores: jugadores con al menos un gol, ordenados por goles
- * (desempate por asistencias y menos partidos). Deriva de statsPorJugador.
+ * (desempate por asistencias y menos partidos).
  */
-export function clasificacionGoleadores(lineups: ConfirmedLineup[]): PlayerStats[] {
-  return [...statsPorJugador(lineups).values()]
+export function ordenarGoleadores(stats: Iterable<PlayerStats>): PlayerStats[] {
+  return [...stats]
     .filter((s) => s.goles > 0)
     .sort(
-      (a, b) =>
-        b.goles - a.goles || b.asistencias - a.asistencias || a.partidos - b.partidos,
+      (a, b) => b.goles - a.goles || b.asistencias - a.asistencias || a.partidos - b.partidos,
     )
+}
+
+/**
+ * Clasificación de asistentes: jugadores con al menos una asistencia, ordenados por
+ * asistencias (desempate por goles y menos partidos).
+ */
+export function ordenarAsistentes(stats: Iterable<PlayerStats>): PlayerStats[] {
+  return [...stats]
+    .filter((s) => s.asistencias > 0)
+    .sort(
+      (a, b) => b.asistencias - a.asistencias || b.goles - a.goles || a.partidos - b.partidos,
+    )
+}
+
+/** Mínimo de partidos jugados para entrar en las clasificaciones de medias de equipo. */
+export const MIN_PARTIDOS_MENCION = 3
+
+/** Una mención basada en la media por partido del equipo del jugador. */
+export interface MencionEquipo {
+  playerId: string
+  partidos: number
+  /** Goles (a favor o en contra, según la lista) por partido jugado. */
+  media: number
+}
+
+/**
+ * Jugadores cuyos equipos más marcan: media de goles a favor por partido.
+ * Solo aparecen con ≥ MIN_PARTIDOS_MENCION partidos en el conjunto filtrado.
+ */
+export function equiposMasGoleadores(stats: Iterable<PlayerStats>): MencionEquipo[] {
+  return [...stats]
+    .filter((s) => s.partidos >= MIN_PARTIDOS_MENCION)
+    .map((s) => ({ playerId: s.playerId, partidos: s.partidos, media: s.golesFavor / s.partidos }))
+    .sort((a, b) => b.media - a.media || b.partidos - a.partidos)
+}
+
+/**
+ * Jugadores menos goleados: menor media de goles en contra por partido.
+ * Solo aparecen con ≥ MIN_PARTIDOS_MENCION partidos en el conjunto filtrado.
+ */
+export function equiposMenosGoleados(stats: Iterable<PlayerStats>): MencionEquipo[] {
+  return [...stats]
+    .filter((s) => s.partidos >= MIN_PARTIDOS_MENCION)
+    .map((s) => ({ playerId: s.playerId, partidos: s.partidos, media: s.golesContra / s.partidos }))
+    .sort((a, b) => a.media - b.media || b.partidos - a.partidos)
 }
