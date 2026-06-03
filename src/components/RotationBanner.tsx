@@ -40,66 +40,72 @@ export function RotationBanner() {
           <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
           🗓️ Esta semana hace la alineación:
         </span>
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pl-5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-5">
           <b className="text-xl text-red-400">{current ? current.nombre : '— sin asignar —'}</b>
           {isMyTurn && (
             <span className="animate-pulse font-semibold text-emerald-300">
               ¡te toca! Ve a “Equipos”.
             </span>
           )}
+
+          {/* Acción junto al nombre: pasar/avanzar el turno */}
+          {isMyTurn && (
+            <button
+              onClick={() => {
+                if (confirm('¿No puedes hacerla esta semana? Pasa el turno al siguiente.')) pasarTurno()
+              }}
+              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+            >
+              No puedo → pasar turno
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                if (
+                  confirm(
+                    `¿Avanzar el turno? Pasará de ${current?.nombre ?? '—'} al siguiente${next ? ` (${next.nombre})` : ''}.`,
+                  )
+                )
+                  pasarTurno()
+              }}
+              className="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-500"
+              title="Pasa al siguiente (p.ej. si el del turno no responde)"
+            >
+              Avanzar turno
+            </button>
+          )}
+
+          {/* A la derecha del todo: entrar/salir del sorteo de turnos */}
+          {isLinked && !isAdmin && (
+            estoyExcluido ? (
+              <button
+                onClick={() => setExcluido(false)}
+                className="ml-auto rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
+              >
+                Me gustaría hacer las alineaciones
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (
+                    confirm(
+                      '¿Seguro que no quieres entrar en el sorteo de turnos para hacer las alineaciones?',
+                    )
+                  )
+                    setExcluido(true)
+                }}
+                className="ml-auto rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
+              >
+                No quiero hacer las alineaciones
+              </button>
+            )
+          )}
         </div>
         {next && (
           <span className="pl-5 text-sm text-slate-400">
             La próxima: <b className="text-slate-300">{next.nombre}</b>
           </span>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {isMyTurn && (
-          <button
-            onClick={() => {
-              if (confirm('¿No puedes hacerla esta semana? Pasa el turno al siguiente.')) pasarTurno()
-            }}
-            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-          >
-            No puedo → pasar turno
-          </button>
-        )}
-
-        {isLinked && !isAdmin && (
-          estoyExcluido ? (
-            <button
-              onClick={() => setExcluido(false)}
-              className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
-            >
-              Me gustaría hacer las alineaciones
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (
-                  confirm(
-                    '¿Seguro que no quieres entrar en el sorteo de turnos para hacer las alineaciones?',
-                  )
-                )
-                  setExcluido(true)
-              }}
-              className="rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
-            >
-              No quiero hacer las alineaciones
-            </button>
-          )
-        )}
-
-        {isAdmin && (
-          <button
-            onClick={() => pasarTurno()}
-            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-            title="Pasa al siguiente (p.ej. si el del turno no responde)"
-          >
-            Avanzar turno
-          </button>
         )}
       </div>
 
