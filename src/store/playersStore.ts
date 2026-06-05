@@ -9,7 +9,8 @@ interface PlayersState {
   players: Player[]
   loaded: boolean
   load: () => Promise<void>
-  addPlayer: (input: PlayerInput) => Promise<void>
+  /** Da de alta un jugador. Devuelve su id (o null si falló el guardado en la nube). */
+  addPlayer: (input: PlayerInput) => Promise<string | null>
   updatePlayer: (id: string, input: PlayerInput) => Promise<void>
   removePlayer: (id: string) => Promise<void>
   /** Reemplaza/sube todo el plantel (import o migración). */
@@ -41,9 +42,11 @@ export const usePlayersStore = create<PlayersState>((set, get) => ({
     set({ players: [...prev, player] }) // optimista
     try {
       await api.upsertPlayer(player)
+      return player.id
     } catch (e) {
       set({ players: prev })
       avisoError(e)
+      return null
     }
   },
 

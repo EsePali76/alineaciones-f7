@@ -12,6 +12,8 @@ import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/for
 import { FieldView, ordenAutomatico } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
+import { QuickGuestForm } from './QuickGuestForm'
+import { usePlayersStore, type PlayerInput } from '../store/playersStore'
 
 export function TeamGenerator() {
   const players = useEffectivePlayers()
@@ -43,6 +45,13 @@ export function TeamGenerator() {
   const setBalance = useGeneratorStore((s) => s.setBalance)
   const setConfirmada = useGeneratorStore((s) => s.setConfirmada)
   const reset = useGeneratorStore((s) => s.reset)
+  const addPlayer = usePlayersStore((s) => s.addPlayer)
+
+  // Alta rápida de un invitado puntual desde aquí: se da de alta y se autoconvoca.
+  const añadirPuntual = async (input: PlayerInput) => {
+    const id = await addPlayer(input)
+    if (id) setConvocados([...convocadosIds, id])
+  }
 
   // Cierre de partido: cuando la alineación que teníamos en marcha ya tiene resultado
   // (el admin lo ha registrado tras jugarse), la convocatoria queda cerrada → se limpia
@@ -253,6 +262,8 @@ export function TeamGenerator() {
             )}
           </div>
         )}
+
+        <QuickGuestForm onAdd={añadirPuntual} />
 
         <div className="flex flex-wrap items-center gap-3">
           <button
