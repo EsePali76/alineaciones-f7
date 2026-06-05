@@ -23,7 +23,7 @@ import { Avatar } from './Avatar'
  */
 export function RatePlayers() {
   const players = usePlayersStore((s) => s.players)
-  const { profile, isLinked } = useAuthStore()
+  const { profile, isLinked, isAdmin } = useAuthStore()
   const mine = useRatingsStore((s) => s.mine)
   const mineLoaded = useRatingsStore((s) => s.mineLoaded)
   const loadMine = useRatingsStore((s) => s.loadMine)
@@ -140,12 +140,19 @@ export function RatePlayers() {
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-lg font-semibold">Valorar jugadores</h2>
-        <p className="text-sm text-slate-400">
-          Puntúa al resto del grupo (0-10). Es anónimo: nadie verá tu voto, solo la media.{' '}
-          <b>Cada parámetro es opcional</b>: deja en blanco lo que no quieras puntuar (no cuenta) y
-          rellena solo lo que quieras. Guarda cada jugador con su botón. Cuando termines del todo,
-          pulsa <b>Finalizar</b> y se bloqueará.
-        </p>
+        {isAdmin ? (
+          <p className="text-sm text-slate-400">
+            Puntúa al resto del grupo (0-10). Es anónimo: nadie verá tu voto, solo la media.{' '}
+            <b>Cada parámetro es opcional</b>: deja en blanco lo que no quieras puntuar (no cuenta) y
+            rellena solo lo que quieras. Guarda cada jugador con su botón. Cuando termines del todo,
+            pulsa <b>Finalizar</b> y se bloqueará.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-400">
+            Puntúa al resto del grupo (0-10). Es anónimo. Guarda cada jugador y, al terminar, pulsa{' '}
+            <b>Finalizar</b>.
+          </p>
+        )}
       </div>
 
       {bloqueado && (
