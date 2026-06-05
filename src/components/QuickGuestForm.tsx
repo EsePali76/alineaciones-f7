@@ -62,7 +62,7 @@ export function QuickGuestForm({
         onClick={() => setAbierto(true)}
         className="self-start rounded border border-dashed border-slate-600 px-3 py-1.5 text-sm text-slate-300 hover:border-slate-400"
       >
-        + Añadir invitado puntual
+        + Añadir nuevo invitado
       </button>
     )
   }
