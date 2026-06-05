@@ -1,6 +1,6 @@
 -- ============================================================================
 --  Migración incremental — política RLS de `rotation` (Bloque 5: turnos)
---  Si YA ejecutaste supabase_schema_v2.sql antes de este cambio, corre esto.
+--  Si YA ejecutaste schema_v2.sql antes de este cambio, corre esto.
 --  (Si vuelves a ejecutar el schema_v2 completo, ya viene incluido.)
 -- ============================================================================
 drop policy if exists rotation_update on public.rotation;
