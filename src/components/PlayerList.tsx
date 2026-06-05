@@ -144,10 +144,8 @@ export function PlayerList({
                             *
                           </span>
                         )}
-                        {p.invitado && (
-                          <span className="ml-2 text-xs text-amber-400">
-                            {p.habitual ? '(habitual)' : '(puntual)'}
-                          </span>
+                        {p.invitado && !p.habitual && (
+                          <span className="ml-2 text-xs text-amber-400">(no habitual)</span>
                         )}
                         {p.tocado && <TocadoIcon className="ml-1" />}
                         {p.reserva && <span className="ml-2 text-xs text-sky-400">(reserva)</span>}

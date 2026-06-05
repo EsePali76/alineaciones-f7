@@ -140,7 +140,7 @@ export function UsersPanel() {
                             return (
                               <option key={p.id} value={p.id}>
                                 {p.nombre}
-                                {p.habitual ? ' (habitual)' : ' (puntual)'}
+                                {p.habitual ? ' (habitual)' : ' (no habitual)'}
                                 {ocupadoPorOtro ? ' · ya vinculado' : ''}
                               </option>
                             )
