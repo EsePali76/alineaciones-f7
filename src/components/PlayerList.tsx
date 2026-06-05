@@ -135,25 +135,25 @@ export function PlayerList({
                   }
                 >
                   <td className="px-3 py-2">
-                    <Avatar
-                      src={p.fotoUrl}
-                      alt={p.nombre}
-                      className="mr-2 inline-block h-7 w-7 align-middle"
-                    />
-                    <span className="font-medium align-middle">{p.nombre}</span>
-                    {p.invitado && !p.habitual && (
-                      <span className="ml-1 text-amber-400" title="Datos estimados (media 5)">
-                        *
+                    <div className="flex items-center gap-2">
+                      <Avatar src={p.fotoUrl} alt={p.nombre} className="h-7 w-7" />
+                      <span>
+                        <span className="font-medium">{p.nombre}</span>
+                        {p.invitado && !p.habitual && (
+                          <span className="ml-1 text-amber-400" title="Datos estimados (media 5)">
+                            *
+                          </span>
+                        )}
+                        {p.invitado && (
+                          <span className="ml-2 text-xs text-amber-400">
+                            {p.habitual ? '(habitual)' : '(puntual)'}
+                          </span>
+                        )}
+                        {p.tocado && <TocadoIcon className="ml-1" />}
+                        {p.reserva && <span className="ml-2 text-xs text-sky-400">(reserva)</span>}
+                        {!p.activo && <span className="ml-2 text-xs text-slate-500">(baja)</span>}
                       </span>
-                    )}
-                    {p.invitado && (
-                      <span className="ml-2 text-xs text-amber-400">
-                        {p.habitual ? '(habitual)' : '(puntual)'}
-                      </span>
-                    )}
-                    {p.tocado && <TocadoIcon className="ml-1" />}
-                    {p.reserva && <span className="ml-2 text-xs text-sky-400">(reserva)</span>}
-                    {!p.activo && <span className="ml-2 text-xs text-slate-500">(baja)</span>}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-slate-400">{p.edad ?? '—'}</td>
                   <td className="px-3 py-2">
