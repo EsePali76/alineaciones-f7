@@ -140,11 +140,6 @@ export function PlayerList({
                       <span>
                         <span className="font-medium">{p.nombre}</span>
                         {p.invitado && !p.habitual && (
-                          <span className="ml-1 text-amber-400" title="Datos estimados (media 5)">
-                            *
-                          </span>
-                        )}
-                        {p.invitado && !p.habitual && (
                           <span className="ml-2 text-xs text-amber-400">(no habitual)</span>
                         )}
                         {p.tocado && <TocadoIcon className="ml-1" />}
