@@ -292,6 +292,21 @@ export function PlayerForm({
         </div>
       </div>
 
+      {/* "Tocado": el propio usuario puede marcarlo desde su perfil (también el admin, abajo). */}
+      {soloIdentidad && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={data.tocado}
+            onChange={(e) => setData((d) => ({ ...d, tocado: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          <span title="Márcalo si vienes mermado a este partido (molestias, vuelves de lesión). Baja un poco tu nivel para equilibrar mejor los equipos.">
+            Voy tocado / bajo de forma este partido
+          </span>
+        </label>
+      )}
+
       {/* Valoraciones 0-10: SOLO para el invitado puntual (al resto lo vota el grupo). */}
       {!soloIdentidad && mostrarValoraciones && (
       <div className="flex flex-col gap-3 text-sm">

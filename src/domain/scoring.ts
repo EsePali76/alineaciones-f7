@@ -37,9 +37,9 @@ export const TOCADO_FACTOR = 0.82
 /**
  * Influencia MÁXIMA (en puntos de score) del estado de ánimo sobre la nota final.
  * El ánimo es 0-10 con base 5; el modificador = (animo-5)/5 * ANIMO_MAX_DELTA,
- * así que va de -0.3 (ánimo 0) a +0.3 (ánimo 10). Influencia mínima, a propósito.
+ * así que va de -0.5 (ánimo 0) a +0.5 (ánimo 10). Influencia pequeña, a propósito.
  */
-export const ANIMO_MAX_DELTA = 0.3
+export const ANIMO_MAX_DELTA = 0.5
 
 export interface ScoreOptions {
   weights?: ScoreWeights
