@@ -176,7 +176,7 @@ export function RatePlayers() {
               <span>
                 {completados}/{aValorar.length} valorados
               </span>
-              {!finalizado && completados > 0 && (
+              {!finalizado && (
                 <button
                   onClick={() => {
                     if (confirm('¿Finalizar tus valoraciones? Ya no podrás editarlas.')) finalize()
