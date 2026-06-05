@@ -15,6 +15,7 @@ import {
 } from '../domain/stats'
 import { temporadasDisponibles, filtrarPorTemporada, TODAS } from '../domain/season'
 import { SeasonPicker } from './SeasonPicker'
+import { Avatar } from './Avatar'
 
 type Sub = 'equipo' | 'jugador' | 'menciones'
 type Modo = 'temporada' | 'totales'
@@ -81,6 +82,7 @@ export function StatsPanel() {
   const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr), [statsArr])
 
   const nombre = (id: string) => players.find((p) => p.id === id)?.nombre ?? '(?)'
+  const foto = (id: string) => players.find((p) => p.id === id)?.fotoUrl
 
   const filas = useMemo(() => {
     // Valor de ordenación de cada jugador según la columna activa.
@@ -175,6 +177,7 @@ export function StatsPanel() {
                 titulo="⚽ Goleadores"
                 rows={goleadores}
                 nombre={nombre}
+                foto={foto}
                 destacado="goles"
                 vacio="Aún no hay goles registrados."
               />
@@ -182,6 +185,7 @@ export function StatsPanel() {
                 titulo="🅰️ Asistentes"
                 rows={asistentes}
                 nombre={nombre}
+                foto={foto}
                 destacado="asistencias"
                 vacio="Aún no hay asistencias registradas."
               />
@@ -192,6 +196,7 @@ export function StatsPanel() {
                   subtitulo={`Media de goles a favor por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
                   rows={masGoleadores}
                   nombre={nombre}
+                  foto={foto}
                   colLabel="GF/P"
                 />
               )}
@@ -201,6 +206,7 @@ export function StatsPanel() {
                   subtitulo={`Media de goles en contra por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
                   rows={menosGoleados}
                   nombre={nombre}
+                  foto={foto}
                   colLabel="GC/P"
                 />
               )}
@@ -261,7 +267,12 @@ export function StatsPanel() {
             <tbody>
               {filas.map((s) => (
                 <tr key={s.playerId} className="border-t border-slate-700/60">
-                  <td className="px-3 py-2 font-medium">{nombre(s.playerId)}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <span className="flex items-center gap-2">
+                      <Avatar src={foto(s.playerId)} alt={nombre(s.playerId)} className="h-6 w-6" />
+                      {nombre(s.playerId)}
+                    </span>
+                  </td>
                   <td className="px-2 py-2 text-center text-slate-300">{s.partidos}</td>
                   <td className="px-2 py-2 text-center text-slate-300">
                     {s.victorias}-{s.empates}-{s.derrotas}
@@ -313,12 +324,14 @@ function ScorerTable({
   titulo,
   rows,
   nombre,
+  foto,
   destacado,
   vacio,
 }: {
   titulo: string
   rows: PlayerStats[]
   nombre: (id: string) => string
+  foto: (id: string) => string | undefined
   destacado: 'goles' | 'asistencias'
   vacio: string
 }) {
@@ -345,7 +358,12 @@ function ScorerTable({
               {rows.map((s, i) => (
                 <tr key={s.playerId} className="border-t border-slate-700/60">
                   <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
-                  <td className="w-full py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
+                  <td className="w-full py-2 pl-1 pr-3 font-medium">
+                    <span className="flex items-center gap-2">
+                      <Avatar src={foto(s.playerId)} alt={nombre(s.playerId)} className="h-6 w-6" />
+                      {nombre(s.playerId)}
+                    </span>
+                  </td>
                   <td className="py-2 pl-3 pr-6 text-center text-slate-400">{s.partidos}</td>
                   <td className="px-3 py-2 text-center font-semibold text-slate-200">
                     {destacado === 'goles' ? s.goles : s.asistencias}
@@ -366,12 +384,14 @@ function MencionTable({
   subtitulo,
   rows,
   nombre,
+  foto,
   colLabel,
 }: {
   titulo: string
   subtitulo: string
   rows: MencionEquipo[]
   nombre: (id: string) => string
+  foto: (id: string) => string | undefined
   colLabel: string
 }) {
   return (
@@ -396,7 +416,12 @@ function MencionTable({
             {rows.map((s, i) => (
               <tr key={s.playerId} className="border-t border-slate-700/60">
                 <td className="py-2 pl-3 pr-1 text-slate-500">{i + 1}</td>
-                <td className="py-2 pl-1 pr-3 font-medium">{nombre(s.playerId)}</td>
+                <td className="py-2 pl-1 pr-3 font-medium">
+                  <span className="flex items-center gap-2">
+                    <Avatar src={foto(s.playerId)} alt={nombre(s.playerId)} className="h-6 w-6" />
+                    {nombre(s.playerId)}
+                  </span>
+                </td>
                 <td className="px-2 py-2 text-center font-semibold text-slate-200">
                   {s.media.toFixed(2)}
                 </td>

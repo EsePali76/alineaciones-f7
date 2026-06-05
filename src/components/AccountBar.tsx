@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { usePlayersStore } from '../store/playersStore'
+import { Avatar } from './Avatar'
 
 type Modo = 'cerrado' | 'login' | 'registro'
 
@@ -32,7 +33,10 @@ export function AccountBar() {
     const jugador = profile?.playerId ? players.find((p) => p.id === profile.playerId) : undefined
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-slate-300">👤 {profile?.displayName || email}</span>
+        <span className="flex items-center gap-2 text-slate-300">
+          <Avatar src={jugador?.fotoUrl} alt={profile?.displayName || email || ''} className="h-7 w-7" />
+          {profile?.displayName || email}
+        </span>
         {isAdmin ? (
           <span className="rounded bg-emerald-600/20 px-2 py-1 text-xs text-emerald-300">Admin</span>
         ) : jugador ? (
