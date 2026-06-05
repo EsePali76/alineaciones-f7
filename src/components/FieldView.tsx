@@ -148,7 +148,7 @@ function Ficha({
           : `${player.nombre} · ${POSITION_LABEL[player.posiciones[0]]} — arrástralo sobre otra ficha para intercambiar (al otro equipo, con confirmación)`
       }
     >
-      <Avatar src={player.fotoUrl} alt={player.nombre} className="h-7 w-7 shadow" ring={lado} />
+      <Avatar src={player.fotoUrl} alt={player.nombre} className="h-11 w-11 shadow" ring={lado} />
       <span className="mt-0.5 whitespace-nowrap rounded bg-black/65 px-1.5 text-[0.8rem] font-medium leading-tight text-white">
         {player.nombre}
         {player.invitado && <span className="text-amber-300">*</span>}
