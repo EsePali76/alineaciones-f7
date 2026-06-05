@@ -21,7 +21,7 @@ import { AccountBar } from './components/AccountBar'
 import { UsersPanel } from './components/admin/UsersPanel'
 import { AdminProxyRating } from './components/admin/AdminProxyRating'
 
-type Tab = 'plantel' | 'valorar' | 'equipos' | 'estadisticas' | 'historial' | 'usuarios'
+type Tab = 'plantel' | 'invitados' | 'valorar' | 'equipos' | 'estadisticas' | 'historial' | 'usuarios'
 
 function App() {
   const players = usePlayersStore((s) => s.players)
@@ -67,9 +67,14 @@ function App() {
   // Si una pestaña restringida queda seleccionada y pierdes el permiso, vuelve a Plantel.
   useEffect(() => {
     if (!isAdmin && tab === 'usuarios') setTab('plantel')
+    if (!isAdmin && tab === 'invitados') setTab('plantel')
     if (!isLinked && tab === 'valorar') setTab('plantel')
     if (!puedeEquipos && tab === 'equipos') setTab('plantel')
   }, [isAdmin, isLinked, puedeEquipos, tab])
+
+  // Al cambiar de pestaña se descarta la edición en curso (no arrastrar un jugador
+  // del Plantel al formulario de Invitados, ni viceversa).
+  useEffect(() => setEditing(null), [tab])
 
   const handleSubmit = (input: PlayerInput) => {
     if (editing) {
@@ -126,6 +131,11 @@ function App() {
             <TabButton active={tab === 'plantel'} onClick={() => setTab('plantel')}>
               Plantel
             </TabButton>
+            {isAdmin && (
+              <TabButton active={tab === 'invitados'} onClick={() => setTab('invitados')}>
+                Invitados
+              </TabButton>
+            )}
             {isLinked && (
               <TabButton active={tab === 'valorar'} onClick={() => setTab('valorar')}>
                 Valorar
@@ -161,7 +171,7 @@ function App() {
                 />
               )}
               <PlayerList
-                players={effectivePlayers}
+                players={effectivePlayers.filter((p) => !p.invitado)}
                 onEdit={(p) => setEditing(players.find((r) => r.id === p.id) ?? p)}
                 onRemove={removePlayer}
                 isAdmin={isAdmin}
@@ -174,6 +184,30 @@ function App() {
                   onCancel={editing ? () => setEditing(null) : undefined}
                 />
               )}
+            </>
+          )}
+          {tab === 'invitados' && isAdmin && (
+            <>
+              <p className="text-sm text-slate-400">
+                Gente de fuera del grupo (sin cuenta, no hacen alineaciones). Los{' '}
+                <b>habituales</b> los vota el grupo y cuentan en estadísticas; los{' '}
+                <b>puntuales</b> van con datos estimados y sin rastro en estadísticas. Para pasar a
+                uno al plantel, vincúlale una cuenta en «Usuarios».
+              </p>
+              <PlayerList
+                players={effectivePlayers.filter((p) => p.invitado)}
+                onEdit={(p) => setEditing(players.find((r) => r.id === p.id) ?? p)}
+                onRemove={removePlayer}
+                isAdmin={isAdmin}
+                noun="invitados"
+              />
+              <PlayerForm
+                key={editing?.id ?? 'nuevo-invitado'}
+                kind="invitado"
+                initial={editing ?? undefined}
+                onSubmit={handleSubmit}
+                onCancel={editing ? () => setEditing(null) : undefined}
+              />
             </>
           )}
           {tab === 'valorar' && isLinked && <RatePlayers />}

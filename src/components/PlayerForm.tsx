@@ -25,6 +25,13 @@ interface PlayerFormProps {
    * Las valoraciones se votan entre todos; los flags los gestiona el admin.
    */
   mode?: 'full' | 'identity'
+  /**
+   * 'plantel' (por defecto): jugador del grupo; sus valoraciones las vota el grupo.
+   * 'invitado': alta/edición en la lista de Invitados. `invitado=true` va implícito
+   * (no se pregunta); el único toggle es "habitual" (lo vota el grupo) vs puntual
+   * (datos estimados a 5, editables aquí).
+   */
+  kind?: 'plantel' | 'invitado'
 }
 
 const EMPTY: PlayerInput = {
@@ -34,15 +41,22 @@ const EMPTY: PlayerInput = {
   pierna: 'der',
   ratings: {},
   invitado: false,
+  habitual: false,
   tocado: false,
   excluidoRotacion: false,
   reserva: false,
   activo: true,
 }
 
-export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: PlayerFormProps) {
-  const [data, setData] = useState<PlayerInput>(initial ?? EMPTY)
+export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full', kind = 'plantel' }: PlayerFormProps) {
+  const esInvitado = kind === 'invitado'
+  // Alta de invitado: `invitado` va implícito (no es un checkbox que se pregunte).
+  const seed: PlayerInput = initial ?? (esInvitado ? { ...EMPTY, invitado: true } : EMPTY)
+  const [data, setData] = useState<PlayerInput>(seed)
   const soloIdentidad = mode === 'identity'
+  // En la lista de invitados, las valoraciones manuales solo se piden al puntual
+  // (al habitual lo vota el grupo, igual que a un jugador del plantel).
+  const mostrarValoraciones = esInvitado && !data.habitual
 
   const togglePosition = (code: PositionCode) =>
     setData((d) => ({
@@ -106,10 +120,11 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
     setGuardando(true)
     setGuardado(false)
     try {
-      await onSubmit({ ...data, nombre })
+      // En la lista de invitados, `invitado` va siempre implícito.
+      await onSubmit({ ...data, nombre, invitado: esInvitado ? true : data.invitado })
       setGuardado(true)
       setTimeout(() => setGuardado(false), 3000)
-      if (!initial) setData(EMPTY) // limpia tras un alta
+      if (!initial) setData(esInvitado ? { ...EMPTY, invitado: true } : EMPTY) // limpia tras un alta
     } catch {
       // El store ya avisa del error; no mostramos "guardado".
     } finally {
@@ -125,7 +140,15 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
       className="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-800/40 p-4"
     >
       <h2 className="text-lg font-semibold">
-        {soloIdentidad ? 'Mis datos' : initial ? 'Editar jugador' : 'Nuevo jugador'}
+        {soloIdentidad
+          ? 'Mis datos'
+          : esInvitado
+            ? initial
+              ? 'Editar invitado'
+              : 'Nuevo invitado'
+            : initial
+              ? 'Editar jugador'
+              : 'Nuevo jugador'}
       </h2>
       {soloIdentidad && (
         <p className="text-sm text-slate-400">
@@ -251,8 +274,8 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
         </div>
       </div>
 
-      {/* Valoraciones 0-10: SOLO para invitados (al resto los valora el grupo en "Valorar"). */}
-      {!soloIdentidad && data.invitado && (
+      {/* Valoraciones 0-10: SOLO para el invitado puntual (al resto lo vota el grupo). */}
+      {!soloIdentidad && mostrarValoraciones && (
       <div className="flex flex-col gap-3 text-sm">
         <span className="text-slate-400">
           Valoración estimada del invitado (0-10){' '}
@@ -274,24 +297,42 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
       </div>
       )}
 
-      {!soloIdentidad && !data.invitado && (
+      {!soloIdentidad && !mostrarValoraciones && (
         <p className="text-xs text-slate-500">
-          Las valoraciones de este jugador salen de los votos del grupo (pestaña «Valorar»).
+          Las valoraciones de {esInvitado ? 'este invitado' : 'este jugador'} salen de los votos
+          del grupo (pestaña «Valorar»).
         </p>
       )}
 
-      {/* Flags (solo admin / modo completo) */}
-      {!soloIdentidad && (
+      {/* Flags del invitado: solo "habitual" (lo vota el grupo) + activo. */}
+      {!soloIdentidad && esInvitado && (
       <div className="flex flex-wrap gap-5 text-sm">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
-            checked={data.invitado}
-            onChange={(e) => setData((d) => ({ ...d, invitado: e.target.checked }))}
+            checked={data.habitual}
+            onChange={(e) => setData((d) => ({ ...d, habitual: e.target.checked }))}
             className="h-4 w-4"
           />
-          <span>Invitado (datos estimados)</span>
+          <span title="Viene a menudo: lo vota el grupo y cuenta en las estadísticas. Si lo dejas sin marcar, es un invitado puntual (datos estimados a 5, sin rastro en estadísticas).">
+            Habitual (lo vota el grupo · cuenta en estadísticas)
+          </span>
         </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={data.activo}
+            onChange={(e) => setData((d) => ({ ...d, activo: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          <span>Activo (disponible para convocar)</span>
+        </label>
+      </div>
+      )}
+
+      {/* Flags del jugador del plantel (solo admin / modo completo). */}
+      {!soloIdentidad && !esInvitado && (
+      <div className="flex flex-wrap gap-5 text-sm">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -350,7 +391,9 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full' }: Playe
               ? 'Guardar mis datos'
               : initial
                 ? 'Guardar cambios'
-                : 'Añadir jugador'}
+                : esInvitado
+                  ? 'Añadir invitado'
+                  : 'Añadir jugador'}
         </button>
         {onCancel && (
           <button

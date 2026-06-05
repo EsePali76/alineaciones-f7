@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
 import { useAuthStore } from '../store/authStore'
-import { effectiveCurrent, nextCurrent } from '../domain/rotation'
+import { effectiveCurrent, esElegibleRotacion, nextCurrent } from '../domain/rotation'
 import type { Player } from '../domain/types'
 
 export interface TurnoInfo {
@@ -23,9 +23,7 @@ export function useTurno(): TurnoInfo {
   const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
 
   return useMemo(() => {
-    const eligible = new Set(
-      players.filter((p) => p.activo && !p.excluidoRotacion && !p.reserva).map((p) => p.id),
-    )
+    const eligible = new Set(players.filter(esElegibleRotacion).map((p) => p.id))
     const currentId = effectiveCurrent(data, eligible)
     const current = currentId ? players.find((p) => p.id === currentId) ?? null : null
     const nextId = nextCurrent(data, eligible)

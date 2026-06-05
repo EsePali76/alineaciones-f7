@@ -10,6 +10,8 @@ interface PlayerListProps {
   onRemove: (id: string) => void
   /** Si el usuario es admin (muestra acciones de editar/borrar). */
   isAdmin: boolean
+  /** Sustantivo para el recuento y los mensajes ("jugadores en el plantel", "invitados"). */
+  noun?: string
 }
 
 /** Media simple de las valoraciones (sin valorar cuenta como 5 si es invitado, si no se ignora). */
@@ -25,7 +27,13 @@ function mediaValoracion(p: Player): number | null {
 type SortKey = 'nombre' | 'edad' | 'media'
 type SortDir = 'asc' | 'desc'
 
-export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListProps) {
+export function PlayerList({
+  players,
+  onEdit,
+  onRemove,
+  isAdmin,
+  noun = 'jugadores en el plantel',
+}: PlayerListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('nombre')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -45,8 +53,8 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
     return (
       <p className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-500">
         {isAdmin
-          ? 'Aún no hay jugadores. Añade el primero con el formulario de abajo.'
-          : 'Aún no hay jugadores en el plantel.'}
+          ? 'Aún no hay nadie. Añade el primero con el formulario de abajo.'
+          : `Aún no hay ${noun}.`}
       </p>
     )
   }
@@ -77,7 +85,9 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm text-slate-400">{players.length} jugadores en el plantel</p>
+      <p className="text-sm text-slate-400">
+        {players.length} {noun}
+      </p>
       <div className="overflow-x-auto rounded-lg border border-slate-700">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -125,9 +135,14 @@ export function PlayerList({ players, onEdit, onRemove, isAdmin }: PlayerListPro
                 >
                   <td className="px-3 py-2">
                     <span className="font-medium">{p.nombre}</span>
-                    {p.invitado && (
-                      <span className="ml-1 text-amber-400" title="Invitado · datos estimados">
+                    {p.invitado && !p.habitual && (
+                      <span className="ml-1 text-amber-400" title="Datos estimados (media 5)">
                         *
+                      </span>
+                    )}
+                    {p.invitado && (
+                      <span className="ml-2 text-xs text-amber-400">
+                        {p.habitual ? '(habitual)' : '(puntual)'}
                       </span>
                     )}
                     {p.tocado && <TocadoIcon className="ml-1" />}

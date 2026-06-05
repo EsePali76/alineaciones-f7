@@ -65,7 +65,15 @@ export function StatsPanel() {
   const conResultado = useMemo(() => lineupsTemp.filter((l) => l.resultado), [lineupsTemp])
   const equipos = useMemo(() => statsPorEquipo(lineupsTemp), [lineupsTemp])
   const porJugador = useMemo(() => statsPorJugador(lineupsTemp), [lineupsTemp])
-  const statsArr = useMemo(() => [...porJugador.values()], [porJugador])
+  // Los invitados puntuales no dejan rastro en las estadísticas por jugador (sí en el
+  // marcador por color, que es del equipo, no de la persona). El resto sí aparece.
+  const statsArr = useMemo(() => {
+    const esPuntual = (id: string) => {
+      const p = players.find((pl) => pl.id === id)
+      return !!p && p.invitado && !p.habitual
+    }
+    return [...porJugador.values()].filter((s) => !esPuntual(s.playerId))
+  }, [porJugador, players])
 
   const goleadores = useMemo(() => ordenarGoleadores(statsArr), [statsArr])
   const asistentes = useMemo(() => ordenarAsistentes(statsArr), [statsArr])

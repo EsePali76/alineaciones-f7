@@ -47,8 +47,22 @@ export interface Player {
   /** Perfil preferido (banda con la que actúa con naturalidad). Antes "pierna hábil". */
   pierna: Foot
   ratings: PlayerRatings
-  /** Invitado / datos estimados: parámetros sin valorar se asumen a la media. */
+  /**
+   * Invitado: no es del grupo, no tiene cuenta de usuario. Vive en la lista de
+   * Invitados (no en el Plantel) y nunca entra en la rotación de alineadores.
+   * Parámetros sin valorar se asumen a la media.
+   */
   invitado: boolean
+  /**
+   * Solo aplica a invitados (`invitado=true`):
+   *  - `true`  → invitado HABITUAL: viene a menudo. Lo vota el grupo y cuenta en
+   *    las estadísticas, como un jugador más (pero sin cuenta ni rotación).
+   *  - `false` → invitado PUNTUAL: viene de un día. NO se vota (todos sus
+   *    parámetros a la media 5, editables por el admin) y NO deja rastro en las
+   *    estadísticas. Si pasa a habitual, basta con marcar este flag.
+   * Irrelevante para jugadores del plantel (`invitado=false`).
+   */
+  habitual: boolean
   /**
    * Tocado / bajo de forma: viene mermado a ESTE partido (molestias, vuelve de
    * lesión, etc.). Condición puntual del día que marca quien hace la alineación.

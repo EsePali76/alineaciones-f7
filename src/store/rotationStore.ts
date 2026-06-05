@@ -3,6 +3,7 @@ import * as api from '../lib/rotationApi'
 import {
   advanceAfterConfirm,
   advancePass,
+  esElegibleRotacion,
   seed,
   type RotationData,
 } from '../domain/rotation'
@@ -12,7 +13,7 @@ import { usePlayersStore } from './playersStore'
 function eligibleOrdered(): string[] {
   return usePlayersStore
     .getState()
-    .players.filter((p) => p.activo && !p.excluidoRotacion && !p.reserva)
+    .players.filter(esElegibleRotacion)
     .sort((a, b) => a.createdAt - b.createdAt)
     .map((p) => p.id)
 }

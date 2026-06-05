@@ -12,10 +12,21 @@
  *    sitio (sigue en cola; lo hará la próxima). Se "consume" solo al hacerla.
  *  - Salir del listado (autoexclusión) o quedar inactivo → fuera de elegibles.
  */
+import type { Player } from './types'
+
 export interface RotationData {
   currentPlayerId: string | null
   orderIds: string[]
   skippedIds: string[]
+}
+
+/**
+ * ¿Entra este jugador en la rotación de alineadores? Solo los fijos del grupo:
+ * activos, no autoexcluidos, no reservas y no invitados (estos no tienen cuenta
+ * y nunca hacen alineaciones).
+ */
+export function esElegibleRotacion(p: Player): boolean {
+  return p.activo && !p.excluidoRotacion && !p.reserva && !p.invitado
 }
 
 /** Primer elegible de la cola que no haya pasado turno; si todos pasaron, el primero. */

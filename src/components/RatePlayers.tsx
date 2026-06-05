@@ -48,7 +48,11 @@ export function RatePlayers() {
   const aValorar = useMemo(
     () =>
       players
-        .filter((p) => p.activo && !p.invitado && p.id !== profile?.playerId)
+        // Se vota al plantel y a los invitados HABITUALES; nunca al invitado puntual
+        // (datos estimados) ni a uno mismo.
+        .filter(
+          (p) => p.activo && !(p.invitado && !p.habitual) && p.id !== profile?.playerId,
+        )
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [players, profile?.playerId],
   )

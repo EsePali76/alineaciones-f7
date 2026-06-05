@@ -16,6 +16,7 @@ import {
  */
 export function UsersPanel() {
   const players = usePlayersStore((s) => s.players)
+  const updatePlayer = usePlayersStore((s) => s.updatePlayer)
   const myUserId = useAuthStore((s) => s.userId)
   const refreshMyProfile = useAuthStore((s) => s.refreshProfile)
 
@@ -40,8 +41,24 @@ export function UsersPanel() {
   }, [])
 
   const ordenados = [...players].sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const delPlantel = ordenados.filter((p) => !p.invitado)
+  const invitados = ordenados.filter((p) => p.invitado)
   // Jugadores ya vinculados a algún usuario (para avisar de duplicados).
   const vinculados = new Map(profiles.filter((p) => p.playerId).map((p) => [p.playerId, p.id]))
+
+  /**
+   * Vincula un usuario a un jugador. Si el jugador era un invitado, vincular ES
+   * promocionarlo al plantel: pasa a tener cuenta, así que deja de ser invitado.
+   */
+  const vincular = async (profileId: string, playerId: string | null) => {
+    await adminLinkPlayer(profileId, playerId)
+    if (playerId) {
+      const target = players.find((p) => p.id === playerId)
+      if (target?.invitado) {
+        await updatePlayer(playerId, { ...target, invitado: false, habitual: false })
+      }
+    }
+  }
 
   const accion = async (fn: () => Promise<void>) => {
     try {
@@ -99,22 +116,37 @@ export function UsersPanel() {
                   <td className="px-3 py-2">
                     <select
                       value={pr.playerId ?? ''}
-                      onChange={(e) =>
-                        accion(() => adminLinkPlayer(pr.id, e.target.value || null))
-                      }
+                      onChange={(e) => accion(() => vincular(pr.id, e.target.value || null))}
                       className="rounded border border-slate-600 bg-slate-900 px-2 py-1"
                     >
                       <option value="">— sin vincular —</option>
-                      {ordenados.map((p) => {
-                        const ocupadoPorOtro =
-                          vinculados.has(p.id) && vinculados.get(p.id) !== pr.id
-                        return (
-                          <option key={p.id} value={p.id}>
-                            {p.nombre}
-                            {ocupadoPorOtro ? ' (ya vinculado)' : ''}
-                          </option>
-                        )
-                      })}
+                      <optgroup label="Plantel">
+                        {delPlantel.map((p) => {
+                          const ocupadoPorOtro =
+                            vinculados.has(p.id) && vinculados.get(p.id) !== pr.id
+                          return (
+                            <option key={p.id} value={p.id}>
+                              {p.nombre}
+                              {ocupadoPorOtro ? ' (ya vinculado)' : ''}
+                            </option>
+                          )
+                        })}
+                      </optgroup>
+                      {invitados.length > 0 && (
+                        <optgroup label="Invitados (al vincular pasan al plantel)">
+                          {invitados.map((p) => {
+                            const ocupadoPorOtro =
+                              vinculados.has(p.id) && vinculados.get(p.id) !== pr.id
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.nombre}
+                                {p.habitual ? ' (habitual)' : ' (puntual)'}
+                                {ocupadoPorOtro ? ' · ya vinculado' : ''}
+                              </option>
+                            )
+                          })}
+                        </optgroup>
+                      )}
                     </select>
                   </td>
 
