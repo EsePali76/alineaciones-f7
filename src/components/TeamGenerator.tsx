@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toBlob, toPng } from 'html-to-image'
 import { useLineupsStore } from '../store/lineupsStore'
 import { useGeneratorStore } from '../store/generatorStore'
@@ -41,7 +41,18 @@ export function TeamGenerator() {
   const setPlacementB = useGeneratorStore((s) => s.setPlacementB)
   const setBalance = useGeneratorStore((s) => s.setBalance)
   const setConfirmada = useGeneratorStore((s) => s.setConfirmada)
+  const reset = useGeneratorStore((s) => s.reset)
 
+  // Cierre de partido: cuando la alineación que teníamos en marcha ya tiene resultado
+  // (el admin lo ha registrado tras jugarse), la convocatoria queda cerrada → se limpia
+  // todo (formato, formaciones, convocados y la gráfica) para empezar la siguiente de
+  // cero. Es independiente de quién registre el resultado: cada dispositivo se autolimpia
+  // al ver que su `confirmedLineupId` ya tiene resultado.
+  useEffect(() => {
+    if (!confirmedLineupId) return
+    const lu = lineups.find((l) => l.id === confirmedLineupId)
+    if (lu?.resultado) reset()
+  }, [confirmedLineupId, lineups, reset])
 
   const disponibles = useMemo(
     () => players.filter((p) => p.activo).sort((a, b) => a.nombre.localeCompare(b.nombre)),

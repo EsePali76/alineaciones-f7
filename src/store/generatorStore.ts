@@ -35,20 +35,31 @@ interface GeneratorState {
   setBalance: (b: TeamBalance | null) => void
   setConfirmada: (v: boolean) => void
   setConfirmedLineupId: (id: string | null) => void
+  /**
+   * Vuelve la sesión a cero (formato, formaciones, convocados, colocación y la
+   * alineación generada). Se usa al cerrar un partido: una vez registrado su
+   * resultado, la convocatoria anterior ya no debe arrastrarse a la siguiente.
+   */
+  reset: () => void
+}
+
+/** Valores de partida (también los usa `reset`). */
+const INICIAL = {
+  convocados: [] as string[],
+  jugadoresPorEquipo: 7 as 6 | 7 | 8,
+  formacionNombreA: '1-3-2-1',
+  formacionNombreB: '1-3-2-1',
+  placementA: null as string[] | null,
+  placementB: null as string[] | null,
+  balance: null as TeamBalance | null,
+  confirmada: false,
+  confirmedLineupId: null as string | null,
 }
 
 export const useGeneratorStore = create<GeneratorState>()(
   persist(
     (set) => ({
-      convocados: [],
-      jugadoresPorEquipo: 7,
-      formacionNombreA: '1-3-2-1',
-      formacionNombreB: '1-3-2-1',
-      placementA: null,
-      placementB: null,
-      balance: null,
-      confirmada: false,
-      confirmedLineupId: null,
+      ...INICIAL,
       setConvocados: (ids) => set({ convocados: ids }),
       setJugadoresPorEquipo: (n) => set({ jugadoresPorEquipo: n }),
       setFormacionNombreA: (nombre) => set({ formacionNombreA: nombre }),
@@ -58,6 +69,7 @@ export const useGeneratorStore = create<GeneratorState>()(
       setBalance: (b) => set({ balance: b }),
       setConfirmada: (v) => set({ confirmada: v }),
       setConfirmedLineupId: (id) => set({ confirmedLineupId: id }),
+      reset: () => set({ ...INICIAL }),
     }),
     { name: 'alineaciones-f7-generator' },
   ),
