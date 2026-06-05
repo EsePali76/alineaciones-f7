@@ -48,6 +48,10 @@ export function TeamGenerator() {
     [players],
   )
   const convocados = useMemo(() => new Set(convocadosIds), [convocadosIds])
+  // Se muestran en dos grupos con cabecera (plantel / invitados) en vez de marcar al
+  // invitado con un asterisco: así se ve claro quién es de fuera del grupo.
+  const delPlantel = useMemo(() => disponibles.filter((p) => !p.invitado), [disponibles])
+  const invitados = useMemo(() => disponibles.filter((p) => p.invitado), [disponibles])
 
   const formaciones = formacionesDe(jugadoresPorEquipo)
   const formacionA = formacionPorNombre(jugadoresPorEquipo, formacionNombreA) ?? formaciones[0]
@@ -220,29 +224,21 @@ export function TeamGenerator() {
             No hay jugadores activos. Da de alta el plantel en la pestaña «Plantel».
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {disponibles.map((p) => {
-              const on = convocados.has(p.id)
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => toggle(p.id)}
-                  className={
-                    'flex items-center justify-between gap-1 rounded border px-2 py-1.5 text-left text-sm transition-colors ' +
-                    (on
-                      ? 'border-emerald-500 bg-emerald-600/80 text-white'
-                      : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
-                  }
-                >
-                  <span className="truncate">
-                    {p.nombre}
-                    {p.invitado && <span className="text-amber-300"> *</span>}
-                    {p.tocado && <TocadoIcon className="ml-1" />}
-                  </span>
-                  <span className="shrink-0 text-xs opacity-70">{p.posiciones[0]}</span>
-                </button>
-              )
-            })}
+          <div className="flex flex-col gap-3">
+            <GrupoConvocados
+              titulo="Plantel"
+              jugadores={delPlantel}
+              convocados={convocados}
+              onToggle={toggle}
+            />
+            {invitados.length > 0 && (
+              <GrupoConvocados
+                titulo="Invitados"
+                jugadores={invitados}
+                convocados={convocados}
+                onToggle={toggle}
+              />
+            )}
           </div>
         )}
 
@@ -310,6 +306,48 @@ function FormacionSelector({
           {f.nombre}
         </button>
       ))}
+    </div>
+  )
+}
+
+/** Grupo de convocables (plantel o invitados) con su cabecera y rejilla de botones. */
+function GrupoConvocados({
+  titulo,
+  jugadores,
+  convocados,
+  onToggle,
+}: {
+  titulo: string
+  jugadores: Player[]
+  convocados: Set<string>
+  onToggle: (id: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{titulo}</span>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        {jugadores.map((p) => {
+          const on = convocados.has(p.id)
+          return (
+            <button
+              key={p.id}
+              onClick={() => onToggle(p.id)}
+              className={
+                'flex items-center justify-between gap-1 rounded border px-2 py-1.5 text-left text-sm transition-colors ' +
+                (on
+                  ? 'border-emerald-500 bg-emerald-600/80 text-white'
+                  : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
+              }
+            >
+              <span className="truncate">
+                {p.nombre}
+                {p.tocado && <TocadoIcon className="ml-1" />}
+              </span>
+              <span className="shrink-0 text-xs opacity-70">{p.posiciones[0]}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
