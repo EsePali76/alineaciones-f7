@@ -78,9 +78,7 @@ export function PhotoUpload({
                 </button>
               )}
             </div>
-            <span className="text-xs text-slate-500">
-              JPG, PNG o WEBP. Se recorta y ajusta sola a 256×256 px, así que no importa el peso.
-            </span>
+            <span className="text-xs text-slate-500">JPG, PNG o WEBP.</span>
             <input
               ref={inputRef}
               type="file"
