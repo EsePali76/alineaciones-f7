@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import type { Player } from '../domain/types'
-import { POSITION_LABEL, FOOT_LABEL, RATING_KEYS, DEFAULT_RATING } from '../domain/constants'
+import {
+  POSITION_LABEL,
+  FOOT_LABEL,
+  RATING_KEYS,
+  RATING_KEYS_FACETAS,
+  DEFAULT_RATING,
+} from '../domain/constants'
 import { animoLabel } from '../domain/animo'
 import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
@@ -15,14 +21,21 @@ interface PlayerListProps {
   noun?: string
 }
 
-/** Media simple de las valoraciones (sin valorar cuenta como 5 si es invitado, si no se ignora). */
+/**
+ * Media orientativa de la columna "Valoración":
+ *  - Si SOLO se ha puesto la valoración general → se muestra ese mismo valor (no se
+ *    diluye con cincos: la general ya es el juicio de conjunto).
+ *  - Si hay algún dato más (otras facetas), se hace la media de los 7 parámetros
+ *    contando 5 en los que falten.
+ *  - Si no hay ningún dato → sin media.
+ */
 function mediaValoracion(p: Player): number | null {
-  const vals = RATING_KEYS.map((k) => p.ratings[k]).map((v) =>
-    v === undefined ? (p.invitado ? DEFAULT_RATING : undefined) : v,
-  )
-  const present = vals.filter((v): v is number => v !== undefined)
-  if (present.length === 0) return null
-  return present.reduce((a, b) => a + b, 0) / present.length
+  const general = p.ratings.general
+  const facetasRellenas = RATING_KEYS_FACETAS.filter((k) => p.ratings[k] !== undefined)
+  if (general !== undefined && facetasRellenas.length === 0) return general
+  if (general === undefined && facetasRellenas.length === 0) return null
+  const total = RATING_KEYS.reduce((s, k) => s + (p.ratings[k] ?? DEFAULT_RATING), 0)
+  return total / RATING_KEYS.length
 }
 
 type SortKey = 'nombre' | 'edad' | 'media'
