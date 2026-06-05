@@ -79,7 +79,7 @@ export function PhotoUpload({
               )}
             </div>
             <span className="text-xs text-slate-500">
-              Si no subes ninguna, aparecerá una silueta genérica.
+              JPG, PNG o WEBP. Se recorta y ajusta sola a 256×256 px, así que no importa el peso.
             </span>
             <input
               ref={inputRef}
