@@ -127,7 +127,7 @@ function App() {
           <RotationBanner />
 
           {/* Pestañas */}
-          <nav className="flex flex-wrap gap-1 border-b border-slate-700">
+          <nav className="flex flex-wrap gap-1 rounded-lg border border-slate-700 bg-slate-800/40 p-1">
             <TabButton active={tab === 'plantel'} onClick={() => setTab('plantel')}>
               Plantel
             </TabButton>
@@ -247,10 +247,10 @@ function TabButton({
     <button
       onClick={onClick}
       className={
-        'border-b-2 px-4 py-2 text-sm font-medium transition-colors ' +
+        'rounded-md px-3 py-1.5 text-sm font-medium transition-colors ' +
         (active
-          ? 'border-emerald-500 text-white'
-          : 'border-transparent text-slate-400 hover:text-slate-200')
+          ? 'bg-emerald-600 text-white shadow-sm'
+          : 'text-slate-300 hover:bg-slate-700/70')
       }
     >
       {children}
