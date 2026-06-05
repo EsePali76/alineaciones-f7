@@ -270,8 +270,14 @@ export function PlayerForm({
       <div className="flex flex-col gap-2 text-sm">
         <span className="text-slate-400">Perfil preferido</span>
         <p className="text-xs text-slate-500">
-          Banda en la que actúa con naturalidad (carrilero/extremo). "Ambos" = cómodo en las dos
-          → la app puede colocarlo en cualquier lado.
+          {soloIdentidad ? (
+            'La banda en la que te sientes más cómodo. "Ambos" = en las dos.'
+          ) : (
+            <>
+              Banda en la que actúa con naturalidad (carrilero/extremo). "Ambos" = cómodo en las dos
+              → la app puede colocarlo en cualquier lado.
+            </>
+          )}
         </p>
         <div className="flex gap-2">
           {FOOT_OPTIONS.map((f) => (

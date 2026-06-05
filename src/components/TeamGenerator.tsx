@@ -397,6 +397,7 @@ function BalanceResult({
 }) {
   const pctA = Math.round(balance.balancePctA)
   const pctB = 100 - pctA
+  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const fieldRef = useRef<HTMLDivElement>(null)
   const [imgMsg, setImgMsg] = useState('')
@@ -498,7 +499,8 @@ function BalanceResult({
         <TeamColumn title="🔴 Equipo B" color="red" team={balance.teamB} score={balance.scoreB} />
       </div>
 
-      {/* Desglose técnico */}
+      {/* Desglose técnico (solo admin: detalle de cómo equilibra el algoritmo) */}
+      {isAdmin && (
       <details className="text-sm text-slate-400">
         <summary className="cursor-pointer select-none">Detalle del equilibrado</summary>
         <ul className="mt-2 list-inside list-disc space-y-1">
@@ -516,6 +518,7 @@ function BalanceResult({
           </li>
         </ul>
       </details>
+      )}
     </section>
   )
 }
