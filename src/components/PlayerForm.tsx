@@ -13,10 +13,13 @@ import {
   MAX_RATING,
 } from '../domain/constants'
 import type { RatingKey } from '../domain/constants'
+import { PhotoUpload } from './PhotoUpload'
 
 interface PlayerFormProps {
   /** Valores iniciales (modo edición). Si se omite, formulario en blanco (alta). */
   initial?: PlayerInput
+  /** Id del jugador (modo edición/autoservicio). Necesario para subir su foto. */
+  playerId?: string
   onSubmit: (input: PlayerInput) => void | Promise<void>
   onCancel?: () => void
   /**
@@ -48,7 +51,14 @@ const EMPTY: PlayerInput = {
   activo: true,
 }
 
-export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full', kind = 'plantel' }: PlayerFormProps) {
+export function PlayerForm({
+  initial,
+  playerId,
+  onSubmit,
+  onCancel,
+  mode = 'full',
+  kind = 'plantel',
+}: PlayerFormProps) {
   const esInvitado = kind === 'invitado'
   // Alta de invitado: `invitado` va implícito (no es un checkbox que se pregunte).
   const seed: PlayerInput = initial ?? (esInvitado ? { ...EMPTY, invitado: true } : EMPTY)
@@ -155,6 +165,14 @@ export function PlayerForm({ initial, onSubmit, onCancel, mode = 'full', kind = 
           Tus datos de identidad. Las valoraciones las pone el resto del grupo (pestaña Valorar).
         </p>
       )}
+
+      {/* Foto / avatar */}
+      <PhotoUpload
+        playerId={playerId}
+        value={data.fotoUrl}
+        nombre={data.nombre}
+        onChange={(url) => setData((d) => ({ ...d, fotoUrl: url }))}
+      />
 
       {/* Nombre + edad */}
       <div className="flex flex-wrap gap-3">

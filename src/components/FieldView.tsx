@@ -4,6 +4,7 @@ import { POSITION_LABEL } from '../domain/constants'
 import type { TeamBalance } from '../domain/balancer'
 import { useGeneratorStore } from '../store/generatorStore'
 import { TocadoIcon } from './TocadoIcon'
+import { Avatar } from './Avatar'
 
 /** Datos que viajan en el arrastre de una ficha. */
 interface DragData {
@@ -114,7 +115,6 @@ function Ficha({
   marca?: { goles: number; asist: number }
 }) {
   const { player, x, y } = punto
-  const color = lado === 'A' ? 'bg-white border-slate-300' : 'bg-red-600 border-red-300'
   return (
     <div
       draggable={!readOnly}
@@ -148,7 +148,7 @@ function Ficha({
           : `${player.nombre} · ${POSITION_LABEL[player.posiciones[0]]} — arrástralo sobre otra ficha para intercambiar (al otro equipo, con confirmación)`
       }
     >
-      <div className={`h-7 w-7 rounded-full border-2 shadow ${color}`} />
+      <Avatar src={player.fotoUrl} alt={player.nombre} className="h-7 w-7 shadow" ring={lado} />
       <span className="mt-0.5 whitespace-nowrap rounded bg-black/65 px-1.5 text-[0.8rem] font-medium leading-tight text-white">
         {player.nombre}
         {player.invitado && <span className="text-amber-300">*</span>}

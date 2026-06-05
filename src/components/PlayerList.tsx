@@ -3,6 +3,7 @@ import type { Player } from '../domain/types'
 import { POSITION_LABEL, FOOT_LABEL, RATING_KEYS, DEFAULT_RATING } from '../domain/constants'
 import { animoLabel } from '../domain/animo'
 import { TocadoIcon } from './TocadoIcon'
+import { Avatar } from './Avatar'
 
 interface PlayerListProps {
   players: Player[]
@@ -134,7 +135,12 @@ export function PlayerList({
                   }
                 >
                   <td className="px-3 py-2">
-                    <span className="font-medium">{p.nombre}</span>
+                    <Avatar
+                      src={p.fotoUrl}
+                      alt={p.nombre}
+                      className="mr-2 inline-block h-7 w-7 align-middle"
+                    />
+                    <span className="font-medium align-middle">{p.nombre}</span>
                     {p.invitado && !p.habitual && (
                       <span className="ml-1 text-amber-400" title="Datos estimados (media 5)">
                         *

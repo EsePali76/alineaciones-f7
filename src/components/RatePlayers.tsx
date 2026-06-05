@@ -14,6 +14,7 @@ import {
   ratingLabel,
 } from '../domain/constants'
 import type { RatingKey } from '../domain/constants'
+import { Avatar } from './Avatar'
 
 /**
  * Valoración colaborativa: cada usuario vota a los demás jugadores (menos a sí mismo).
@@ -194,7 +195,10 @@ export function RatePlayers() {
                       (activo ? 'bg-slate-700 text-white' : 'text-slate-300 hover:bg-slate-800')
                     }
                   >
-                    <span>{p.nombre}</span>
+                    <span className="flex items-center gap-2">
+                      <Avatar src={p.fotoUrl} alt={p.nombre} className="h-6 w-6" />
+                      {p.nombre}
+                    </span>
                     <span className={hecho ? 'text-emerald-400' : 'text-slate-600'}>
                       {hecho ? '✓' : '○'}
                     </span>
@@ -212,7 +216,10 @@ export function RatePlayers() {
               </p>
             ) : (
               <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
-                <h3 className="text-base font-semibold">{jugador.nombre}</h3>
+                <h3 className="flex items-center gap-2 text-base font-semibold">
+                  <Avatar src={jugador.fotoUrl} alt={jugador.nombre} className="h-9 w-9" />
+                  {jugador.nombre}
+                </h3>
                 <div className="rounded-lg border-2 border-red-500 bg-red-600/25 p-3 shadow-[0_0_14px_-2px_rgba(239,68,68,0.5)]">
                   {ratingRow(RATING_KEY_ANCLA)}
                 </div>

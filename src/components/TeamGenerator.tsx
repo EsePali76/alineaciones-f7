@@ -11,6 +11,7 @@ import { playerScore } from '../domain/scoring'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
 import { FieldView, ordenAutomatico } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
+import { Avatar } from './Avatar'
 
 export function TeamGenerator() {
   const players = useEffectivePlayers()
@@ -350,9 +351,12 @@ function GrupoConvocados({
                   : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
               }
             >
-              <span className="truncate">
-                {p.nombre}
-                {p.tocado && <TocadoIcon className="ml-1" />}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Avatar src={p.fotoUrl} alt={p.nombre} className="h-6 w-6" />
+                <span className="truncate">
+                  {p.nombre}
+                  {p.tocado && <TocadoIcon className="ml-1" />}
+                </span>
               </span>
               <span className="shrink-0 text-xs opacity-70">{p.posiciones[0]}</span>
             </button>
@@ -388,7 +392,12 @@ function BalanceResult({
 
   const descargarImagen = async () => {
     if (!fieldRef.current) return
-    const dataUrl = await toPng(fieldRef.current, { pixelRatio: 2, backgroundColor: '#0f1115' })
+    // cacheBust: fuerza recargar las fotos remotas (Supabase) para que se inlinen bien.
+    const dataUrl = await toPng(fieldRef.current, {
+      pixelRatio: 2,
+      backgroundColor: '#0f1115',
+      cacheBust: true,
+    })
     const a = document.createElement('a')
     a.href = dataUrl
     a.download = `equipos-${new Date().toISOString().slice(0, 10)}.png`
@@ -398,7 +407,11 @@ function BalanceResult({
   const copiarImagen = async () => {
     if (!fieldRef.current) return
     try {
-      const blob = await toBlob(fieldRef.current, { pixelRatio: 2, backgroundColor: '#0f1115' })
+      const blob = await toBlob(fieldRef.current, {
+        pixelRatio: 2,
+        backgroundColor: '#0f1115',
+        cacheBust: true,
+      })
       if (!blob) throw new Error('sin imagen')
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
       setImgMsg('✓ Imagen copiada')
@@ -520,6 +533,12 @@ function TeamColumn({
       <ul className="flex flex-col gap-1 text-sm">
         {ordenados.map((p) => (
           <li key={p.id} className="flex items-center gap-2">
+            <Avatar
+              src={p.fotoUrl}
+              alt={p.nombre}
+              className="h-6 w-6"
+              ring={color === 'white' ? 'A' : 'B'}
+            />
             <span>
               {p.nombre}
               {p.invitado && <span className="text-amber-400" title="Invitado"> *</span>}

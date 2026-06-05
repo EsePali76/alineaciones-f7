@@ -166,6 +166,7 @@ function App() {
                 <PlayerForm
                   key={myPlayer.id}
                   initial={myPlayer}
+                  playerId={myPlayer.id}
                   mode="identity"
                   onSubmit={(input) => updatePlayer(myPlayer.id, input)}
                 />
@@ -180,6 +181,7 @@ function App() {
                 <PlayerForm
                   key={editing?.id ?? 'nuevo'}
                   initial={editing ?? undefined}
+                  playerId={editing?.id}
                   onSubmit={handleSubmit}
                   onCancel={editing ? () => setEditing(null) : undefined}
                 />
@@ -205,6 +207,7 @@ function App() {
                 key={editing?.id ?? 'nuevo-invitado'}
                 kind="invitado"
                 initial={editing ?? undefined}
+                playerId={editing?.id}
                 onSubmit={handleSubmit}
                 onCancel={editing ? () => setEditing(null) : undefined}
               />

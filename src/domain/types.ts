@@ -48,6 +48,13 @@ export interface Player {
   pierna: Foot
   ratings: PlayerRatings
   /**
+   * URL pública de la foto (avatar) en Supabase Storage. Opcional: sin foto se
+   * muestra una silueta genérica. Lleva un `?v=<timestamp>` para forzar recarga al
+   * cambiarla (la ruta del fichero se reutiliza). La sube cada usuario (la suya) o
+   * el admin (cualquiera).
+   */
+  fotoUrl?: string
+  /**
    * Invitado: no es del grupo, no tiene cuenta de usuario. Vive en la lista de
    * Invitados (no en el Plantel) y nunca entra en la rotación de alineadores.
    * Parámetros sin valorar se asumen a la media.
