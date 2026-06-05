@@ -53,10 +53,27 @@ export interface ScoreOptions {
 }
 
 /**
- * Puntaje de un jugador en escala ~0-10.
- * - Valoraciones sin rellenar se asumen a la media (5), tanto para invitados como
- *   para cualquier hueco vacío, para no falsear el reparto.
- * - Si el jugador va "tocado / bajo de forma", se aplica el factor de penalización.
+ * Media PONDERADA de las valoraciones (sin tocado ni ánimo): el "nivel base" del
+ * jugador. Es lo que muestra también la columna "Valoración" del Plantel.
+ *
+ * Relleno de huecos: una faceta sin valorar toma el valor de la "general" (el juicio
+ * de conjunto); si tampoco hay general, se usa 5. Así, valorar solo la general da
+ * exactamente esa nota, y rellenar facetas concretas solo matiza desde ahí.
+ */
+export function weightedRatings(player: Player, weights: ScoreWeights = DEFAULT_WEIGHTS): number {
+  const general = player.ratings.general ?? DEFAULT_RATING
+  let score = 0
+  for (const key of RATING_KEYS) {
+    const value = key === 'general' ? general : player.ratings[key] ?? general
+    score += value * weights[key]
+  }
+  return score
+}
+
+/**
+ * Puntaje de un jugador en escala ~0-10, para el reparto: media ponderada (ver
+ * `weightedRatings`) + modificadores de situación:
+ * - Si va "tocado / bajo de forma", factor de penalización (~18% menos).
  * - El ánimo (si se pasa) aplica un modificador suave de ±ANIMO_MAX_DELTA puntos.
  *
  * NOTA: la edad NO entra directamente en el puntaje a propósito. Su efecto real
@@ -67,11 +84,7 @@ export function playerScore(player: Player, opts: ScoreOptions = {}): number {
   const weights = opts.weights ?? DEFAULT_WEIGHTS
   const tocadoFactor = opts.tocadoFactor ?? TOCADO_FACTOR
 
-  let score = 0
-  for (const key of RATING_KEYS) {
-    const value = player.ratings[key] ?? DEFAULT_RATING
-    score += value * weights[key]
-  }
+  let score = weightedRatings(player, weights)
 
   if (player.tocado) score *= tocadoFactor
 

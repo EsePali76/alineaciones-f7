@@ -1,12 +1,7 @@
 import { useState } from 'react'
 import type { Player } from '../domain/types'
-import {
-  POSITION_LABEL,
-  FOOT_LABEL,
-  RATING_KEYS,
-  RATING_KEYS_FACETAS,
-  DEFAULT_RATING,
-} from '../domain/constants'
+import { POSITION_LABEL, FOOT_LABEL } from '../domain/constants'
+import { weightedRatings } from '../domain/scoring'
 import { animoLabel } from '../domain/animo'
 import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
@@ -22,20 +17,12 @@ interface PlayerListProps {
 }
 
 /**
- * Media orientativa de la columna "Valoración":
- *  - Si SOLO se ha puesto la valoración general → se muestra ese mismo valor (no se
- *    diluye con cincos: la general ya es el juicio de conjunto).
- *  - Si hay algún dato más (otras facetas), se hace la media de los 7 parámetros
- *    contando 5 en los que falten.
- *  - Si no hay ningún dato → sin media.
+ * Valoración mostrada en la columna: la MISMA media ponderada que usa el balanceador
+ * (`weightedRatings`), sin los modificadores de situación (tocado / ánimo). Las facetas
+ * vacías toman el valor de la general; si solo hay general, sale esa nota tal cual.
  */
-function mediaValoracion(p: Player): number | null {
-  const general = p.ratings.general
-  const facetasRellenas = RATING_KEYS_FACETAS.filter((k) => p.ratings[k] !== undefined)
-  if (general !== undefined && facetasRellenas.length === 0) return general
-  if (general === undefined && facetasRellenas.length === 0) return null
-  const total = RATING_KEYS.reduce((s, k) => s + (p.ratings[k] ?? DEFAULT_RATING), 0)
-  return total / RATING_KEYS.length
+function mediaValoracion(p: Player): number {
+  return weightedRatings(p)
 }
 
 type SortKey = 'nombre' | 'edad' | 'media'
@@ -76,13 +63,7 @@ export function PlayerList({
   const ordenados = [...players].sort((a, b) => {
     let cmp: number
     if (sortKey === 'media') {
-      const ma = mediaValoracion(a)
-      const mb = mediaValoracion(b)
-      // Sin media (null) siempre al final, independientemente de la dirección.
-      if (ma === null && mb === null) cmp = 0
-      else if (ma === null) return 1
-      else if (mb === null) return -1
-      else cmp = ma - mb
+      cmp = mediaValoracion(a) - mediaValoracion(b)
     } else if (sortKey === 'edad') {
       // Sin edad siempre al final, independientemente de la dirección.
       const ea = a.edad ?? null
@@ -176,9 +157,7 @@ export function PlayerList({
                     </div>
                   </td>
                   <td className="px-3 py-2 text-slate-400">{FOOT_LABEL[p.pierna]}</td>
-                  <td className="px-3 py-2 text-slate-300">
-                    {media === null ? '—' : media.toFixed(1)}
-                  </td>
+                  <td className="px-3 py-2 text-slate-300">{media.toFixed(1)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-slate-300">
                     {p.animoCalculado != null ? (
                       <span title={animoLabel(p.animoCalculado).texto}>
