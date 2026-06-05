@@ -142,10 +142,8 @@ export function RatePlayers() {
         <h2 className="text-lg font-semibold">Valorar jugadores</h2>
         {isAdmin ? (
           <p className="text-sm text-slate-400">
-            Puntúa al resto del grupo (0-10). Es anónimo: nadie verá tu voto, solo la media.{' '}
-            <b>Cada parámetro es opcional</b>: deja en blanco lo que no quieras puntuar (no cuenta) y
-            rellena solo lo que quieras. Guarda cada jugador con su botón. Cuando termines del todo,
-            pulsa <b>Finalizar</b> y se bloqueará.
+            Puntúa al resto del grupo (0-10). Es anónimo: nadie verá tu voto, solo la media. Guarda
+            cada jugador con su botón. Cuando termines del todo, pulsa <b>Finalizar</b> y se bloqueará.
           </p>
         ) : (
           <p className="text-sm text-slate-400">
