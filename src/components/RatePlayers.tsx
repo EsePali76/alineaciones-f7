@@ -4,6 +4,7 @@ import { useRatingsStore } from '../store/ratingsStore'
 import { useAuthStore } from '../store/authStore'
 import { useRotationStore } from '../store/rotationStore'
 import type { PlayerRatings, Rating } from '../domain/types'
+import { fotoVisible } from '../domain/types'
 import {
   RATING_KEY_ANCLA,
   RATING_KEYS_FACETAS,
@@ -201,7 +202,7 @@ export function RatePlayers() {
                     }
                   >
                     <span className="flex items-center gap-2">
-                      <Avatar src={p.fotoUrl} alt={p.nombre} className="h-6 w-6" />
+                      <Avatar src={fotoVisible(p)} alt={p.nombre} className="h-6 w-6" />
                       {p.nombre}
                     </span>
                     <span className={hecho ? 'text-emerald-400' : 'text-slate-600'}>
@@ -222,7 +223,7 @@ export function RatePlayers() {
             ) : (
               <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
                 <h3 className="flex items-center gap-2 text-base font-semibold">
-                  <Avatar src={jugador.fotoUrl} alt={jugador.nombre} className="h-9 w-9" />
+                  <Avatar src={fotoVisible(jugador)} alt={jugador.nombre} className="h-9 w-9" />
                   {jugador.nombre}
                 </h3>
                 <div className="rounded-lg border-2 border-red-500 bg-red-600/25 p-3 shadow-[0_0_14px_-2px_rgba(239,68,68,0.5)]">

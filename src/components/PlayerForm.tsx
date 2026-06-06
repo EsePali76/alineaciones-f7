@@ -49,6 +49,7 @@ const EMPTY: PlayerInput = {
   excluidoRotacion: false,
   reserva: false,
   activo: true,
+  fotoOculta: false,
 }
 
 export function PlayerForm({
@@ -167,6 +168,21 @@ export function PlayerForm({
         nombre={data.nombre}
         onChange={(url) => setData((d) => ({ ...d, fotoUrl: url }))}
       />
+
+      {/* Moderación de la foto (solo admin): ocultar una foto inapropiada sin borrarla. */}
+      {!soloIdentidad && data.fotoUrl && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={data.fotoOculta ?? false}
+            onChange={(e) => setData((d) => ({ ...d, fotoOculta: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          <span title="Oculta esta foto en toda la app (se mostrará la silueta). No la borra: tú la sigues viendo aquí. Útil si alguien sube algo inapropiado.">
+            Ocultar foto (no la verá nadie · se muestra silueta)
+          </span>
+        </label>
+      )}
 
       {/* Nombre + edad */}
       <div className="flex flex-wrap gap-3">

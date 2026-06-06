@@ -16,6 +16,7 @@ import {
 import { temporadasDisponibles, filtrarPorTemporada, TODAS } from '../domain/season'
 import { SeasonPicker } from './SeasonPicker'
 import { Avatar } from './Avatar'
+import { fotoVisible } from '../domain/types'
 
 type Sub = 'equipo' | 'jugador' | 'menciones'
 type Modo = 'temporada' | 'totales'
@@ -82,7 +83,7 @@ export function StatsPanel() {
   const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr), [statsArr])
 
   const nombre = (id: string) => players.find((p) => p.id === id)?.nombre ?? '(?)'
-  const foto = (id: string) => players.find((p) => p.id === id)?.fotoUrl
+  const foto = (id: string) => fotoVisible(players.find((p) => p.id === id))
 
   const filas = useMemo(() => {
     // Valor de ordenación de cada jugador según la columna activa.

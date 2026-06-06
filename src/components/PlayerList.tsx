@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Player } from '../domain/types'
+import { fotoVisible } from '../domain/types'
 import { POSITION_LABEL, FOOT_LABEL } from '../domain/constants'
 import { weightedRatings } from '../domain/scoring'
 import { animoLabel } from '../domain/animo'
@@ -130,7 +131,7 @@ export function PlayerList({
                 >
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <Avatar src={p.fotoUrl} alt={p.nombre} className="h-7 w-7" />
+                      <Avatar src={fotoVisible(p)} alt={p.nombre} className="h-7 w-7" />
                       <span>
                         <span className="font-medium">{p.nombre}</span>
                         {p.invitado && !p.habitual && (

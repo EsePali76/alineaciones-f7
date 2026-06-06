@@ -1,5 +1,15 @@
 // Modelo de dominio de alineaciones_F7
 
+/**
+ * Foto que debe MOSTRARSE de un jugador: su `fotoUrl`, salvo que el admin la haya
+ * ocultado (`fotoOculta`), en cuyo caso devuelve `undefined` y el Avatar cae a la
+ * silueta. Usar en todos los sitios donde se pinta el avatar (NO en el formulario
+ * de edición, donde el admin necesita ver la foto real para decidir).
+ */
+export function fotoVisible(p?: Pick<Player, 'fotoUrl' | 'fotoOculta'> | null): string | undefined {
+  return p && !p.fotoOculta ? p.fotoUrl : undefined
+}
+
 /** Códigos de posición en fútbol 7. Un jugador puede tener varias. */
 export type PositionCode = 'POR' | 'DEF' | 'CAR' | 'MED' | 'MP' | 'EXT' | 'DEL'
 
@@ -54,6 +64,13 @@ export interface Player {
    * el admin (cualquiera).
    */
   fotoUrl?: string
+  /**
+   * Foto oculta por el admin: si es `true`, la `fotoUrl` existe pero NO se muestra
+   * en ningún sitio (se cae a la silueta genérica). Es la moderación reactiva para
+   * cuando alguien sube una foto inapropiada. El admin sí ve la foto real en el
+   * formulario de edición, para decidir. Por defecto `false` (la foto se ve).
+   */
+  fotoOculta?: boolean
   /**
    * Invitado: no es del grupo, no tiene cuenta de usuario. Vive en la lista de
    * Invitados (no en el Plantel) y nunca entra en la rotación de alineadores.
