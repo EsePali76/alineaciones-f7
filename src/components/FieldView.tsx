@@ -106,6 +106,7 @@ function Ficha({
   onCrossSwap,
   readOnly = false,
   marca,
+  tocado,
 }: {
   punto: Punto
   lado: 'A' | 'B'
@@ -114,6 +115,8 @@ function Ficha({
   readOnly?: boolean
   /** Goles/asistencias del jugador en este partido (solo en la vista del historial). */
   marca?: { goles: number; asist: number }
+  /** Si jugó tocado (ya resuelto por FieldView: foto del partido en historial, flag en vivo si no). */
+  tocado: boolean
 }) {
   const { player, x, y } = punto
   return (
@@ -153,7 +156,7 @@ function Ficha({
       <span className="mt-0.5 whitespace-nowrap rounded bg-black/65 px-1.5 text-[0.8rem] font-medium leading-tight text-white">
         {nombreVisible(player)}
         {player.invitado && <span className="text-amber-300">*</span>}
-        {player.tocado && <TocadoIcon className="ml-0.5" />}
+        {tocado && <TocadoIcon className="ml-0.5" />}
       </span>
       {marca && (marca.goles > 0 || marca.asist > 0) && (
         <span className="mt-0.5 flex max-w-[5em] flex-wrap justify-center gap-px text-[0.85rem] leading-none">
@@ -180,6 +183,7 @@ export function FieldView({
   placementA: placementAProp,
   placementB: placementBProp,
   marcas,
+  tocadoIds,
 }: {
   balance: TeamBalance
   formacionA: Formacion
@@ -192,6 +196,11 @@ export function FieldView({
   placementB?: string[] | null
   /** Goles/asistencias por jugador, para pintar ⚽/🅰️ sobre cada ficha (vista de historial). */
   marcas?: Map<string, { goles: number; asist: number }>
+  /**
+   * Quién jugó tocado en ESTE partido (foto del historial). Si se pasa, manda sobre el
+   * flag `tocado` en vivo del jugador; si no (vistas de la semana actual), se usa el flag.
+   */
+  tocadoIds?: Set<string>
 }) {
   const storePlacementA = useGeneratorStore((s) => s.placementA)
   const storePlacementB = useGeneratorStore((s) => s.placementB)
@@ -200,6 +209,9 @@ export function FieldView({
 
   const placementA = readOnly ? placementAProp ?? null : storePlacementA
   const placementB = readOnly ? placementBProp ?? null : storePlacementB
+
+  // Tocado: en el historial manda la foto del partido (`tocadoIds`); en las vistas en vivo, el flag.
+  const esTocado = (p: Player) => (tocadoIds ? tocadoIds.has(p.id) : p.tocado)
 
   const puntosA = aplicarPlacement(posiciones(balance.teamA, 'A', formacionA), placementA)
   const puntosB = aplicarPlacement(posiciones(balance.teamB, 'B', formacionB), placementB)
@@ -249,10 +261,10 @@ export function FieldView({
 
         {/* Jugadores */}
         {puntosA.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="A" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} />
+          <Ficha key={pt.player.id} punto={pt} lado="A" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} tocado={esTocado(pt.player)} />
         ))}
         {puntosB.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="B" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} />
+          <Ficha key={pt.player.id} punto={pt} lado="B" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} tocado={esTocado(pt.player)} />
         ))}
 
         {/* Etiquetas de equipo */}

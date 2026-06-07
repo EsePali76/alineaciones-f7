@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ConfirmedLineup, MatchResult } from '../domain/types'
+import { usePlayersStore } from './playersStore'
 import * as api from '../lib/dataApi'
 
 /** Metadatos opcionales de una alineación (quién la hizo + cómo dibujarla). */
@@ -121,9 +122,23 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
   setFecha: (id, fecha) => actualizar(get, set, id, (l) => ({ ...l, fecha })),
 
   setResultado: (id, resultado) =>
-    actualizar(get, set, id, (l) => ({ ...l, resultado })),
+    actualizar(get, set, id, (l) => {
+      // Reedición de un resultado ya existente: se conserva la foto de "tocados" del día
+      // (no se recaptura con el estado actual del flag, que es de la semana en curso).
+      if (l.resultado) return { ...l, resultado }
+      // Primera vez que se registra: se congela quién de la convocatoria iba tocado AHORA.
+      const tocadosVivos = new Set(
+        usePlayersStore
+          .getState()
+          .players.filter((p) => p.tocado)
+          .map((p) => p.id),
+      )
+      const tocados = [...l.teamA, ...l.teamB].filter((pid) => tocadosVivos.has(pid))
+      return { ...l, resultado, tocados }
+    }),
 
-  clearResultado: (id) => actualizar(get, set, id, (l) => ({ ...l, resultado: undefined })),
+  clearResultado: (id) =>
+    actualizar(get, set, id, (l) => ({ ...l, resultado: undefined, tocados: undefined })),
 
   replaceAll: async (lineups) => {
     const prev = get().lineups

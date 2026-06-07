@@ -154,6 +154,14 @@ export interface ConfirmedLineup {
   placementB?: string[]
   /** Resultado del partido, si ya se ha registrado tras jugar. */
   resultado?: MatchResult
+  /**
+   * Ids de los jugadores que disputaron ESTE partido "tocados". Es una FOTO que se
+   * congela al registrar el resultado por primera vez (no se recaptura al reeditar),
+   * para que el historial refleje quién jugó tocado ese día y no el estado actual del
+   * flag (que es puntual y cambia cada semana). Los partidos previos a esta función no
+   * lo tienen (`undefined`) → no muestran a nadie tocado.
+   */
+  tocados?: string[]
 }
 
 /** Un gol concreto del partido: a qué equipo, quién lo metió y quién lo asistió. */
