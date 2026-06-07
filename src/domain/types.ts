@@ -10,6 +10,17 @@ export function fotoVisible(p?: Pick<Player, 'fotoUrl' | 'fotoOculta'> | null): 
   return p && !p.fotoOculta ? p.fotoUrl : undefined
 }
 
+/**
+ * Nombre a mostrar en gráficos/estadísticas, equipos y partidos: el "nombre
+ * reconocible" que pone el admin si existe; si no, el nombre del jugador. En
+ * plantel, valoraciones y perfil se usa directamente `nombre` (el del usuario).
+ */
+export function nombreVisible(p?: Pick<Player, 'nombre' | 'nombreReconocible'> | null): string {
+  if (!p) return '(?)'
+  const r = p.nombreReconocible?.trim()
+  return r && r.length > 0 ? r : p.nombre
+}
+
 /** Códigos de posición en fútbol 7. Un jugador puede tener varias. */
 export type PositionCode = 'POR' | 'DEF' | 'CAR' | 'MED' | 'MP' | 'EXT' | 'DEL'
 
@@ -50,6 +61,12 @@ export interface PlayerRatings {
 export interface Player {
   id: string
   nombre: string
+  /**
+   * Nombre "reconocible" que pone el ADMIN (p. ej. el nombre real). Se usa en
+   * gráficos/estadísticas, equipos y partidos para que todos identifiquen al
+   * jugador, sea cual sea el nombre que él se ponga. Vacío → se usa `nombre`.
+   */
+  nombreReconocible?: string
   /** Edad en años (dato objetivo, opcional). */
   edad?: number
   /** Posiciones que sabe jugar (al menos una). */

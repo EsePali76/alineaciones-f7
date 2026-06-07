@@ -13,6 +13,7 @@ import { formacionPorNombre } from '../domain/formation'
 import { SeasonPicker } from './SeasonPicker'
 import { FieldView } from './FieldView'
 import type { ConfirmedLineup, GoalEvent, MatchResult, Player } from '../domain/types'
+import { nombreVisible } from '../domain/types'
 
 export function HistoryList() {
   const lineups = useLineupsStore((s) => s.lineups)
@@ -21,7 +22,7 @@ export function HistoryList() {
 
   const nombrePorId = useMemo(() => {
     const m = new Map<string, string>()
-    for (const p of players) m.set(p.id, p.nombre)
+    for (const p of players) m.set(p.id, nombreVisible(p))
     return m
   }, [players])
   const nombre = (id: string) => nombrePorId.get(id) ?? '(jugador eliminado)'

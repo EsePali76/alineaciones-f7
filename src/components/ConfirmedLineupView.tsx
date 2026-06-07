@@ -7,6 +7,7 @@ import { formacionPorNombre } from '../domain/formation'
 import { FieldView } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
 import type { ConfirmedLineup, Player } from '../domain/types'
+import { nombreVisible } from '../domain/types'
 
 /**
  * Vista de solo lectura de la alineación confirmada de la semana (sin resultado aún),
@@ -98,7 +99,7 @@ function TeamCol({
       <ul className="mt-1 flex flex-col gap-0.5">
         {team.map((p) => (
           <li key={p.id} className="text-slate-200">
-            {p.nombre}
+            {nombreVisible(p)}
             {p.invitado && <span className="text-amber-300"> *</span>}
             {p.tocado && <TocadoIcon className="ml-1" />}
           </li>

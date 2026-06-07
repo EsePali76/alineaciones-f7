@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore'
 import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
 import { useTurno } from '../hooks/useTurno'
 import type { Player } from '../domain/types'
-import { fotoVisible } from '../domain/types'
+import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore } from '../domain/scoring'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
@@ -364,9 +364,9 @@ function GrupoConvocados({
               }
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                <Avatar src={fotoVisible(p)} alt={p.nombre} className="h-6 w-6" />
+                <Avatar src={fotoVisible(p)} alt={nombreVisible(p)} className="h-6 w-6" />
                 <span className="truncate">
-                  {p.nombre}
+                  {nombreVisible(p)}
                   {p.tocado && <TocadoIcon className="ml-1" />}
                 </span>
               </span>
@@ -550,12 +550,12 @@ function TeamColumn({
           <li key={p.id} className="flex items-center gap-2">
             <Avatar
               src={fotoVisible(p)}
-              alt={p.nombre}
+              alt={nombreVisible(p)}
               className="h-6 w-6"
               ring={color === 'white' ? 'A' : 'B'}
             />
             <span>
-              {p.nombre}
+              {nombreVisible(p)}
               {p.invitado && <span className="text-amber-400" title="Invitado"> *</span>}
               {p.tocado && <TocadoIcon className="ml-1" />}
             </span>

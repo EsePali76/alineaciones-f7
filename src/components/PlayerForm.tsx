@@ -196,6 +196,20 @@ export function PlayerForm({
             className="rounded border border-slate-600 bg-slate-900 px-3 py-2"
           />
         </label>
+        {!soloIdentidad && (
+          <label className="flex flex-1 min-w-[200px] flex-col gap-1 text-sm">
+            <span className="text-slate-400" title="El que se ve en estadísticas, equipos y partidos. Si lo dejas vacío, se usa el nombre de arriba.">
+              Nombre reconocible (opcional)
+            </span>
+            <input
+              type="text"
+              value={data.nombreReconocible ?? ''}
+              onChange={(e) => setData((d) => ({ ...d, nombreReconocible: e.target.value }))}
+              placeholder="Nombre real para estadísticas"
+              className="rounded border border-slate-600 bg-slate-900 px-3 py-2"
+            />
+          </label>
+        )}
         <label className="flex w-28 flex-col gap-1 text-sm">
           <span className="text-slate-400">Edad</span>
           <input
