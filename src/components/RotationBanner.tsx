@@ -6,7 +6,8 @@ import { useRotationStore } from '../store/rotationStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 import { useLineupsStore } from '../store/lineupsStore'
 import { formatoFecha, siguienteJornada } from '../domain/matchday'
-import type { SignupStatus } from '../lib/convocatoriaApi'
+import { nombreVisible } from '../domain/types'
+import type { SignupRow, SignupStatus } from '../lib/convocatoriaApi'
 import type { PlayerInput } from '../store/playersStore'
 
 /**
@@ -46,6 +47,11 @@ export function RotationBanner() {
   const estoyExcluido = yo?.excluidoRotacion ?? false
   // Los usuarios "reserva" solo tienen el botón "Si falta gente voy".
   const soyReserva = yo?.reserva ?? false
+
+  const nombreDe = (id: string) => {
+    const p = players.find((x) => x.id === id)
+    return p ? nombreVisible(p) : '(?)'
+  }
 
   const setExcluido = async (value: boolean) => {
     if (!yo) return
@@ -254,6 +260,15 @@ export function RotationBanner() {
           </span>
         )}
 
+        {/* Listado provisional de convocados y reservas (visible a todos). La cabecera de
+            cada lista solo aparece si tiene gente. */}
+        {(titulares.length > 0 || reservas.length > 0) && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ListaConvocatoria titulo="Convocados" color="text-emerald-400" items={titulares} nombreDe={nombreDe} />
+            <ListaConvocatoria titulo="Reservas" color="text-amber-400" items={reservas} nombreDe={nombreDe} />
+          </div>
+        )}
+
         {/* Aviso al reserva apuntado: cuando hay alineación confirmada, si entra o no. */}
         {miEstado === 'maybe' && pendingLineup && (
           estoyEnAlineacion ? (
@@ -276,6 +291,36 @@ export function RotationBanner() {
           pestaña «Valorar» mientras esté activo.
         </div>
       )}
+    </div>
+  )
+}
+
+/** Lista numerada de convocados o reservas (orden de llegada). Vacía → no renderiza nada. */
+function ListaConvocatoria({
+  titulo,
+  color,
+  items,
+  nombreDe,
+}: {
+  titulo: string
+  color: string
+  items: SignupRow[]
+  nombreDe: (id: string) => string
+}) {
+  if (items.length === 0) return null
+  return (
+    <div>
+      <span className={`text-xs font-semibold uppercase tracking-wide ${color}`}>
+        {titulo} ({items.length})
+      </span>
+      <ol className="mt-1 flex flex-col gap-0.5 text-sm text-slate-200">
+        {items.map((s, i) => (
+          <li key={s.player_id} className="flex items-center gap-2">
+            <span className="w-5 shrink-0 text-right text-slate-500">{i + 1}.</span>
+            <span className="truncate">{nombreDe(s.player_id)}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }
