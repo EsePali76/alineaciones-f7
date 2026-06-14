@@ -15,6 +15,8 @@ export interface ConvocatoriaInfo {
   titulares: SignupRow[]
   /** "Si falta gente voy" (reservas), por orden de llegada. */
   reservas: SignupRow[]
+  /** "No voy esta semana" (declinan explícitamente), por orden de llegada. */
+  noVienen: SignupRow[]
   /** Ids de titulares (orden de llegada) — para sembrar los convocados. */
   titularIds: string[]
   /** Ids de reservas (orden de llegada) — para "completar con reservas". */
@@ -39,12 +41,14 @@ export function useConvocatoria(): ConvocatoriaInfo {
       .sort((a, b) => a.created_at.localeCompare(b.created_at))
     const titulares = delDia.filter((s) => s.status === 'in')
     const reservas = delDia.filter((s) => s.status === 'maybe')
+    const noVienen = delDia.filter((s) => s.status === 'out')
     const mio = myPlayerId ? delDia.find((s) => s.player_id === myPlayerId) : undefined
     return {
       fecha,
       abierta,
       titulares,
       reservas,
+      noVienen,
       titularIds: titulares.map((s) => s.player_id),
       reservaIds: reservas.map((s) => s.player_id),
       miEstado: mio?.status ?? null,

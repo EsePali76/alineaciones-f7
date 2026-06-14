@@ -27,7 +27,7 @@ export function RotationBanner() {
   const posponerJornada = useRotationStore((s) => s.posponerJornada)
   const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
 
-  const { fecha, abierta, titulares, reservas, miEstado } = useConvocatoria()
+  const { fecha, abierta, titulares, reservas, noVienen, miEstado } = useConvocatoria()
   const apuntarse = useConvocatoriaStore((s) => s.apuntarse)
   const borrarse = useConvocatoriaStore((s) => s.borrarse)
   const lineups = useLineupsStore((s) => s.lineups)
@@ -191,6 +191,7 @@ export function RotationBanner() {
           <span className="text-sm text-slate-400">
             · {titulares.length} apuntado{titulares.length === 1 ? '' : 's'}
             {reservas.length > 0 && ` · ${reservas.length} de reserva`}
+            {noVienen.length > 0 && ` · ${noVienen.length} no vienen`}
           </span>
         </span>
 
@@ -224,7 +225,21 @@ export function RotationBanner() {
             >
               {miEstado === 'maybe' ? '✓ Si falta gente' : 'Si falta gente voy'}
             </button>
-            {miEstado && (
+            {/* "No voy esta semana": toggle propio (se resalta con ✕). NO te mete en la
+                convocatoria, así que no se convierte en "Me borro"; puedes apuntarte luego. */}
+            <button
+              onClick={() => (miEstado === 'out' ? desapuntar() : apuntar('out'))}
+              className={
+                'rounded px-3 py-1.5 text-sm font-medium transition-colors ' +
+                (miEstado === 'out'
+                  ? 'bg-slate-600 text-white'
+                  : 'border border-slate-500 text-slate-300 hover:bg-slate-600/20')
+              }
+            >
+              {miEstado === 'out' ? '✕ No voy esta semana' : 'No voy esta semana'}
+            </button>
+            {/* "Me borro": solo cuando te has apuntado a jugar (titular o reserva). */}
+            {(miEstado === 'in' || miEstado === 'maybe') && (
               <button
                 onClick={desapuntar}
                 className="rounded border border-red-600 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-600/10"

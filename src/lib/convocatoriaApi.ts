@@ -1,11 +1,14 @@
 import { supabase } from './supabase'
 
 /** Estado de apuntado de un jugador a la convocatoria de una jornada. */
-export type SignupStatus = 'in' | 'maybe'
+export type SignupStatus = 'in' | 'maybe' | 'out'
 
 export interface SignupRow {
   player_id: string
-  /** 'in' = "Me apunto" (titular); 'maybe' = "Si falta gente voy" (reserva). */
+  /**
+   * 'in' = "Me apunto" (titular); 'maybe' = "Si falta gente voy" (reserva);
+   * 'out' = "No voy esta semana" (declina explícitamente).
+   */
   status: SignupStatus
   /** Jornada a la que pertenece este apunte ('YYYY-MM-DD'). */
   match_date: string

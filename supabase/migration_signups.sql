@@ -6,9 +6,9 @@
 --    - rotation.match_date  → override de fecha del próximo partido (admin
 --      "este lunes no hay partido"). NULL = se calcula automáticamente en el front.
 --    - tabla signups        → cada usuario se apunta a la convocatoria de una
---      jornada. status 'in' = "Me apunto" (titular); 'maybe' = "Si falta gente voy".
---      created_at da el ORDEN DE LLEGADA. RLS: cada uno gestiona su fila; admin todo;
---      lectura pública.
+--      jornada. status 'in' = "Me apunto" (titular); 'maybe' = "Si falta gente voy";
+--      'out' = "No voy esta semana" (declina). created_at da el ORDEN DE LLEGADA.
+--      RLS: cada uno gestiona su fila; admin todo; lectura pública.
 -- ============================================================================
 
 -- 1) Override de fecha del próximo partido en el singleton de rotación.
@@ -17,10 +17,14 @@ alter table public.rotation add column if not exists match_date date;
 -- 2) Apuntes a la convocatoria.
 create table if not exists public.signups (
   player_id  text primary key references public.players(id) on delete cascade,
-  status     text not null check (status in ('in', 'maybe')),
+  status     text not null check (status in ('in', 'maybe', 'out')),
   match_date date not null,
   created_at timestamptz not null default now()
 );
+-- Idempotente: si la tabla ya existía con el check viejo ('in','maybe'), añade 'out'.
+alter table public.signups drop constraint if exists signups_status_check;
+alter table public.signups
+  add constraint signups_status_check check (status in ('in', 'maybe', 'out'));
 
 alter table public.signups enable row level security;
 
