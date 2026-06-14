@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore'
 import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
+import { useLineupsStore } from '../store/lineupsStore'
 import { formatoFecha, siguienteJornada } from '../domain/matchday'
 import type { SignupStatus } from '../lib/convocatoriaApi'
 import type { PlayerInput } from '../store/playersStore'
@@ -29,6 +30,17 @@ export function RotationBanner() {
   const { fecha, abierta, titulares, reservas, miEstado } = useConvocatoria()
   const apuntarse = useConvocatoriaStore((s) => s.apuntarse)
   const borrarse = useConvocatoriaStore((s) => s.borrarse)
+  const lineups = useLineupsStore((s) => s.lineups)
+
+  // Alineación confirmada pendiente de jugar (la de esta semana, sin resultado aún).
+  const pendingLineup = lineups
+    .filter((l) => !l.resultado)
+    .sort((a, b) => b.fecha - a.fecha)[0]
+  // Para un reserva apuntado ('maybe'): ¿ha entrado finalmente en la alineación confirmada?
+  const estoyEnAlineacion =
+    !!pendingLineup &&
+    !!myPlayerId &&
+    (pendingLineup.teamA.includes(myPlayerId) || pendingLineup.teamB.includes(myPlayerId))
 
   const yo = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
   const estoyExcluido = yo?.excluidoRotacion ?? false
@@ -90,7 +102,7 @@ export function RotationBanner() {
       <div className="flex flex-col gap-1">
         <span className="flex items-center gap-2 text-slate-200">
           <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
-          🗓️ La siguiente alineación es de...
+          La siguiente alineación es de...
         </span>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-5">
           <b className="text-xl text-red-400">{current ? current.nombre : '— sin asignar —'}</b>
@@ -159,6 +171,17 @@ export function RotationBanner() {
             ... y la próxima es de... <b className="text-slate-300">{next.nombre}</b>
           </span>
         )}
+        {isAdmin && (
+          <button
+            onClick={() => {
+              if (confirm('¿Reiniciar la rotación en ORDEN ALEATORIO con los elegibles actuales?'))
+                reiniciar()
+            }}
+            className="ml-auto rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
+          >
+            Reiniciar rotación (aleatorio)
+          </button>
+        )}
       </div>
 
       {/* 3) Convocatoria */}
@@ -215,6 +238,20 @@ export function RotationBanner() {
             El admin debe emparejarte con tu jugador para que puedas apuntarte.
           </span>
         )}
+
+        {/* Aviso al reserva apuntado: cuando hay alineación confirmada, si entra o no. */}
+        {miEstado === 'maybe' && pendingLineup && (
+          estoyEnAlineacion ? (
+            <div className="rounded-md border border-emerald-500/50 bg-emerald-900/40 px-3 py-2 text-sm text-emerald-200">
+              ✅ <b>¡Estás convocado!</b> Has entrado en la alineación, juegas este lunes.
+            </div>
+          ) : (
+            <div className="rounded-md border border-slate-600 bg-slate-800/60 px-3 py-2 text-sm text-slate-300">
+              🙏 Esta semana <b>no entras</b> en la convocatoria. ¡Gracias por ofrecerte! Quizá la
+              próxima.
+            </div>
+          )
+        )}
       </div>
 
       {/* Aviso del plazo de re-evaluación de valoraciones (lo abre el admin). */}
@@ -223,18 +260,6 @@ export function RotationBanner() {
           📝 <b>Plazo de reevaluación abierto:</b> puedes revisar y ajustar tus valoraciones en la
           pestaña «Valorar» mientras esté activo.
         </div>
-      )}
-
-      {isAdmin && (
-        <button
-          onClick={() => {
-            if (confirm('¿Reiniciar la rotación en ORDEN ALEATORIO con los elegibles actuales?'))
-              reiniciar()
-          }}
-          className="ml-auto rounded border border-slate-600 px-2 py-1 text-xs text-slate-400 hover:border-slate-300"
-        >
-          Reiniciar rotación (aleatorio)
-        </button>
       )}
     </div>
   )
