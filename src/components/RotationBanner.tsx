@@ -262,14 +262,13 @@ export function RotationBanner() {
             <span className="text-sm text-slate-400">
               {titulares.length} apuntado{titulares.length === 1 ? '' : 's'}
               {reservas.length > 0 && ` · ${reservas.length} de reserva`}
-              {noVienen.length > 0 && ` · ${noVienen.length} no van`}
+              {noVienen.length > 0 && ` · ${noVienen.length} baja${noVienen.length === 1 ? '' : 's'}`}
             </span>
-            {(titulares.length > 0 || reservas.length > 0) && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <ListaConvocatoria titulo="Convocados" color="text-emerald-400" items={titulares} nombreDe={nombreDe} />
-                <ListaConvocatoria titulo="Reservas" color="text-amber-400" items={reservas} nombreDe={nombreDe} />
-              </div>
-            )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ListaConvocatoria titulo="Convocados" color="text-emerald-400" items={titulares} nombreDe={nombreDe} />
+              <ListaConvocatoria titulo="Reservas" color="text-amber-400" items={reservas} nombreDe={nombreDe} />
+              <ListaConvocatoria titulo="Bajas" color="text-red-400" items={noVienen} nombreDe={nombreDe} />
+            </div>
           </div>
         )}
 
