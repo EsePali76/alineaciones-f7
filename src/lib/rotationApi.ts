@@ -7,19 +7,22 @@ interface RotationRow {
   order_ids: string[] | null
   skipped_ids: string[] | null
   ratings_open: boolean | null
+  match_date: string | null
 }
 
-/** Estado de rotación + ventana global de re-evaluación de valoraciones. */
+/** Estado de rotación + ventana de re-evaluación + override de fecha de partido. */
 export interface RotationFetch {
   rotation: RotationData
   ratingsOpen: boolean
+  /** Override de fecha del próximo partido ('YYYY-MM-DD'), o null si automática. */
+  matchDate: string | null
 }
 
 /** Lee el estado de rotación (fila singleton id=1) y el flag de ventana de revisión. */
 export async function fetchRotation(): Promise<RotationFetch> {
   const { data, error } = await supabase
     .from('rotation')
-    .select('current_player_id, order_ids, skipped_ids, ratings_open')
+    .select('current_player_id, order_ids, skipped_ids, ratings_open, match_date')
     .eq('id', 1)
     .maybeSingle()
   if (error) throw error
@@ -31,7 +34,17 @@ export async function fetchRotation(): Promise<RotationFetch> {
       skippedIds: row.skipped_ids ?? [],
     },
     ratingsOpen: row.ratings_open ?? false,
+    matchDate: row.match_date ?? null,
   }
+}
+
+/** Fija el override de fecha del próximo partido (admin; "este lunes no hay partido"). */
+export async function saveMatchDate(matchDate: string): Promise<void> {
+  const { error } = await supabase
+    .from('rotation')
+    .update({ match_date: matchDate, updated_at: new Date().toISOString() })
+    .eq('id', 1)
+  if (error) throw error
 }
 
 /** Abre/cierra la ventana global de re-evaluación (solo admin, vía RPC). */

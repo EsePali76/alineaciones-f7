@@ -32,8 +32,12 @@ interface RotationState {
   data: RotationData
   /** Ventana global de re-evaluación abierta (todos pueden revisar sus votos). */
   ratingsOpen: boolean
+  /** Override de fecha del próximo partido ('YYYY-MM-DD'); null = automática. */
+  matchDate: string | null
   loaded: boolean
   load: () => Promise<void>
+  /** "Este lunes no hay partido": empuja la fecha al siguiente lunes (admin). NO toca la cola. */
+  posponerJornada: (nuevaFecha: string) => Promise<void>
   /** Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa. */
   pasarTurno: () => Promise<void>
   /** Siembra/reinicia la cola con los elegibles actuales (admin). */
@@ -52,11 +56,23 @@ async function persist(set: (p: Partial<RotationState>) => void, data: RotationD
 export const useRotationStore = create<RotationState>((set, get) => ({
   data: { currentPlayerId: null, orderIds: [], skippedIds: [] },
   ratingsOpen: false,
+  matchDate: null,
   loaded: false,
 
   load: async () => {
-    const { rotation, ratingsOpen } = await api.fetchRotation()
-    set({ data: rotation, ratingsOpen, loaded: true })
+    const { rotation, ratingsOpen, matchDate } = await api.fetchRotation()
+    set({ data: rotation, ratingsOpen, matchDate, loaded: true })
+  },
+
+  posponerJornada: async (nuevaFecha) => {
+    const prev = get().matchDate
+    set({ matchDate: nuevaFecha })
+    try {
+      await api.saveMatchDate(nuevaFecha)
+    } catch (e) {
+      set({ matchDate: prev })
+      throw e
+    }
   },
 
   pasarTurno: async () => {

@@ -26,6 +26,23 @@ interface GeneratorState {
   confirmada: boolean
   /** Id de la alineación confirmada (para re-confirmar editando la misma, no crear otra). */
   confirmedLineupId: string | null
+  /**
+   * Jornada ('YYYY-MM-DD') a la que pertenece la convocatoria sembrada actual. Al
+   * cambiar de jornada se parte de cero (nueva semana). null = aún sin sembrar.
+   */
+  convocatoriaDate: string | null
+  /**
+   * Últimos ids de titulares ('Me apunto') con los que se sincronizaron los
+   * convocados. Permite hacer diffs incrementales: añadir a los nuevos apuntados y
+   * quitar a los que se desapuntan, SIN pisar los ajustes manuales del del turno.
+   */
+  lastSyncedSignupIds: string[]
+  /**
+   * Siembra los convocados con los titulares apuntados (en vivo, según la gente se
+   * apunta). Diff incremental contra `lastSyncedSignupIds`: añade nuevos, quita a
+   * los que se borran; conserva los añadidos a mano. Resetea al cambiar de jornada.
+   */
+  syncConvocatoria: (titularIds: string[], fecha: string) => void
   setConvocados: (ids: string[]) => void
   setJugadoresPorEquipo: (n: 6 | 7 | 8) => void
   setFormacionNombreA: (nombre: string) => void
@@ -54,12 +71,33 @@ const INICIAL = {
   balance: null as TeamBalance | null,
   confirmada: false,
   confirmedLineupId: null as string | null,
+  convocatoriaDate: null as string | null,
+  lastSyncedSignupIds: [] as string[],
 }
 
 export const useGeneratorStore = create<GeneratorState>()(
   persist(
     (set) => ({
       ...INICIAL,
+      syncConvocatoria: (titularIds, fecha) =>
+        set((state) => {
+          // Nueva jornada → parte de cero (la convocatoria anterior no se arrastra).
+          const nuevaJornada = state.convocatoriaDate !== fecha
+          const baseConvocados = nuevaJornada ? [] : state.convocados
+          const prevSync = new Set(nuevaJornada ? [] : state.lastSyncedSignupIds)
+          const curSync = new Set(titularIds)
+
+          const convocados = [...baseConvocados]
+          // Añade a los nuevos apuntados (no estaban antes ni ya en la lista).
+          for (const id of titularIds) {
+            if (!prevSync.has(id) && !convocados.includes(id)) convocados.push(id)
+          }
+          // Quita a los que se han desapuntado (estaban sincronizados y ya no apuntados).
+          // Los añadidos a mano (no son titulares ni lo fueron) se conservan.
+          const limpio = convocados.filter((id) => !(prevSync.has(id) && !curSync.has(id)))
+
+          return { convocados: limpio, lastSyncedSignupIds: titularIds, convocatoriaDate: fecha }
+        }),
       setConvocados: (ids) => set({ convocados: ids }),
       setJugadoresPorEquipo: (n) => set({ jugadoresPorEquipo: n }),
       setFormacionNombreA: (nombre) => set({ formacionNombreA: nombre }),

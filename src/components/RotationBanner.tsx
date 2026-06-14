@@ -1,13 +1,18 @@
 import { useTurno } from '../hooks/useTurno'
+import { useConvocatoria } from '../hooks/useConvocatoria'
 import { useAuthStore } from '../store/authStore'
 import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
+import { useConvocatoriaStore } from '../store/convocatoriaStore'
+import { formatoFecha, siguienteJornada } from '../domain/matchday'
+import type { SignupStatus } from '../lib/convocatoriaApi'
 import type { PlayerInput } from '../store/playersStore'
 
 /**
- * Banner de turno, visible para todos: "esta semana hace la alineación X".
- * Acciones según quién mira: pasar turno (el del turno), salir/entrar del listado
- * (cualquier vinculado), avanzar/reiniciar (admin).
+ * Banner de turno + convocatoria, visible para todos. Contiene, en este orden:
+ *  1. La fecha del próximo partido (+ botón admin "este lunes no hay partido").
+ *  2. A quién le toca hacer la alineación (turno rotativo) y sus acciones.
+ *  3. La cabecera "Convocatoria" con los botones para apuntarse (desde el domingo 12:00).
  */
 export function RotationBanner() {
   const { current, next, isMyTurn } = useTurno()
@@ -18,10 +23,17 @@ export function RotationBanner() {
   const updatePlayer = usePlayersStore((s) => s.updatePlayer)
   const pasarTurno = useRotationStore((s) => s.pasarTurno)
   const reiniciar = useRotationStore((s) => s.reiniciar)
+  const posponerJornada = useRotationStore((s) => s.posponerJornada)
   const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
+
+  const { fecha, abierta, titulares, reservas, miEstado } = useConvocatoria()
+  const apuntarse = useConvocatoriaStore((s) => s.apuntarse)
+  const borrarse = useConvocatoriaStore((s) => s.borrarse)
 
   const yo = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
   const estoyExcluido = yo?.excluidoRotacion ?? false
+  // Los usuarios "reserva" solo tienen el botón "Si falta gente voy".
+  const soyReserva = yo?.reserva ?? false
 
   const setExcluido = async (value: boolean) => {
     if (!yo) return
@@ -34,8 +46,47 @@ export function RotationBanner() {
     }
   }
 
+  const apuntar = async (status: SignupStatus) => {
+    if (!myPlayerId) return
+    try {
+      await apuntarse(myPlayerId, status, fecha)
+    } catch {
+      alert('No se pudo guardar tu apunte. Reintenta en un momento.')
+    }
+  }
+
+  const desapuntar = async () => {
+    if (!myPlayerId) return
+    try {
+      await borrarse(myPlayerId)
+    } catch {
+      alert('No se pudo borrar tu apunte. Reintenta en un momento.')
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border-2 border-emerald-500/60 bg-emerald-900/30 px-4 py-3 text-base shadow-md shadow-emerald-900/40">
+      {/* 1) Fecha del próximo partido */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-slate-200">
+          📅 Próximo partido:{' '}
+          <b className="text-emerald-300">{formatoFecha(fecha)}</b>
+        </span>
+        {isAdmin && (
+          <button
+            onClick={() => {
+              if (confirm('¿Este lunes no hay partido? La convocatoria pasará al siguiente lunes (el turno NO cambia).'))
+                posponerJornada(siguienteJornada(fecha))
+            }}
+            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+            title="Mueve la fecha al siguiente lunes. No altera la cola de turnos."
+          >
+            Este lunes no hay partido
+          </button>
+        )}
+      </div>
+
+      {/* 2) Turno rotativo */}
       <div className="flex flex-col gap-1">
         <span className="flex items-center gap-2 text-slate-200">
           <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
@@ -106,6 +157,62 @@ export function RotationBanner() {
         {next && (
           <span className="pl-5 text-sm text-slate-400">
             ... y la próxima es de... <b className="text-slate-300">{next.nombre}</b>
+          </span>
+        )}
+      </div>
+
+      {/* 3) Convocatoria */}
+      <div className="flex flex-col gap-2 border-t border-emerald-500/30 pt-3">
+        <span className="flex flex-wrap items-center gap-x-2 text-slate-200">
+          📝 <b>Convocatoria</b>
+          <span className="text-sm text-slate-400">
+            · {titulares.length} apuntado{titulares.length === 1 ? '' : 's'}
+            {reservas.length > 0 && ` · ${reservas.length} de reserva`}
+          </span>
+        </span>
+
+        {!abierta ? (
+          <span className="text-sm text-slate-400">
+            La convocatoria se abre el <b>domingo a las 12:00</b>. ¡Atento!
+          </span>
+        ) : isLinked ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {!soyReserva && (
+              <button
+                onClick={() => apuntar('in')}
+                className={
+                  'rounded px-3 py-1.5 text-sm font-medium transition-colors ' +
+                  (miEstado === 'in'
+                    ? 'bg-emerald-600 text-white'
+                    : 'border border-emerald-600 text-emerald-300 hover:bg-emerald-600/10')
+                }
+              >
+                {miEstado === 'in' ? '✓ Apuntado' : 'Me apunto'}
+              </button>
+            )}
+            <button
+              onClick={() => apuntar('maybe')}
+              className={
+                'rounded px-3 py-1.5 text-sm font-medium transition-colors ' +
+                (miEstado === 'maybe'
+                  ? 'bg-amber-600 text-white'
+                  : 'border border-amber-600 text-amber-300 hover:bg-amber-600/10')
+              }
+            >
+              {miEstado === 'maybe' ? '✓ Si falta gente' : 'Si falta gente voy'}
+            </button>
+            {miEstado && (
+              <button
+                onClick={desapuntar}
+                className="rounded border border-red-600 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-600/10"
+              >
+                Me borro
+              </button>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-slate-400">
+            El admin debe emparejarte con tu jugador para que puedas apuntarte.
           </span>
         )}
       </div>

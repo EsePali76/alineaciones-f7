@@ -5,6 +5,8 @@ import { useGeneratorStore } from '../store/generatorStore'
 import { useAuthStore } from '../store/authStore'
 import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
 import { useTurno } from '../hooks/useTurno'
+import { useConvocatoria } from '../hooks/useConvocatoria'
+import type { SignupRow } from '../lib/convocatoriaApi'
 import type { Player } from '../domain/types'
 import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
@@ -45,8 +47,13 @@ export function TeamGenerator() {
   const setPlacementB = useGeneratorStore((s) => s.setPlacementB)
   const setBalance = useGeneratorStore((s) => s.setBalance)
   const setConfirmada = useGeneratorStore((s) => s.setConfirmada)
+  const syncConvocatoria = useGeneratorStore((s) => s.syncConvocatoria)
   const reset = useGeneratorStore((s) => s.reset)
   const addPlayer = usePlayersStore((s) => s.addPlayer)
+
+  // Convocatoria compartida: la gente se apunta desde el banner; aquí se ve la lista
+  // y pre-rellena los convocados en vivo (diff incremental, conserva ajustes a mano).
+  const { fecha, titulares, reservas, titularIds, reservaIds } = useConvocatoria()
 
   // Alta rápida de un invitado puntual desde aquí: se da de alta y se autoconvoca.
   const añadirPuntual = async (input: PlayerInput) => {
@@ -64,6 +71,16 @@ export function TeamGenerator() {
     const lu = lineups.find((l) => l.id === confirmedLineupId)
     if (lu?.resultado) reset()
   }, [confirmedLineupId, lineups, reset])
+
+  // Pre-relleno en vivo: cada vez que cambia la lista de apuntados (o la jornada),
+  // siembra los convocados con los titulares ('Me apunto'). El diff incremental del
+  // store respeta los retoques manuales del del turno.
+  const titularKey = titularIds.join(',')
+  useEffect(() => {
+    syncConvocatoria(titularIds, fecha)
+    // titularKey resume la lista de ids; evita re-sincronizar en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titularKey, fecha])
 
   const disponibles = useMemo(
     () => players.filter((p) => p.activo).sort((a, b) => a.nombre.localeCompare(b.nombre)),
@@ -122,6 +139,15 @@ export function TeamGenerator() {
   const objetivo = jugadoresPorEquipo * 2 // 14 (7v7) o 16 (8v8)
   const faltan = objetivo - nConvocados
   const completo = faltan === 0
+
+  // Añade reservas (por orden de llegada) a los convocados hasta llegar al objetivo.
+  const completarConReservas = () => {
+    const huecos = objetivo - nConvocados
+    if (huecos <= 0) return
+    const add = reservaIds.filter((id) => !convocados.has(id)).slice(0, huecos)
+    if (add.length) setConvocados([...convocadosIds, ...add])
+  }
+  const reservasDisponibles = reservaIds.filter((id) => !convocados.has(id)).length
 
   const generar = () => {
     // Pasa el historial de alineaciones confirmadas para evitar repetir parejas.
@@ -183,6 +209,17 @@ export function TeamGenerator() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Convocatoria: quién se ha apuntado desde la app (orden de llegada) */}
+      <ConvocatoriaPanel
+        titulares={titulares}
+        reservas={reservas}
+        players={players}
+        objetivo={objetivo}
+        nConvocados={nConvocados}
+        reservasDisponibles={reservasDisponibles}
+        onCompletar={completarConReservas}
+      />
+
       {/* Selección de convocados */}
       <section className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -297,6 +334,97 @@ export function TeamGenerator() {
         />
       )}
     </div>
+  )
+}
+
+/** Panel con la lista de apuntados (titulares numerados + reservas) de la convocatoria. */
+function ConvocatoriaPanel({
+  titulares,
+  reservas,
+  players,
+  objetivo,
+  nConvocados,
+  reservasDisponibles,
+  onCompletar,
+}: {
+  titulares: SignupRow[]
+  reservas: SignupRow[]
+  players: Player[]
+  objetivo: number
+  nConvocados: number
+  reservasDisponibles: number
+  onCompletar: () => void
+}) {
+  const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
+  const nombre = (id: string) => {
+    const p = byId.get(id)
+    return p ? nombreVisible(p) : '(?)'
+  }
+  const esReserva = (id: string) => byId.get(id)?.reserva ?? false
+  const faltan = objetivo - nConvocados
+  const sinApuntados = titulares.length === 0 && reservas.length === 0
+
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">📝 Apuntados desde la app</h2>
+        {reservas.length > 0 && (
+          <button
+            onClick={onCompletar}
+            disabled={faltan <= 0 || reservasDisponibles === 0}
+            className="rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white enabled:hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+            title="Añade reservas por orden de llegada hasta completar el formato"
+          >
+            Completar convocatoria con reservas
+          </button>
+        )}
+      </div>
+
+      {sinApuntados ? (
+        <p className="text-sm text-slate-500">
+          Aún no se ha apuntado nadie por la app. Los apuntados irán saliendo aquí por orden de
+          llegada; mientras tanto puedes marcar tú a los convocados abajo.
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
+              Me apunto ({titulares.length})
+            </span>
+            <ol className="mt-1 flex flex-col gap-1 text-sm">
+              {titulares.map((s, i) => (
+                <li key={s.player_id} className="flex items-center gap-2">
+                  <span className="w-5 shrink-0 text-right text-slate-500">{i + 1}.</span>
+                  <span>{nombre(s.player_id)}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wide text-amber-400">
+              Reservas ({reservas.length})
+            </span>
+            {reservas.length === 0 ? (
+              <p className="mt-1 text-sm text-slate-500">—</p>
+            ) : (
+              <ol className="mt-1 flex flex-col gap-1 text-sm">
+                {reservas.map((s, i) => (
+                  <li key={s.player_id} className="flex items-center gap-2">
+                    <span className="w-5 shrink-0 text-right text-slate-500">{i + 1}.</span>
+                    <span>
+                      {nombre(s.player_id)}
+                      {esReserva(s.player_id) && (
+                        <span className="ml-1 text-xs text-slate-500">(reserva)</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 

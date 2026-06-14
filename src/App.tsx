@@ -5,6 +5,7 @@ import type { Player } from './domain/types'
 import { useLineupsStore } from './store/lineupsStore'
 import { useRatingsStore } from './store/ratingsStore'
 import { useRotationStore } from './store/rotationStore'
+import { useConvocatoriaStore } from './store/convocatoriaStore'
 import { useAuthStore } from './store/authStore'
 import { useEffectivePlayers } from './hooks/useEffectivePlayers'
 import { useTurno } from './hooks/useTurno'
@@ -35,6 +36,7 @@ function App() {
   const lineups = useLineupsStore((s) => s.lineups)
   const loadAverages = useRatingsStore((s) => s.loadAverages)
   const loadRotation = useRotationStore((s) => s.load)
+  const loadConvocatoria = useConvocatoriaStore((s) => s.load)
   const initAuth = useAuthStore((s) => s.init)
   const authReady = useAuthStore((s) => s.ready)
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
@@ -58,11 +60,17 @@ function App() {
 
   useEffect(() => {
     initAuth()
-    Promise.all([loadPlayers(), loadLineups(), loadAverages(), loadRotation()]).catch((e) => {
+    Promise.all([
+      loadPlayers(),
+      loadLineups(),
+      loadAverages(),
+      loadRotation(),
+      loadConvocatoria(),
+    ]).catch((e) => {
       console.error(e)
       setCargaError(true)
     })
-  }, [initAuth, loadPlayers, loadLineups, loadAverages, loadRotation])
+  }, [initAuth, loadPlayers, loadLineups, loadAverages, loadRotation, loadConvocatoria])
 
   // Si una pestaña restringida queda seleccionada y pierdes el permiso, vuelve a Plantel.
   useEffect(() => {
