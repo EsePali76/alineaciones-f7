@@ -194,11 +194,6 @@ export function RotationBanner() {
       <div className="flex flex-col gap-2 border-t border-emerald-500/30 pt-3">
         <span className="flex flex-wrap items-center gap-x-2 text-slate-200">
           📝 <b>Convocatoria</b>
-          <span className="text-sm text-slate-400">
-            · {titulares.length} apuntado{titulares.length === 1 ? '' : 's'}
-            {reservas.length > 0 && ` · ${reservas.length} de reserva`}
-            {noVienen.length > 0 && ` · ${noVienen.length} no vienen`}
-          </span>
         </span>
 
         {!abierta ? (
@@ -260,12 +255,21 @@ export function RotationBanner() {
           </span>
         )}
 
-        {/* Listado provisional de convocados y reservas (visible a todos). La cabecera de
-            cada lista solo aparece si tiene gente. */}
-        {(titulares.length > 0 || reservas.length > 0) && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ListaConvocatoria titulo="Convocados" color="text-emerald-400" items={titulares} nombreDe={nombreDe} />
-            <ListaConvocatoria titulo="Reservas" color="text-amber-400" items={reservas} nombreDe={nombreDe} />
+        {/* Contadores + listado provisional de convocados y reservas (visible a todos).
+            El número va encima; la cabecera de cada lista solo aparece si tiene gente. */}
+        {(titulares.length > 0 || reservas.length > 0 || noVienen.length > 0) && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-slate-400">
+              {titulares.length} apuntado{titulares.length === 1 ? '' : 's'}
+              {reservas.length > 0 && ` · ${reservas.length} de reserva`}
+              {noVienen.length > 0 && ` · ${noVienen.length} no van`}
+            </span>
+            {(titulares.length > 0 || reservas.length > 0) && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ListaConvocatoria titulo="Convocados" color="text-emerald-400" items={titulares} nombreDe={nombreDe} />
+                <ListaConvocatoria titulo="Reservas" color="text-amber-400" items={reservas} nombreDe={nombreDe} />
+              </div>
+            )}
           </div>
         )}
 
