@@ -527,7 +527,7 @@ function GrupoConvocados({
               className={
                 'flex items-center justify-between gap-1 rounded border px-2 py-1.5 text-left text-sm transition-colors ' +
                 (noVa
-                  ? 'border-slate-700 bg-slate-900/50 text-slate-500 line-through cursor-not-allowed'
+                  ? 'border-red-800 bg-red-950/40 text-red-400 line-through cursor-not-allowed'
                   : on
                     ? 'border-emerald-500 bg-emerald-600/80 text-white'
                     : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400') +
