@@ -41,6 +41,7 @@ function App() {
   const authReady = useAuthStore((s) => s.ready)
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const isAdmin = useAuthStore((s) => s.isAdmin)
+  const isFullAdmin = useAuthStore((s) => s.isFullAdmin)
   const isLinked = useAuthStore((s) => s.isLinked)
   const { isMyTurn } = useTurno()
   // Quién puede GENERAR/editar equipos (el del turno o admin).
@@ -74,11 +75,11 @@ function App() {
 
   // Si una pestaña restringida queda seleccionada y pierdes el permiso, vuelve a Plantel.
   useEffect(() => {
-    if (!isAdmin && tab === 'usuarios') setTab('plantel')
+    if (!isFullAdmin && tab === 'usuarios') setTab('plantel')
     if (!isAdmin && tab === 'invitados') setTab('plantel')
     if (!isLinked && tab === 'valorar') setTab('plantel')
     if (!puedeEquipos && tab === 'equipos') setTab('plantel')
-  }, [isAdmin, isLinked, puedeEquipos, tab])
+  }, [isAdmin, isFullAdmin, isLinked, puedeEquipos, tab])
 
   // Al cambiar de pestaña se descarta la edición en curso (no arrastrar un jugador
   // del Plantel al formulario de Invitados, ni viceversa).
@@ -160,7 +161,7 @@ function App() {
             <TabButton active={tab === 'estadisticas'} onClick={() => setTab('estadisticas')}>
               Estadísticas
             </TabButton>
-            {isAdmin && (
+            {isFullAdmin && (
               <TabButton active={tab === 'usuarios'} onClick={() => setTab('usuarios')}>
                 Usuarios
               </TabButton>
@@ -230,7 +231,7 @@ function App() {
             ) : null)}
           {tab === 'estadisticas' && <StatsPanel />}
           {tab === 'historial' && <HistoryList />}
-          {tab === 'usuarios' && isAdmin && (
+          {tab === 'usuarios' && isFullAdmin && (
             <div className="flex flex-col gap-6">
               <UsersPanel />
               <AdminProxyRating />

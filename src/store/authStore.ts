@@ -13,7 +13,10 @@ interface AuthState {
   profile: Profile | null
 
   /** Atajos derivados del perfil. */
+  /** Tiene privilegios de admin (admin o superuser). Gating de funciones operativas. */
   isAdmin: boolean
+  /** Admin REAL (rol 'admin'): único con acceso al menú Usuarios. */
+  isFullAdmin: boolean
   /** Está vinculado a un jugador (puede actuar: votar, turnos…). */
   isLinked: boolean
 
@@ -29,7 +32,8 @@ interface AuthState {
 function derive(profile: Profile | null) {
   return {
     profile,
-    isAdmin: profile?.role === 'admin',
+    isAdmin: profile?.role === 'admin' || profile?.role === 'superuser',
+    isFullAdmin: profile?.role === 'admin',
     isLinked: !!profile?.playerId,
   }
 }
@@ -41,6 +45,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   email: null,
   profile: null,
   isAdmin: false,
+  isFullAdmin: false,
   isLinked: false,
 
   init: () => {

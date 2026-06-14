@@ -8,7 +8,11 @@ export interface Profile {
   id: string
   email: string | null
   displayName: string | null
-  role: 'admin' | 'player'
+  /**
+   * 'admin' = todo; 'superuser' = privilegios operativos del admin MENOS el menú
+   * Usuarios (gestión de cuentas, proxy de votos, plazo de reevaluación); 'player' = jugador.
+   */
+  role: 'admin' | 'superuser' | 'player'
   /** Jugador del plantel al que está vinculado (null = sin vincular). */
   playerId: string | null
   /** true cuando finalizó (y bloqueó) sus valoraciones. */
@@ -19,7 +23,7 @@ interface ProfileRow {
   id: string
   email: string | null
   display_name: string | null
-  role: 'admin' | 'player'
+  role: 'admin' | 'superuser' | 'player'
   player_id: string | null
   ratings_finalized: boolean
 }
@@ -63,7 +67,10 @@ export async function adminLinkPlayer(target: string, playerId: string | null): 
 }
 
 /** Admin: cambia el rol de un usuario. */
-export async function adminSetRole(target: string, role: 'admin' | 'player'): Promise<void> {
+export async function adminSetRole(
+  target: string,
+  role: 'admin' | 'superuser' | 'player',
+): Promise<void> {
   const { error } = await supabase.rpc('admin_set_role', { target, new_role: role })
   if (error) throw error
 }

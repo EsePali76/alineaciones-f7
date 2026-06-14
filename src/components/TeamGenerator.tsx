@@ -87,6 +87,16 @@ export function TeamGenerator() {
     [players],
   )
   const convocados = useMemo(() => new Set(convocadosIds), [convocadosIds])
+  // Apuntados por la app (titulares + reservas). Al del turno (no admin) NO se le deja
+  // sacar a un apuntado de la convocatoria; eso solo lo puede hacer el admin.
+  const apuntadosIds = useMemo(
+    () => new Set([...titularIds, ...reservaIds]),
+    [titularIds, reservaIds],
+  )
+  const bloqueados = useMemo(
+    () => (isAdmin ? new Set<string>() : apuntadosIds),
+    [isAdmin, apuntadosIds],
+  )
   // Se muestran en dos grupos con cabecera (plantel / invitados) en vez de marcar al
   // invitado con un asterisco: así se ve claro quién es de fuera del grupo.
   const delPlantel = useMemo(() => disponibles.filter((p) => !p.invitado), [disponibles])
@@ -129,8 +139,11 @@ export function TeamGenerator() {
 
   const toggle = (id: string) => {
     const next = new Set(convocados)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
+    if (next.has(id)) {
+      // Solo el admin puede sacar de la convocatoria a quien se haya apuntado por la app.
+      if (bloqueados.has(id)) return
+      next.delete(id)
+    } else next.add(id)
     setConvocados([...next])
   }
 
@@ -235,8 +248,13 @@ export function TeamGenerator() {
               Todos
             </button>
             <button
-              onClick={() => setConvocados([])}
+              onClick={() =>
+                setConvocados(
+                  isAdmin ? [] : disponibles.filter((p) => apuntadosIds.has(p.id)).map((p) => p.id),
+                )
+              }
               className="rounded border border-slate-600 px-2 py-1 text-xs hover:border-slate-400"
+              title={isAdmin ? undefined : 'Mantiene a los que se han apuntado por la app'}
             >
               Ninguno
             </button>
@@ -288,6 +306,7 @@ export function TeamGenerator() {
               titulo="Plantel"
               jugadores={delPlantel}
               convocados={convocados}
+              bloqueados={bloqueados}
               onToggle={toggle}
             />
             {invitados.length > 0 && (
@@ -295,6 +314,7 @@ export function TeamGenerator() {
                 titulo="Invitados"
                 jugadores={invitados}
                 convocados={convocados}
+                bloqueados={bloqueados}
                 onToggle={toggle}
               />
             )}
@@ -467,11 +487,14 @@ function GrupoConvocados({
   titulo,
   jugadores,
   convocados,
+  bloqueados,
   onToggle,
 }: {
   titulo: string
   jugadores: Player[]
   convocados: Set<string>
+  /** Ids que el usuario actual no puede DESELECCIONAR (apuntados; solo admin los saca). */
+  bloqueados: Set<string>
   onToggle: (id: string) => void
 }) {
   return (
@@ -480,15 +503,18 @@ function GrupoConvocados({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
         {jugadores.map((p) => {
           const on = convocados.has(p.id)
+          const locked = on && bloqueados.has(p.id)
           return (
             <button
               key={p.id}
               onClick={() => onToggle(p.id)}
+              title={locked ? 'Se ha apuntado por la app; solo el admin puede quitarlo' : undefined}
               className={
                 'flex items-center justify-between gap-1 rounded border px-2 py-1.5 text-left text-sm transition-colors ' +
                 (on
                   ? 'border-emerald-500 bg-emerald-600/80 text-white'
-                  : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
+                  : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400') +
+                (locked ? ' cursor-not-allowed' : '')
               }
             >
               <span className="flex min-w-0 items-center gap-1.5">
@@ -498,7 +524,11 @@ function GrupoConvocados({
                   {p.tocado && <TocadoIcon className="ml-1" />}
                 </span>
               </span>
-              <span className="shrink-0 text-xs opacity-70">{p.posiciones[0]}</span>
+              {locked ? (
+                <span className="shrink-0 text-xs opacity-80" aria-label="apuntado">🔒</span>
+              ) : (
+                <span className="shrink-0 text-xs opacity-70">{p.posiciones[0]}</span>
+              )}
             </button>
           )
         })}

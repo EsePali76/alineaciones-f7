@@ -39,7 +39,9 @@ export function AccountBar() {
           {profile?.displayName || email}
         </span>
         {isAdmin ? (
-          <span className="rounded bg-emerald-600/20 px-2 py-1 text-xs text-emerald-300">Admin</span>
+          <span className="rounded bg-emerald-600/20 px-2 py-1 text-xs text-emerald-300">
+            {profile?.role === 'superuser' ? 'Superuser' : 'Admin'}
+          </span>
         ) : jugador ? (
           <span
             className="rounded bg-sky-600/20 px-2 py-1 text-xs text-sky-300"

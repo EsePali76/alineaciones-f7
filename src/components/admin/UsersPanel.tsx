@@ -172,24 +172,28 @@ export function UsersPanel() {
 
                   {/* Rol */}
                   <td className="px-3 py-2">
-                    <button
+                    <select
                       disabled={esYo}
-                      onClick={() =>
+                      value={pr.role}
+                      onChange={(e) =>
                         accion(() =>
-                          adminSetRole(pr.id, pr.role === 'admin' ? 'player' : 'admin'),
+                          adminSetRole(pr.id, e.target.value as 'admin' | 'superuser' | 'player'),
                         )
                       }
-                      title={esYo ? 'No puedes cambiar tu propio rol' : 'Cambiar rol'}
+                      title={
+                        esYo
+                          ? 'No puedes cambiar tu propio rol'
+                          : 'Superuser = todo menos el menú Usuarios'
+                      }
                       className={
-                        'rounded px-2 py-1 text-xs ' +
-                        (pr.role === 'admin'
-                          ? 'bg-emerald-600/20 text-emerald-300'
-                          : 'bg-slate-700 text-slate-300') +
-                        (esYo ? ' cursor-not-allowed opacity-60' : ' hover:opacity-80')
+                        'rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs ' +
+                        (esYo ? 'cursor-not-allowed opacity-60' : '')
                       }
                     >
-                      {pr.role === 'admin' ? 'Admin' : 'Jugador'}
-                    </button>
+                      <option value="player">Jugador</option>
+                      <option value="superuser">Superuser</option>
+                      <option value="admin">Admin</option>
+                    </select>
                   </td>
 
                   {/* Borrar usuario */}
