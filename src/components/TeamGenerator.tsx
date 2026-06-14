@@ -53,7 +53,7 @@ export function TeamGenerator() {
 
   // Convocatoria compartida: la gente se apunta desde el banner; aquí se ve la lista
   // y pre-rellena los convocados en vivo (diff incremental, conserva ajustes a mano).
-  const { fecha, titulares, reservas, titularIds, reservaIds } = useConvocatoria()
+  const { fecha, titulares, reservas, noVienen, titularIds, reservaIds } = useConvocatoria()
 
   // Alta rápida de un invitado puntual desde aquí: se da de alta y se autoconvoca.
   const añadirPuntual = async (input: PlayerInput) => {
@@ -97,6 +97,8 @@ export function TeamGenerator() {
     () => (isAdmin ? new Set<string>() : apuntadosIds),
     [isAdmin, apuntadosIds],
   )
+  // Quienes han marcado "No voy esta semana": se deshabilitan en el grid de selección.
+  const noVienenIds = useMemo(() => new Set(noVienen.map((s) => s.player_id)), [noVienen])
   // Se muestran en dos grupos con cabecera (plantel / invitados) en vez de marcar al
   // invitado con un asterisco: así se ve claro quién es de fuera del grupo.
   const delPlantel = useMemo(() => disponibles.filter((p) => !p.invitado), [disponibles])
@@ -307,6 +309,7 @@ export function TeamGenerator() {
               jugadores={delPlantel}
               convocados={convocados}
               bloqueados={bloqueados}
+              deshabilitados={noVienenIds}
               onToggle={toggle}
             />
             {invitados.length > 0 && (
@@ -315,6 +318,7 @@ export function TeamGenerator() {
                 jugadores={invitados}
                 convocados={convocados}
                 bloqueados={bloqueados}
+                deshabilitados={noVienenIds}
                 onToggle={toggle}
               />
             )}
@@ -488,6 +492,7 @@ function GrupoConvocados({
   jugadores,
   convocados,
   bloqueados,
+  deshabilitados,
   onToggle,
 }: {
   titulo: string
@@ -495,6 +500,8 @@ function GrupoConvocados({
   convocados: Set<string>
   /** Ids que el usuario actual no puede DESELECCIONAR (apuntados; solo admin los saca). */
   bloqueados: Set<string>
+  /** Ids que han dicho "No voy esta semana": no se pueden seleccionar. */
+  deshabilitados: Set<string>
   onToggle: (id: string) => void
 }) {
   return (
@@ -503,17 +510,27 @@ function GrupoConvocados({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
         {jugadores.map((p) => {
           const on = convocados.has(p.id)
+          const noVa = deshabilitados.has(p.id)
           const locked = on && bloqueados.has(p.id)
           return (
             <button
               key={p.id}
               onClick={() => onToggle(p.id)}
-              title={locked ? 'Se ha apuntado por la app; solo el admin puede quitarlo' : undefined}
+              disabled={noVa}
+              title={
+                noVa
+                  ? 'Ha marcado que no va esta semana'
+                  : locked
+                    ? 'Se ha apuntado por la app; solo el admin puede quitarlo'
+                    : undefined
+              }
               className={
                 'flex items-center justify-between gap-1 rounded border px-2 py-1.5 text-left text-sm transition-colors ' +
-                (on
-                  ? 'border-emerald-500 bg-emerald-600/80 text-white'
-                  : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400') +
+                (noVa
+                  ? 'border-slate-700 bg-slate-900/50 text-slate-500 line-through cursor-not-allowed'
+                  : on
+                    ? 'border-emerald-500 bg-emerald-600/80 text-white'
+                    : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400') +
                 (locked ? ' cursor-not-allowed' : '')
               }
             >
@@ -524,7 +541,9 @@ function GrupoConvocados({
                   {p.tocado && <TocadoIcon className="ml-1" />}
                 </span>
               </span>
-              {locked ? (
+              {noVa ? (
+                <span className="shrink-0 text-xs opacity-80">no va</span>
+              ) : locked ? (
                 <span className="shrink-0 text-xs opacity-80" aria-label="apuntado">🔒</span>
               ) : (
                 <span className="shrink-0 text-xs opacity-70">{p.posiciones[0]}</span>
