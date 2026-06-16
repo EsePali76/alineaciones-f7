@@ -11,11 +11,14 @@ export function Avatar({
   alt,
   className = 'h-8 w-8',
   ring = null,
+  thick = false,
 }: {
   src?: string
   alt?: string
   className?: string
   ring?: 'A' | 'B' | null
+  /** Borde más ancho (para las fichas del campo, donde el color de equipo debe destacar). */
+  thick?: boolean
 }) {
   const borde =
     ring === 'A'
@@ -23,7 +26,8 @@ export function Avatar({
       : ring === 'B'
         ? 'border-red-400'
         : 'border-slate-600'
-  const base = `shrink-0 overflow-hidden rounded-full border-2 ${borde} ${className}`
+  const grosor = thick ? 'border-4' : 'border-2'
+  const base = `shrink-0 overflow-hidden rounded-full ${grosor} ${borde} ${className}`
 
   if (src) {
     return (

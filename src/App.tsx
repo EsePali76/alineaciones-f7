@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePlayersStore } from './store/playersStore'
 import type { PlayerInput } from './store/playersStore'
 import type { Player } from './domain/types'
@@ -58,6 +58,11 @@ function App() {
   const [tab, setTab] = useState<Tab>('plantel')
   const [editing, setEditing] = useState<Player | null>(null)
   const [cargaError, setCargaError] = useState(false)
+  // Al pulsar "Editar" en el listado, lleva la pantalla al formulario de abajo.
+  const formRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (editing) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [editing])
 
   useEffect(() => {
     initAuth()
@@ -185,15 +190,18 @@ function App() {
                 onEdit={(p) => setEditing(players.find((r) => r.id === p.id) ?? p)}
                 onRemove={removePlayer}
                 isAdmin={isAdmin}
+                editingId={editing?.id ?? null}
               />
               {isAdmin && (
-                <PlayerForm
-                  key={editing?.id ?? 'nuevo'}
-                  initial={editing ?? undefined}
-                  playerId={editing?.id}
-                  onSubmit={handleSubmit}
-                  onCancel={editing ? () => setEditing(null) : undefined}
-                />
+                <div ref={formRef}>
+                  <PlayerForm
+                    key={editing?.id ?? 'nuevo'}
+                    initial={editing ?? undefined}
+                    playerId={editing?.id}
+                    onSubmit={handleSubmit}
+                    onCancel={editing ? () => setEditing(null) : undefined}
+                  />
+                </div>
               )}
             </>
           )}
@@ -211,15 +219,18 @@ function App() {
                 onRemove={removePlayer}
                 isAdmin={isAdmin}
                 noun="invitados"
+                editingId={editing?.id ?? null}
               />
-              <PlayerForm
-                key={editing?.id ?? 'nuevo-invitado'}
-                kind="invitado"
-                initial={editing ?? undefined}
-                playerId={editing?.id}
-                onSubmit={handleSubmit}
-                onCancel={editing ? () => setEditing(null) : undefined}
-              />
+              <div ref={formRef}>
+                <PlayerForm
+                  key={editing?.id ?? 'nuevo-invitado'}
+                  kind="invitado"
+                  initial={editing ?? undefined}
+                  playerId={editing?.id}
+                  onSubmit={handleSubmit}
+                  onCancel={editing ? () => setEditing(null) : undefined}
+                />
+              </div>
             </>
           )}
           {tab === 'valorar' && isLinked && <RatePlayers />}

@@ -152,7 +152,7 @@ function Ficha({
           : `${nombreVisible(player)} · ${POSITION_LABEL[player.posiciones[0]]} — arrástralo sobre otra ficha para intercambiar (al otro equipo, con confirmación)`
       }
     >
-      <Avatar src={fotoVisible(player)} alt={nombreVisible(player)} className="h-11 w-11 shadow" ring={lado} />
+      <Avatar src={fotoVisible(player)} alt={nombreVisible(player)} className="h-11 w-11 shadow" ring={lado} thick />
       <span className="mt-0.5 whitespace-nowrap rounded bg-black/65 px-1.5 text-[0.8rem] font-medium leading-tight text-white">
         {nombreVisible(player)}
         {player.invitado && <span className="text-amber-300">*</span>}

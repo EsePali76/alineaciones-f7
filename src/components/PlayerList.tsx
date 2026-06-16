@@ -15,6 +15,8 @@ interface PlayerListProps {
   isAdmin: boolean
   /** Sustantivo para el recuento y los mensajes ("jugadores en el plantel", "invitados"). */
   noun?: string
+  /** Id del jugador que se está editando ahora mismo (se resalta su fila). */
+  editingId?: string | null
 }
 
 /**
@@ -35,6 +37,7 @@ export function PlayerList({
   onRemove,
   isAdmin,
   noun = 'jugadores en el plantel',
+  editingId = null,
 }: PlayerListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('nombre')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -126,6 +129,7 @@ export function PlayerList({
                   key={p.id}
                   className={
                     'border-t border-slate-700/60 ' +
+                    (p.id === editingId ? 'bg-emerald-900/40 ring-1 ring-inset ring-emerald-500/60 ' : '') +
                     (p.activo ? '' : 'opacity-50')
                   }
                 >

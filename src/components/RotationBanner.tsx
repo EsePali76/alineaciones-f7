@@ -5,6 +5,7 @@ import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 import { useLineupsStore } from '../store/lineupsStore'
+import { ConfirmedLineupView } from './ConfirmedLineupView'
 import { formatoFecha, siguienteJornada } from '../domain/matchday'
 import { nombreVisible } from '../domain/types'
 import type { SignupRow, SignupStatus } from '../lib/convocatoriaApi'
@@ -37,11 +38,6 @@ export function RotationBanner() {
   const pendingLineup = lineups
     .filter((l) => !l.resultado)
     .sort((a, b) => b.fecha - a.fecha)[0]
-  // Para un reserva apuntado ('maybe'): ¿ha entrado finalmente en la alineación confirmada?
-  const estoyEnAlineacion =
-    !!pendingLineup &&
-    !!myPlayerId &&
-    (pendingLineup.teamA.includes(myPlayerId) || pendingLineup.teamB.includes(myPlayerId))
 
   const yo = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
   const estoyExcluido = yo?.excluidoRotacion ?? false
@@ -190,7 +186,13 @@ export function RotationBanner() {
         )}
       </div>
 
-      {/* 3) Convocatoria */}
+      {/* 3) Convocatoria — o, si ya hay alineación confirmada, la alineación (sustituye
+            a la convocatoria; el campo y "juegas de blanco/rojo" lo da ConfirmedLineupView). */}
+      {pendingLineup ? (
+        <div className="border-t border-emerald-500/30 pt-3">
+          <ConfirmedLineupView lineup={pendingLineup} />
+        </div>
+      ) : (
       <div className="flex flex-col gap-2 border-t border-emerald-500/30 pt-3">
         <span className="flex flex-wrap items-center gap-x-2 text-slate-200">
           📝 <b>Convocatoria</b>
@@ -271,21 +273,8 @@ export function RotationBanner() {
             </div>
           </div>
         )}
-
-        {/* Aviso al reserva apuntado: cuando hay alineación confirmada, si entra o no. */}
-        {miEstado === 'maybe' && pendingLineup && (
-          estoyEnAlineacion ? (
-            <div className="rounded-md border border-emerald-500/50 bg-emerald-900/40 px-3 py-2 text-sm text-emerald-200">
-              ✅ <b>¡Estás convocado!</b> Has entrado en la alineación, juegas este lunes.
-            </div>
-          ) : (
-            <div className="rounded-md border border-slate-600 bg-slate-800/60 px-3 py-2 text-sm text-slate-300">
-              🙏 Esta semana <b>no entras</b> en la convocatoria. ¡Gracias por ofrecerte! Quizá la
-              próxima.
-            </div>
-          )
-        )}
       </div>
+      )}
 
       {/* Aviso del plazo de re-evaluación de valoraciones (lo abre el admin). */}
       {ratingsOpen && isLinked && (

@@ -16,11 +16,13 @@ import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
 import { QuickGuestForm } from './QuickGuestForm'
 import { usePlayersStore, type PlayerInput } from '../store/playersStore'
+import { useConvocatoriaStore } from '../store/convocatoriaStore'
 
 export function TeamGenerator() {
   const players = useEffectivePlayers()
   const lineups = useLineupsStore((s) => s.lineups)
   const addLineup = useLineupsStore((s) => s.addLineup)
+  const removeLineup = useLineupsStore((s) => s.removeLineup)
   const { current: turnoActual, isMyTurn } = useTurno()
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
@@ -49,15 +51,28 @@ export function TeamGenerator() {
   const syncConvocatoria = useGeneratorStore((s) => s.syncConvocatoria)
   const reset = useGeneratorStore((s) => s.reset)
   const addPlayer = usePlayersStore((s) => s.addPlayer)
+  // Para que un convocado añadido a mano se vea en el banner (lista compartida), se le
+  // apunta a la convocatoria ('in'); al quitarlo de los titulares, se le saca de ella.
+  const apuntarse = useConvocatoriaStore((s) => s.apuntarse)
+  const borrarse = useConvocatoriaStore((s) => s.borrarse)
 
   // Convocatoria compartida: la gente se apunta desde el banner; aquí se ve la lista
   // y pre-rellena los convocados en vivo (diff incremental, conserva ajustes a mano).
   const { fecha, noVienen, titularIds, reservaIds } = useConvocatoria()
+  // Apuntados como titulares ('Me apunto' o convocados a mano): ya salen en el banner.
+  const titularSet = useMemo(() => new Set(titularIds), [titularIds])
 
-  // Alta rápida de un invitado puntual desde aquí: se da de alta y se autoconvoca.
+  // Alta rápida de un invitado puntual desde aquí: se da de alta, se autoconvoca y se
+  // apunta a la convocatoria para que aparezca en el banner como convocado.
   const añadirPuntual = async (input: PlayerInput) => {
     const id = await addPlayer(input)
-    if (id) setConvocados([...convocadosIds, id])
+    if (!id) return
+    setConvocados([...convocadosIds, id])
+    try {
+      await apuntarse(id, 'in', fecha)
+    } catch {
+      // Sin permisos para apuntar a otros (RLS): queda seleccionado solo en local.
+    }
   }
 
   // Cierre de partido: cuando la alineación que teníamos en marcha ya tiene resultado
@@ -86,6 +101,26 @@ export function TeamGenerator() {
     [players],
   )
   const convocados = useMemo(() => new Set(convocadosIds), [convocadosIds])
+
+  // Baja de última hora: si hay una alineación PROPUESTA (generada, confirmada o no) y se
+  // saca de convocados a alguno de sus jugadores, esa alineación deja de ser válida. Se
+  // resetea la generación (se conserva el resto de convocados para rehacerla) y, si estaba
+  // confirmada, se borra del historial para que el banner vuelva a mostrar la convocatoria.
+  useEffect(() => {
+    if (!balance) return
+    const enPropuesta = [...balance.teamA, ...balance.teamB]
+    const algunoFuera = enPropuesta.some((p) => !convocados.has(p.id))
+    if (!algunoFuera) return
+    if (confirmedLineupId && lineups.some((l) => l.id === confirmedLineupId && !l.resultado)) {
+      removeLineup(confirmedLineupId)
+    }
+    setConfirmedLineupId(null)
+    setConfirmada(false)
+    setBalance(null)
+    setPlacementA(null)
+    setPlacementB(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [balance, convocados])
   // Apuntados por la app (titulares + reservas). Al del turno (no admin) NO se le deja
   // sacar a un apuntado de la convocatoria; eso solo lo puede hacer el admin.
   const apuntadosIds = useMemo(
@@ -138,14 +173,33 @@ export function TeamGenerator() {
     return { ...re, method: balance.method, evaluated: balance.evaluated }
   }, [balance, players, lineups])
 
-  const toggle = (id: string) => {
+  const toggle = async (id: string) => {
     const next = new Set(convocados)
     if (next.has(id)) {
       // Solo el admin puede sacar de la convocatoria a quien se haya apuntado por la app.
       if (bloqueados.has(id)) return
       next.delete(id)
-    } else next.add(id)
-    setConvocados([...next])
+      setConvocados([...next])
+      // Si estaba como titular en la convocatoria, se le saca también del banner.
+      if (titularSet.has(id)) {
+        try {
+          await borrarse(id)
+        } catch {
+          /* el store revierte y avisa */
+        }
+      }
+    } else {
+      next.add(id)
+      setConvocados([...next])
+      // Convocar a mano → apuntar 'in' para que se vea en el banner (si no era ya titular).
+      if (!titularSet.has(id)) {
+        try {
+          await apuntarse(id, 'in', fecha)
+        } catch {
+          // Sin permisos para apuntar a otros (RLS): queda seleccionado solo en local.
+        }
+      }
+    }
   }
 
   const seleccionados = disponibles.filter((p) => convocados.has(p.id))
@@ -203,6 +257,19 @@ export function TeamGenerator() {
     setConfirmada(true)
   }
 
+  // Deshacer la confirmación: borra la alineación del historial (el banner vuelve a la
+  // convocatoria) y resetea la generación CONSERVANDO los convocados, para rehacerla.
+  const cancelarConfirmada = async () => {
+    if (confirmedLineupId && lineups.some((l) => l.id === confirmedLineupId && !l.resultado)) {
+      await removeLineup(confirmedLineupId)
+    }
+    setConfirmedLineupId(null)
+    setConfirmada(false)
+    setBalance(null)
+    setPlacementA(null)
+    setPlacementB(null)
+  }
+
   // Cambia dos jugadores de equipo (arrastrando entre bandos), sin confirmación.
   const handleCrossSwap = (id1: string, id2: string) => {
     if (!balanceVivo) return
@@ -231,23 +298,6 @@ export function TeamGenerator() {
             <span className={completo ? 'text-emerald-400' : 'text-slate-400'}>
               {nConvocados} / {objetivo} seleccionados
             </span>
-            <button
-              onClick={() => setConvocados(disponibles.map((p) => p.id))}
-              className="rounded border border-slate-600 px-2 py-1 text-xs hover:border-slate-400"
-            >
-              Todos
-            </button>
-            <button
-              onClick={() =>
-                setConvocados(
-                  isAdmin ? [] : disponibles.filter((p) => apuntadosIds.has(p.id)).map((p) => p.id),
-                )
-              }
-              className="rounded border border-slate-600 px-2 py-1 text-xs hover:border-slate-400"
-              title={isAdmin ? undefined : 'Mantiene a los que se han apuntado por la app'}
-            >
-              Ninguno
-            </button>
             {reservaIds.length > 0 && (
               <button
                 onClick={completarConReservas}
@@ -350,6 +400,7 @@ export function TeamGenerator() {
           formacionA={formacionA}
           formacionB={formacionB}
           onConfirm={confirmar}
+          onCancelConfirm={cancelarConfirmada}
           confirmada={confirmada}
           canConfirm={puedeConfirmar}
           onCrossSwap={handleCrossSwap}
@@ -468,6 +519,7 @@ function BalanceResult({
   formacionA,
   formacionB,
   onConfirm,
+  onCancelConfirm,
   confirmada,
   canConfirm,
   onCrossSwap,
@@ -476,6 +528,7 @@ function BalanceResult({
   formacionA: Formacion
   formacionB: Formacion
   onConfirm: () => void
+  onCancelConfirm: () => void
   confirmada: boolean
   canConfirm: boolean
   onCrossSwap: (dragId: string, dropId: string) => void
@@ -541,6 +594,22 @@ function BalanceResult({
               {confirmada ? '✓ Confirmada · actualizar' : '✅ Confirmar alineación'}
             </button>
           )}
+          {canConfirm && confirmada && (
+            <button
+              onClick={() => {
+                if (
+                  confirm(
+                    '¿Cancelar la alineación confirmada? Se borrará y el banner volverá a mostrar la convocatoria. Los convocados se conservan para que puedas rehacerla.',
+                  )
+                )
+                  onCancelConfirm()
+              }}
+              className="rounded border border-red-600 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-600/10"
+              title="Borra la alineación confirmada (vuelve la convocatoria al banner) y resetea la generación; conserva los convocados"
+            >
+              ✕ Cancelar alineación
+            </button>
+          )}
           <button
             onClick={copiarImagen}
             className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
@@ -568,6 +637,11 @@ function BalanceResult({
           Equilibrio {pctA}% / {pctB}% · diferencia de nivel {balance.diffScore.toFixed(2)}
         </p>
       </div>
+
+      {/* Pista de uso (fuera de fieldRef para que NO salga en la imagen exportada) */}
+      <p className="rounded-md border border-sky-500/50 bg-sky-900/30 px-3 py-2 text-center text-sm font-medium text-sky-200">
+        💡 Puedes intercambiar jugadores <b>arrastrando</b> uno sobre la posición de otro.
+      </p>
 
       {/* Campo con la distribución de ambos equipos (capturable como imagen) */}
       <div ref={fieldRef}>
