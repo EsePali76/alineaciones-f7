@@ -81,6 +81,22 @@ export async function adminResetRatings(target: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Admin: cierra (true) o reabre (false) las valoraciones de un usuario concreto.
+ * Cerrar = bloquearlas aunque el usuario no pulsara "Finalizar"; reabrir = desbloquear
+ * sin borrar sus votos.
+ */
+export async function adminSetRatingsFinalized(
+  target: string,
+  value: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_ratings_finalized', {
+    target,
+    p_value: value,
+  })
+  if (error) throw error
+}
+
 /** El propio usuario finaliza (bloquea) sus valoraciones. */
 export async function finalizeMyRatings(): Promise<void> {
   const { error } = await supabase.rpc('finalize_my_ratings')

@@ -6,6 +6,7 @@ import {
   adminLinkPlayer,
   adminSetRole,
   adminResetRatings,
+  adminSetRatingsFinalized,
   adminDeleteUser,
   type Profile,
 } from '../../lib/authApi'
@@ -72,6 +73,17 @@ export function UsersPanel() {
     }
   }
 
+  // Valoraciones "en curso" (sin finalizar). Cerrarlas las bloquea aunque el usuario
+  // no pulsara "Finalizar"; útil para zanjar el periodo cuando algunos pasan de hacerlo.
+  const abiertas = profiles.filter((p) => !p.ratingsFinalized)
+  const cerrarTodasAbiertas = () => {
+    if (abiertas.length === 0) return
+    if (!confirm(`¿Cerrar las valoraciones de ${abiertas.length} usuario(s) en curso?`)) return
+    accion(async () => {
+      for (const p of abiertas) await adminSetRatingsFinalized(p.id, true)
+    })
+  }
+
   if (cargando) return <p className="p-6 text-center text-slate-500">Cargando usuarios…</p>
   if (error) return <p className="p-6 text-center text-red-400">{error}</p>
 
@@ -97,7 +109,20 @@ export function UsersPanel() {
             <tr className="bg-slate-800 text-left text-slate-400">
               <th className="px-3 py-2 font-medium">Usuario</th>
               <th className="px-3 py-2 font-medium">Jugador vinculado</th>
-              <th className="px-3 py-2 font-medium">Valoraciones</th>
+              <th className="px-3 py-2 font-medium">
+                <div className="flex items-center gap-2">
+                  <span>Valoraciones</span>
+                  {abiertas.length > 0 && (
+                    <button
+                      onClick={cerrarTodasAbiertas}
+                      title="Cierra (bloquea) las valoraciones de todos los que las tienen en curso."
+                      className="rounded border border-slate-600 px-2 py-0.5 text-xs font-normal text-slate-300 hover:border-slate-400"
+                    >
+                      Cerrar todas las abiertas ({abiertas.length})
+                    </button>
+                  )}
+                </div>
+              </th>
               <th className="px-3 py-2 font-medium">Rol</th>
               <th className="px-3 py-2 font-medium"></th>
             </tr>
@@ -166,7 +191,16 @@ export function UsersPanel() {
                         </button>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">en curso</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">en curso</span>
+                        <button
+                          onClick={() => accion(() => adminSetRatingsFinalized(pr.id, true))}
+                          title="Cierra (bloquea) sus valoraciones aunque no pulsara Finalizar. Reversible."
+                          className="rounded border border-slate-600 px-2 py-0.5 text-xs text-slate-300 hover:border-slate-400"
+                        >
+                          Cerrar
+                        </button>
+                      </div>
                     )}
                   </td>
 

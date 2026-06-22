@@ -127,7 +127,9 @@ export function PlayerForm({
     e.preventDefault()
     const nombre = data.nombre.trim()
     if (!nombre) return
-    if (data.posiciones.length === 0) return
+    // Las posiciones son obligatorias para el plantel, pero opcionales para invitados
+    // (el alta rápida desde Equipos también las permite vacías → "juega donde quepa").
+    if (!esInvitado && data.posiciones.length === 0) return
     setGuardando(true)
     setGuardado(false)
     try {
@@ -143,7 +145,8 @@ export function PlayerForm({
     }
   }
 
-  const valid = data.nombre.trim().length > 0 && data.posiciones.length > 0
+  const valid =
+    data.nombre.trim().length > 0 && (esInvitado || data.posiciones.length > 0)
 
   return (
     <form
