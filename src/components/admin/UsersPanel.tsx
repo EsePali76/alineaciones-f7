@@ -118,7 +118,7 @@ export function UsersPanel() {
                       title="Cierra (bloquea) las valoraciones de todos los que las tienen en curso."
                       className="rounded border border-slate-600 px-2 py-0.5 text-xs font-normal text-slate-300 hover:border-slate-400"
                     >
-                      Cerrar todas las abiertas ({abiertas.length})
+                      Cerrar ({abiertas.length})
                     </button>
                   )}
                 </div>
