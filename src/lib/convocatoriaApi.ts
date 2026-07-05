@@ -50,6 +50,20 @@ export async function setSignup(
   if (error) throw error
 }
 
+/**
+ * Repunta todos los apuntes de una jornada a otra fecha (admin; al reprogramar el
+ * partido, p.ej. moverlo de lunes a miércoles). Conserva `created_at`, así que el
+ * orden de llegada de la convocatoria se mantiene intacto. Requiere admin (RLS).
+ */
+export async function migrarSignups(desde: string, hasta: string): Promise<void> {
+  if (desde === hasta) return
+  const { error } = await supabase
+    .from('signups')
+    .update({ match_date: hasta })
+    .eq('match_date', desde)
+  if (error) throw error
+}
+
 /** "Me borro": elimina el apunte del jugador. */
 export async function deleteSignup(playerId: string): Promise<void> {
   const { error } = await supabase.from('signups').delete().eq('player_id', playerId)

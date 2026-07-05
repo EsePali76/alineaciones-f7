@@ -8,6 +8,8 @@ import {
   type RotationData,
 } from '../domain/rotation'
 import { usePlayersStore } from './playersStore'
+import { useConvocatoriaStore } from './convocatoriaStore'
+import { fechaEfectiva } from '../domain/matchday'
 
 /** Ids de jugadores elegibles para la rotación, en orden estable (por antigüedad). */
 function eligibleOrdered(): string[] {
@@ -72,12 +74,23 @@ export const useRotationStore = create<RotationState>((set, get) => ({
 
   fijarFecha: async (fechaISO) => {
     const prev = get().matchDate
+    const antes = fechaEfectiva(prev)
+    const despues = fechaEfectiva(fechaISO)
     set({ matchDate: fechaISO })
     try {
       await api.saveMatchDate(fechaISO)
     } catch (e) {
       set({ matchDate: prev })
       throw e
+    }
+    // Reprogramación: arrastra los convocados de la jornada anterior a la nueva
+    // para que no se "pierdan" al cambiar el día. No es crítico si falla.
+    if (antes !== despues) {
+      try {
+        await useConvocatoriaStore.getState().migrar(antes, despues)
+      } catch {
+        /* el admin puede reintentar cambiando la fecha de nuevo */
+      }
     }
   },
 

@@ -15,6 +15,8 @@ interface ConvocatoriaState {
   apuntarse: (playerId: string, status: SignupStatus, matchDate: string) => Promise<void>
   /** Borrarse de la convocatoria. */
   borrarse: (playerId: string) => Promise<void>
+  /** Arrastra los apuntes de una jornada a otra fecha (admin, al reprogramar). */
+  migrar: (desde: string, hasta: string) => Promise<void>
 }
 
 export const useConvocatoriaStore = create<ConvocatoriaState>((set, get) => ({
@@ -41,5 +43,11 @@ export const useConvocatoriaStore = create<ConvocatoriaState>((set, get) => ({
       set({ signups: prev })
       throw e
     }
+  },
+
+  migrar: async (desde, hasta) => {
+    if (desde === hasta) return
+    await api.migrarSignups(desde, hasta)
+    set({ signups: await api.fetchSignups() })
   },
 }))
