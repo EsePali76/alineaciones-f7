@@ -68,13 +68,16 @@ export function siguienteJornada(fechaISO: string): string {
 
 /**
  * Fecha efectiva del próximo partido: la calculada automáticamente, salvo que el
- * admin haya empujado un override a una fecha aún futura (caso "no hay partido").
+ * admin haya fijado un override para hoy o un día futuro (p.ej. mover el partido
+ * de lunes a miércoles, o cancelar la jornada). El override caduca solo: en cuanto
+ * su fecha queda en el pasado se ignora y se vuelve a la jornada automática.
  */
 export function fechaEfectiva(override: string | null | undefined, hoy: Date = new Date()): string {
   const auto = proximaJornada(hoy)
   if (override) {
     const ov = parseISO(override)
-    if (ov.getTime() > auto.getTime()) return override
+    const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
+    if (ov.getTime() >= hoy0.getTime()) return override
   }
   return toISO(auto)
 }

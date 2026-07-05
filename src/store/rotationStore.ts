@@ -38,6 +38,8 @@ interface RotationState {
   load: () => Promise<void>
   /** "Este lunes no hay partido": empuja la fecha al siguiente lunes (admin). NO toca la cola. */
   posponerJornada: (nuevaFecha: string) => Promise<void>
+  /** Fija una fecha arbitraria para el próximo partido, o null para volver al automático (admin). */
+  fijarFecha: (fechaISO: string | null) => Promise<void>
   /** Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa. */
   pasarTurno: () => Promise<void>
   /** Siembra/reinicia la cola con los elegibles actuales (admin). */
@@ -65,10 +67,14 @@ export const useRotationStore = create<RotationState>((set, get) => ({
   },
 
   posponerJornada: async (nuevaFecha) => {
+    await get().fijarFecha(nuevaFecha)
+  },
+
+  fijarFecha: async (fechaISO) => {
     const prev = get().matchDate
-    set({ matchDate: nuevaFecha })
+    set({ matchDate: fechaISO })
     try {
-      await api.saveMatchDate(nuevaFecha)
+      await api.saveMatchDate(fechaISO)
     } catch (e) {
       set({ matchDate: prev })
       throw e

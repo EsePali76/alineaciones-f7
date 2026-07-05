@@ -38,8 +38,8 @@ export async function fetchRotation(): Promise<RotationFetch> {
   }
 }
 
-/** Fija el override de fecha del próximo partido (admin; "este lunes no hay partido"). */
-export async function saveMatchDate(matchDate: string): Promise<void> {
+/** Fija (o limpia con null → automática) el override de fecha del próximo partido (admin). */
+export async function saveMatchDate(matchDate: string | null): Promise<void> {
   const { error } = await supabase
     .from('rotation')
     .update({ match_date: matchDate, updated_at: new Date().toISOString() })

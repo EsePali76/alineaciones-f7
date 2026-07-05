@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTurno } from '../hooks/useTurno'
 import { useConvocatoria } from '../hooks/useConvocatoria'
 import { useAuthStore } from '../store/authStore'
@@ -27,7 +28,10 @@ export function RotationBanner() {
   const pasarTurno = useRotationStore((s) => s.pasarTurno)
   const reiniciar = useRotationStore((s) => s.reiniciar)
   const posponerJornada = useRotationStore((s) => s.posponerJornada)
+  const fijarFecha = useRotationStore((s) => s.fijarFecha)
+  const matchDate = useRotationStore((s) => s.matchDate)
   const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
+  const [fechaEdit, setFechaEdit] = useState('')
 
   const { fecha, abierta, titulares, reservas, noVienen, miEstado } = useConvocatoria()
   const apuntarse = useConvocatoriaStore((s) => s.apuntarse)
@@ -78,25 +82,74 @@ export function RotationBanner() {
     }
   }
 
+  const guardarFecha = async () => {
+    const nueva = fechaEdit || fecha
+    if (nueva === fecha && !matchDate) return // sin cambios
+    try {
+      await fijarFecha(nueva)
+      setFechaEdit('')
+    } catch {
+      alert('No se pudo cambiar la fecha del partido.')
+    }
+  }
+
+  const volverAutomatica = async () => {
+    try {
+      await fijarFecha(null)
+      setFechaEdit('')
+    } catch {
+      alert('No se pudo restablecer la fecha automática.')
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border-2 border-emerald-500/60 bg-emerald-900/30 px-4 py-3 text-base shadow-md shadow-emerald-900/40">
       {/* 1) Fecha del próximo partido */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="flex flex-col gap-1">
         <span className="text-slate-200">
           📅 Próximo partido:{' '}
           <b className="text-emerald-300">{formatoFecha(fecha)}</b>
+          {matchDate && (
+            <span className="ml-2 text-xs text-amber-300/80" title="Fecha fijada manualmente por el admin">
+              (fecha manual)
+            </span>
+          )}
         </span>
         {isAdmin && (
-          <button
-            onClick={() => {
-              if (confirm('¿Este lunes no hay partido? La convocatoria pasará al siguiente lunes (el turno NO cambia).'))
-                posponerJornada(siguienteJornada(fecha))
-            }}
-            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-            title="Mueve la fecha al siguiente lunes. No altera la cola de turnos."
-          >
-            Este lunes no hay partido
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={fechaEdit || fecha}
+              onChange={(e) => setFechaEdit(e.target.value)}
+              className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200"
+              title="Fija el día del próximo partido (p.ej. moverlo de lunes a miércoles)."
+            />
+            <button
+              onClick={guardarFecha}
+              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+            >
+              Cambiar fecha
+            </button>
+            {matchDate && (
+              <button
+                onClick={volverAutomatica}
+                className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+                title="Vuelve a la fecha automática (el lunes que toque)."
+              >
+                Volver a automático
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (confirm('¿Este lunes no hay partido? La convocatoria pasará al siguiente lunes (el turno NO cambia).'))
+                  posponerJornada(siguienteJornada(fecha))
+              }}
+              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+              title="Mueve la fecha al siguiente lunes. No altera la cola de turnos."
+            >
+              Este lunes no hay partido
+            </button>
+          </div>
         )}
       </div>
 
