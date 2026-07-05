@@ -109,11 +109,6 @@ export function RotationBanner() {
         <span className="text-slate-200">
           📅 Próximo partido:{' '}
           <b className="text-emerald-300">{formatoFecha(fecha)}</b>
-          {matchDate && (
-            <span className="ml-2 text-xs text-amber-300/80" title="Fecha fijada manualmente por el admin">
-              (fecha manual)
-            </span>
-          )}
         </span>
         {isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
