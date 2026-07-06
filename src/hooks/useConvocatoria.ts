@@ -9,7 +9,7 @@ import type { SignupRow, SignupStatus } from '../lib/convocatoriaApi'
 export interface ConvocatoriaInfo {
   /** Fecha efectiva del próximo partido ('YYYY-MM-DD'). */
   fecha: string
-  /** ¿Está abierta la ventana de apuntarse (domingo 12:00 → fin del lunes)? */
+  /** ¿Está abierta la ventana de apuntarse (domingo 12:00 → fin del día del partido)? */
   abierta: boolean
   /** Apuntados "Me apunto" (titulares), por orden de llegada. */
   titulares: SignupRow[]

@@ -83,16 +83,26 @@ export function fechaEfectiva(override: string | null | undefined, hoy: Date = n
 }
 
 /**
- * ¿Está abierta la convocatoria? Desde el DOMINGO a las 12:00 (día anterior al
- * partido) hasta el final del lunes del partido.
+ * ¿Está abierta la convocatoria? Abre el DOMINGO a las 12:00 de la semana del
+ * partido y cierra al final del día del partido.
+ *
+ * La apertura se ancla al lunes de la semana del partido (no al día anterior sin
+ * más): así, si el admin mueve el partido a un día más tarde de la semana (p.ej.
+ * lunes → miércoles), la convocatoria sigue abriendo el domingo como de costumbre
+ * y no queda un hueco lunes/martes sin poder apuntarse. El caso normal (partido el
+ * lunes) da exactamente el mismo domingo 12:00 de siempre.
  */
 export function ventanaAbierta(fechaISO: string, ahora: Date = new Date()): boolean {
-  const partido = parseISO(fechaISO) // lunes 00:00 local
-  const apertura = new Date(partido)
-  apertura.setDate(apertura.getDate() - 1) // domingo
+  const partido = parseISO(fechaISO)
+  // Lunes de la semana del partido (si el partido es lunes, él mismo).
+  const lunesSemana = new Date(partido)
+  const dow = lunesSemana.getDay() // 0 domingo … 6 sábado
+  lunesSemana.setDate(lunesSemana.getDate() - ((dow + 6) % 7))
+  const apertura = new Date(lunesSemana)
+  apertura.setDate(apertura.getDate() - 1) // domingo anterior
   apertura.setHours(12, 0, 0, 0) // 12:00
   const cierre = new Date(partido)
-  cierre.setHours(23, 59, 59, 999) // hasta el final del lunes
+  cierre.setHours(23, 59, 59, 999) // hasta el final del día del partido
   const t = ahora.getTime()
   return t >= apertura.getTime() && t <= cierre.getTime()
 }
