@@ -11,6 +11,7 @@ import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore } from '../domain/scoring'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
+import { parseISO } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
@@ -323,7 +324,12 @@ export function TeamGenerator() {
       await updateLineupTeams(confirmedLineupId!, teamAids, teamBids, meta)
     } else {
       const madeBy = turnoActual?.id ?? myPlayerId ?? undefined
-      const id = await addLineup(teamAids, teamBids, { ...meta, madeBy })
+      // La alineación se fecha con el DÍA DEL PARTIDO (no el instante de confirmar),
+      // así en "Partidos" aparece con su fecha real aunque se confirme otro día. Se
+      // usa mediodía local, igual que el editor de fecha del historial.
+      const diaPartido = parseISO(fecha)
+      diaPartido.setHours(12, 0, 0, 0)
+      const id = await addLineup(teamAids, teamBids, { ...meta, madeBy }, diaPartido.getTime())
       setConfirmedLineupId(id)
       // No se avanza el turno aquí: el autor sigue siendo el del turno y puede editar y
       // re-confirmar. El turno avanza cuando el admin registra el resultado del partido.
