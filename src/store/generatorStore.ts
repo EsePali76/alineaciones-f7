@@ -53,6 +53,37 @@ interface GeneratorState {
   setConfirmada: (v: boolean) => void
   setConfirmedLineupId: (id: string | null) => void
   /**
+   * Carga en el editor una alineación ya confirmada (traída del backend compartido),
+   * para que el admin (o el autor del turno) pueda retocarla en su propio dispositivo
+   * aunque la generase otra persona. Se aplica de forma ATÓMICA y con el estado de
+   * sincronización de convocatoria alineado (`convocatoriaDate`/`lastSyncedSignupIds`)
+   * para que ni el reset de "baja de última hora" ni el `syncConvocatoria` la pisen.
+   */
+  loadConfirmed: (payload: {
+    convocados: string[]
+    jugadoresPorEquipo: 6 | 7 | 8
+    formacionNombreA: string
+    formacionNombreB: string
+    placementA: string[] | null
+    placementB: string[] | null
+    balance: TeamBalance
+    confirmedLineupId: string
+    convocatoriaDate: string
+    lastSyncedSignupIds: string[]
+  }) => void
+  /**
+   * Sustitución in-place ("rejilla inteligente"): reemplaza a un jugador de la
+   * alineación por otro conservando su puesto. El componente calcula el nuevo balance,
+   * los placements y la lista de convocados; aquí se aplican de una vez para que el
+   * balance y los convocados queden SIEMPRE consistentes (no dispara el reset).
+   */
+  substitute: (payload: {
+    balance: TeamBalance
+    placementA: string[] | null
+    placementB: string[] | null
+    convocados: string[]
+  }) => void
+  /**
    * Vuelve la sesión a cero (formato, formaciones, convocados, colocación y la
    * alineación generada). Se usa al cerrar un partido: una vez registrado su
    * resultado, la convocatoria anterior ya no debe arrastrarse a la siguiente.
@@ -107,6 +138,28 @@ export const useGeneratorStore = create<GeneratorState>()(
       setBalance: (b) => set({ balance: b }),
       setConfirmada: (v) => set({ confirmada: v }),
       setConfirmedLineupId: (id) => set({ confirmedLineupId: id }),
+      loadConfirmed: (p) =>
+        set({
+          convocados: p.convocados,
+          jugadoresPorEquipo: p.jugadoresPorEquipo,
+          formacionNombreA: p.formacionNombreA,
+          formacionNombreB: p.formacionNombreB,
+          placementA: p.placementA,
+          placementB: p.placementB,
+          balance: p.balance,
+          confirmada: true,
+          confirmedLineupId: p.confirmedLineupId,
+          convocatoriaDate: p.convocatoriaDate,
+          lastSyncedSignupIds: p.lastSyncedSignupIds,
+        }),
+      substitute: (p) =>
+        set({
+          balance: p.balance,
+          placementA: p.placementA,
+          placementB: p.placementB,
+          convocados: p.convocados,
+          confirmada: false,
+        }),
       reset: () => set({ ...INICIAL }),
     }),
     { name: 'alineaciones-f7-generator' },

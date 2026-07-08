@@ -49,7 +49,11 @@ export function TeamGenerator() {
   const setBalance = useGeneratorStore((s) => s.setBalance)
   const setConfirmada = useGeneratorStore((s) => s.setConfirmada)
   const syncConvocatoria = useGeneratorStore((s) => s.syncConvocatoria)
+  const loadConfirmed = useGeneratorStore((s) => s.loadConfirmed)
+  const substitute = useGeneratorStore((s) => s.substitute)
   const reset = useGeneratorStore((s) => s.reset)
+  // Jugador marcado como "sale" en la rejilla inteligente (sustitución in-place).
+  const [salienteId, setSalienteId] = useState<string | null>(null)
   const addPlayer = usePlayersStore((s) => s.addPlayer)
   // Para que un convocado añadido a mano se vea en el banner (lista compartida), se le
   // apunta a la convocatoria ('in'); al quitarlo de los titulares, se le saca de ella.
@@ -89,12 +93,16 @@ export function TeamGenerator() {
   // Pre-relleno en vivo: cada vez que cambia la lista de apuntados (o la jornada),
   // siembra los convocados con los titulares ('Me apunto'). El diff incremental del
   // store respeta los retoques manuales del del turno.
+  // OJO: con una alineación en curso (generada/cargada) los convocados quedan
+  // CONGELADOS (= los de la alineación). Los cambios en la convocatoria NO deben
+  // tocarlos, para no invalidar la alineación; una baja se resuelve sustituyendo.
   const titularKey = titularIds.join(',')
   useEffect(() => {
+    if (balance) return
     syncConvocatoria(titularIds, fecha)
     // titularKey resume la lista de ids; evita re-sincronizar en cada render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [titularKey, fecha])
+  }, [titularKey, fecha, balance])
 
   const disponibles = useMemo(
     () => players.filter((p) => p.activo).sort((a, b) => a.nombre.localeCompare(b.nombre)),
@@ -102,25 +110,49 @@ export function TeamGenerator() {
   )
   const convocados = useMemo(() => new Set(convocadosIds), [convocadosIds])
 
-  // Baja de última hora: si hay una alineación PROPUESTA (generada, confirmada o no) y se
-  // saca de convocados a alguno de sus jugadores, esa alineación deja de ser válida. Se
-  // resetea la generación (se conserva el resto de convocados para rehacerla) y, si estaba
-  // confirmada, se borra del historial para que el banner vuelva a mostrar la convocatoria.
+  // (Antes había aquí un efecto de "baja de última hora" que BORRABA la alineación
+  // confirmada al quitar a un convocado. Se ha eliminado: ahora una baja se resuelve
+  // sustituyendo in-place en la rejilla, sin perder la alineación. Los convocados
+  // quedan congelados mientras hay una alineación en curso, así que este caso ya no
+  // ocurre por la vía de la convocatoria.)
+
+  // Alineación confirmada de la semana (compartida, sin resultado aún). Vive en el
+  // backend; su balance/placement NO está en el localStorage de otros dispositivos.
+  const pendingLineup = useMemo(
+    () => [...lineups].filter((l) => !l.resultado).sort((a, b) => b.fecha - a.fecha)[0],
+    [lineups],
+  )
+
+  // Auto-carga: SOLO si ya existe una alineación confirmada y el editor está vacío
+  // (balance null) y no la tengo ya cargada. Reconstruye el balance desde los ids +
+  // jugadores actuales para que el admin/autor pueda retocarla aunque la generase otro.
   useEffect(() => {
-    if (!balance) return
-    const enPropuesta = [...balance.teamA, ...balance.teamB]
-    const algunoFuera = enPropuesta.some((p) => !convocados.has(p.id))
-    if (!algunoFuera) return
-    if (confirmedLineupId && lineups.some((l) => l.id === confirmedLineupId && !l.resultado)) {
-      removeLineup(confirmedLineupId)
-    }
-    setConfirmedLineupId(null)
-    setConfirmada(false)
-    setBalance(null)
-    setPlacementA(null)
-    setPlacementB(null)
+    if (!pendingLineup) return
+    if (balance) return // no pisar lo que ya estás editando o generando
+    if (confirmedLineupId === pendingLineup.id) return // ya cargada / es la mía
+    const byId = new Map(players.map((p) => [p.id, p]))
+    const teamA = pendingLineup.teamA.map((id) => byId.get(id)).filter((p): p is Player => !!p)
+    const teamB = pendingLineup.teamB.map((id) => byId.get(id)).filter((p): p is Player => !!p)
+    // Si falta algún jugador (borrado/inactivo) no se puede reconstruir con fiabilidad.
+    if (teamA.length !== pendingLineup.teamA.length || teamB.length !== pendingLineup.teamB.length)
+      return
+    const por = teamA.length
+    if (por !== 6 && por !== 7 && por !== 8) return
+    loadConfirmed({
+      convocados: [...pendingLineup.teamA, ...pendingLineup.teamB],
+      jugadoresPorEquipo: por,
+      formacionNombreA: pendingLineup.formacionA ?? formacionNombreA,
+      formacionNombreB: pendingLineup.formacionB ?? formacionNombreB,
+      placementA: pendingLineup.placementA ?? null,
+      placementB: pendingLineup.placementB ?? null,
+      balance: evaluatePartition(teamA, teamB, { history: lineups }),
+      confirmedLineupId: pendingLineup.id,
+      convocatoriaDate: fecha,
+      lastSyncedSignupIds: titularIds,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balance, convocados])
+  }, [pendingLineup, balance, confirmedLineupId, players, fecha])
+
   // Apuntados por la app (titulares + reservas). Al del turno (no admin) NO se le deja
   // sacar a un apuntado de la convocatoria; eso solo lo puede hacer el admin.
   const apuntadosIds = useMemo(
@@ -173,7 +205,48 @@ export function TeamGenerator() {
     return { ...re, method: balance.method, evaluated: balance.evaluated }
   }, [balance, players, lineups])
 
+  // Sustitución in-place: el jugador `inId` entra por `outId` conservando su puesto.
+  // Recalcula el balance y fija los placements para que el sustituto ocupe el hueco.
+  const hacerSustitucion = (outId: string, inId: string) => {
+    if (!balanceVivo) return
+    const inPlayer = players.find((p) => p.id === inId)
+    if (!inPlayer) return
+    const enA = balanceVivo.teamA.some((p) => p.id === outId)
+    const teamA = balanceVivo.teamA.map((p) => (p.id === outId ? inPlayer : p))
+    const teamB = balanceVivo.teamB.map((p) => (p.id === outId ? inPlayer : p))
+    const nuevo = evaluatePartition(teamA, teamB, { history: lineups })
+    // Congela el orden actual y cambia solo el id que sale por el que entra, para que
+    // el sustituto quede EXACTAMENTE en el puesto del que se va (misma banda/posición).
+    const curPlA = placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA)
+    const curPlB = placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB)
+    const newPlA = enA ? curPlA.map((x) => (x === outId ? inId : x)) : curPlA
+    const newPlB = enA ? curPlB : curPlB.map((x) => (x === outId ? inId : x))
+    substitute({
+      balance: { ...nuevo, method: 'manual', evaluated: 0 },
+      placementA: newPlA,
+      placementB: newPlB,
+      convocados: [...convocadosIds.filter((i) => i !== outId), inId],
+    })
+  }
+
   const toggle = async (id: string) => {
+    // Rejilla inteligente: si ya hay una alineación generada, la rejilla sirve para
+    // SUSTITUIR (baja de última hora) sin regenerar ni perder posiciones. Se toca al
+    // que sale (queda marcado) y luego al que entra, y ocupa su hueco.
+    if (balance) {
+      const enLineup = [...balance.teamA, ...balance.teamB].some((p) => p.id === id)
+      if (enLineup) {
+        setSalienteId((prev) => (prev === id ? null : id)) // marca/desmarca al saliente
+        return
+      }
+      // Toca a alguien de fuera del campo: si hay saliente elegido, hace la sustitución.
+      if (salienteId) {
+        hacerSustitucion(salienteId, id)
+        setSalienteId(null)
+      }
+      return
+    }
+
     const next = new Set(convocados)
     if (next.has(id)) {
       // Solo el admin puede sacar de la convocatoria a quien se haya apuntado por la app.
@@ -226,6 +299,7 @@ export function TeamGenerator() {
     // Nueva alineación → descarta cualquier colocación manual previa.
     setPlacementA(null)
     setPlacementB(null)
+    setSalienteId(null)
   }
 
   const confirmar = async () => {
@@ -268,6 +342,7 @@ export function TeamGenerator() {
     setBalance(null)
     setPlacementA(null)
     setPlacementB(null)
+    setSalienteId(null)
   }
 
   // Cambia dos jugadores de equipo (arrastrando entre bandos), sin confirmación.
@@ -346,6 +421,27 @@ export function TeamGenerator() {
           onSelect={cambiarFormacionB}
         />
 
+        {/* Rejilla inteligente: con una alineación ya generada, la rejilla sustituye
+            (baja de última hora) sin regenerar ni perder posiciones. */}
+        {balance && (
+          <p className="rounded-md border border-amber-500/50 bg-amber-900/25 px-3 py-2 text-sm text-amber-100">
+            {salienteId ? (
+              <>
+                🔁 Sale <b>{nombreVisible(players.find((p) => p.id === salienteId)!)}</b> — toca en
+                la rejilla a quién entra.{' '}
+                <button
+                  onClick={() => setSalienteId(null)}
+                  className="ml-1 rounded border border-amber-400/60 px-2 py-0.5 text-xs hover:bg-amber-500/20"
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <>💡 ¿Baja de última hora? Toca al jugador que <b>sale</b> y luego al que <b>entra</b>.</>
+            )}
+          </p>
+        )}
+
         {disponibles.length === 0 ? (
           <p className="text-sm text-slate-500">
             No hay jugadores activos. Da de alta el plantel en la pestaña «Plantel».
@@ -359,6 +455,7 @@ export function TeamGenerator() {
               bloqueados={bloqueados}
               deshabilitados={noVienenIds}
               onToggle={toggle}
+              salienteId={salienteId}
             />
             {invitados.length > 0 && (
               <GrupoConvocados
@@ -368,6 +465,7 @@ export function TeamGenerator() {
                 bloqueados={bloqueados}
                 deshabilitados={noVienenIds}
                 onToggle={toggle}
+                salienteId={salienteId}
               />
             )}
           </div>
@@ -452,6 +550,7 @@ function GrupoConvocados({
   bloqueados,
   deshabilitados,
   onToggle,
+  salienteId = null,
 }: {
   titulo: string
   jugadores: Player[]
@@ -461,6 +560,8 @@ function GrupoConvocados({
   /** Ids que han dicho "No voy esta semana": no se pueden seleccionar. */
   deshabilitados: Set<string>
   onToggle: (id: string) => void
+  /** Jugador marcado como "sale" en la sustitución (rejilla inteligente). */
+  salienteId?: string | null
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -470,6 +571,7 @@ function GrupoConvocados({
           const on = convocados.has(p.id)
           const noVa = deshabilitados.has(p.id)
           const locked = on && bloqueados.has(p.id)
+          const sale = salienteId === p.id
           return (
             <button
               key={p.id}
@@ -486,9 +588,11 @@ function GrupoConvocados({
                 'flex items-center justify-between gap-1 rounded border px-2 py-1.5 text-left text-sm transition-colors ' +
                 (noVa
                   ? 'border-red-800 bg-red-950/40 text-red-400 line-through cursor-not-allowed'
-                  : on
-                    ? 'border-emerald-500 bg-emerald-600/80 text-white'
-                    : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400') +
+                  : sale
+                    ? 'border-amber-400 bg-amber-600/80 text-white ring-2 ring-amber-300'
+                    : on
+                      ? 'border-emerald-500 bg-emerald-600/80 text-white'
+                      : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400') +
                 (locked ? ' cursor-not-allowed' : '')
               }
             >
@@ -501,6 +605,8 @@ function GrupoConvocados({
               </span>
               {noVa ? (
                 <span className="shrink-0 text-xs opacity-80">no va</span>
+              ) : sale ? (
+                <span className="shrink-0 text-xs font-semibold opacity-90">sale</span>
               ) : locked ? (
                 <span className="shrink-0 text-xs opacity-80" aria-label="apuntado">🔒</span>
               ) : (
