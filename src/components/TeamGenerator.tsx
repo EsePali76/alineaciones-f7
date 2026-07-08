@@ -421,24 +421,18 @@ export function TeamGenerator() {
           onSelect={cambiarFormacionB}
         />
 
-        {/* Rejilla inteligente: con una alineación ya generada, la rejilla sustituye
-            (baja de última hora) sin regenerar ni perder posiciones. */}
-        {balance && (
+        {/* Rejilla inteligente: al marcar a un saliente, la rejilla pasa a sustituir
+            sin regenerar ni perder posiciones. */}
+        {salienteId && (
           <p className="rounded-md border border-amber-500/50 bg-amber-900/25 px-3 py-2 text-sm text-amber-100">
-            {salienteId ? (
-              <>
-                🔁 Sale <b>{nombreVisible(players.find((p) => p.id === salienteId)!)}</b> — toca en
-                la rejilla a quién entra.{' '}
-                <button
-                  onClick={() => setSalienteId(null)}
-                  className="ml-1 rounded border border-amber-400/60 px-2 py-0.5 text-xs hover:bg-amber-500/20"
-                >
-                  Cancelar
-                </button>
-              </>
-            ) : (
-              <>💡 ¿Baja de última hora? Toca al jugador que <b>sale</b> y luego al que <b>entra</b>.</>
-            )}
+            🔁 Sale <b>{nombreVisible(players.find((p) => p.id === salienteId)!)}</b> — toca en la
+            rejilla a quién entra.{' '}
+            <button
+              onClick={() => setSalienteId(null)}
+              className="ml-1 rounded border border-amber-400/60 px-2 py-0.5 text-xs hover:bg-amber-500/20"
+            >
+              Cancelar
+            </button>
           </p>
         )}
 
