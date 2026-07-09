@@ -107,6 +107,18 @@ export function ventanaAbierta(fechaISO: string, ahora: Date = new Date()): bool
   return t >= apertura.getTime() && t <= cierre.getTime()
 }
 
+/**
+ * ¿Ya ha pasado el día del partido? Devuelve true a partir del día SIGUIENTE al
+ * partido (se considera "en curso" hasta el final del día del partido). Se usa para
+ * caducar la alineación de la semana: al día siguiente deja de mostrarse en el banner
+ * y el editor de "Equipos" se resetea para la próxima convocatoria.
+ */
+export function partidoPasado(fechaMs: number, ahora: Date = new Date()): boolean {
+  const p = new Date(fechaMs)
+  const finDia = new Date(p.getFullYear(), p.getMonth(), p.getDate(), 23, 59, 59, 999)
+  return ahora.getTime() > finDia.getTime()
+}
+
 /** Fecha legible, p.ej. "lunes, 16 de junio". */
 export function formatoFecha(fechaISO: string): string {
   return parseISO(fechaISO).toLocaleDateString('es-ES', {

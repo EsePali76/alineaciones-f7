@@ -7,7 +7,7 @@ import { useRotationStore } from '../store/rotationStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 import { useLineupsStore } from '../store/lineupsStore'
 import { ConfirmedLineupView } from './ConfirmedLineupView'
-import { formatoFecha, siguienteJornada } from '../domain/matchday'
+import { formatoFecha, siguienteJornada, partidoPasado } from '../domain/matchday'
 import { nombreVisible } from '../domain/types'
 import type { SignupRow, SignupStatus } from '../lib/convocatoriaApi'
 import type { PlayerInput } from '../store/playersStore'
@@ -39,8 +39,10 @@ export function RotationBanner() {
   const lineups = useLineupsStore((s) => s.lineups)
 
   // Alineación confirmada pendiente de jugar (la de esta semana, sin resultado aún).
+  // Caduca al día siguiente del partido: aunque no se registre resultado, deja de
+  // mostrarse y vuelve la convocatoria de la próxima jornada.
   const pendingLineup = lineups
-    .filter((l) => !l.resultado)
+    .filter((l) => !l.resultado && !partidoPasado(l.fecha))
     .sort((a, b) => b.fecha - a.fecha)[0]
 
   const yo = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined

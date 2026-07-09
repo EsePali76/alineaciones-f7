@@ -11,7 +11,7 @@ import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore } from '../domain/scoring'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
-import { parseISO } from '../domain/matchday'
+import { parseISO, partidoPasado } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
 import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
@@ -80,15 +80,17 @@ export function TeamGenerator() {
     }
   }
 
-  // Cierre de partido: cuando la alineación que teníamos en marcha ya tiene resultado
-  // (el admin lo ha registrado tras jugarse), la convocatoria queda cerrada → se limpia
-  // todo (formato, formaciones, convocados y la gráfica) para empezar la siguiente de
-  // cero. Es independiente de quién registre el resultado: cada dispositivo se autolimpia
-  // al ver que su `confirmedLineupId` ya tiene resultado.
+  // Cierre de partido: se limpia todo (formato, formaciones, convocados y la gráfica)
+  // para empezar la siguiente de cero cuando la alineación que teníamos en marcha
+  //   a) ya tiene resultado (el admin lo registró tras jugarse), o
+  //   b) su día de partido ya ha pasado (al día siguiente), aunque no se registrara
+  //      resultado → así el editor no arrastra la alineación de la semana anterior y
+  //      queda listo para la nueva convocatoria (a juego con el banner).
+  // Cada dispositivo se autolimpia al ver el estado de su `confirmedLineupId`.
   useEffect(() => {
     if (!confirmedLineupId) return
     const lu = lineups.find((l) => l.id === confirmedLineupId)
-    if (lu?.resultado) reset()
+    if (lu && (lu.resultado || partidoPasado(lu.fecha))) reset()
   }, [confirmedLineupId, lineups, reset])
 
   // Pre-relleno en vivo: cada vez que cambia la lista de apuntados (o la jornada),
@@ -119,8 +121,13 @@ export function TeamGenerator() {
 
   // Alineación confirmada de la semana (compartida, sin resultado aún). Vive en el
   // backend; su balance/placement NO está en el localStorage de otros dispositivos.
+  // Se excluyen las de partidos ya pasados: no deben auto-cargarse (a juego con el
+  // banner, que también las caduca al día siguiente).
   const pendingLineup = useMemo(
-    () => [...lineups].filter((l) => !l.resultado).sort((a, b) => b.fecha - a.fecha)[0],
+    () =>
+      [...lineups]
+        .filter((l) => !l.resultado && !partidoPasado(l.fecha))
+        .sort((a, b) => b.fecha - a.fecha)[0],
     [lineups],
   )
 

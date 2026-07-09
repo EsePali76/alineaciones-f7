@@ -126,10 +126,14 @@ function Ficha({
     <div
       onPointerDown={(e) => {
         if (readOnly) return
+        // Evita que el navegador móvil inicie su propia gesto (menú "guardar imagen",
+        // selección de texto…) que roba el arrastre.
+        e.preventDefault()
         e.currentTarget.setPointerCapture(e.pointerId)
         startRef.current = { x: e.clientX, y: e.clientY }
         setOffset({ dx: 0, dy: 0 })
       }}
+      onContextMenu={(e) => !readOnly && e.preventDefault()}
       onPointerMove={(e) => {
         if (!startRef.current) return
         setOffset({ dx: e.clientX - startRef.current.x, dy: e.clientY - startRef.current.y })
@@ -151,6 +155,10 @@ function Ficha({
         left: `${x}%`,
         top: `${y}%`,
         transform: `translate(-50%, -50%) translate(${offset?.dx ?? 0}px, ${offset?.dy ?? 0}px)`,
+        // Suprime el callout de pulsación larga en móvil (iOS/Android); hereda a la foto.
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
       }}
       title={
         readOnly
