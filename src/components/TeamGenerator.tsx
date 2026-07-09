@@ -228,7 +228,7 @@ export function TeamGenerator() {
 
   // Sustitución in-place: el jugador `inId` entra por `outId` conservando su puesto.
   // Recalcula el balance y fija los placements para que el sustituto ocupe el hueco.
-  const hacerSustitucion = (outId: string, inId: string) => {
+  const hacerSustitucion = async (outId: string, inId: string) => {
     if (!balanceVivo) return
     const inPlayer = players.find((p) => p.id === inId)
     if (!inPlayer) return
@@ -248,6 +248,23 @@ export function TeamGenerator() {
       placementB: newPlB,
       convocados: [...convocadosIds.filter((i) => i !== outId), inId],
     })
+    // Refleja el cambio en la convocatoria COMPARTIDA (banner): sale el saliente,
+    // entra el sustituto. Antes solo se actualizaban los convocados locales, así que
+    // el banner seguía mostrando al que salía y no al que entraba.
+    if (titularSet.has(outId)) {
+      try {
+        await borrarse(outId)
+      } catch {
+        /* sin permisos para sacar a otro (RLS): queda solo en local */
+      }
+    }
+    if (!titularSet.has(inId)) {
+      try {
+        await apuntarse(inId, 'in', fecha)
+      } catch {
+        /* sin permisos para apuntar a otro (RLS): queda solo en local */
+      }
+    }
   }
 
   const toggle = async (id: string) => {
