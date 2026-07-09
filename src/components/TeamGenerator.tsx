@@ -362,6 +362,20 @@ export function TeamGenerator() {
     setSalienteId(null)
   }
 
+  // Descartar la alineación para volver a EDITAR CONVOCADOS libremente (la rejilla deja
+  // el modo sustitución y vuelve a permitir marcar/desmarcar). Conserva los convocados.
+  // Si estaba confirmada, avisa: se borrará del historial (el banner vuelve a la convocatoria).
+  const editarConvocatoria = async () => {
+    if (
+      confirmada &&
+      !confirm(
+        'Se descartará la alineación para editar los convocados. Si estaba confirmada, se borrará del historial y el banner volverá a la convocatoria. Los convocados se conservan.',
+      )
+    )
+      return
+    await cancelarConfirmada()
+  }
+
   // Cambia dos jugadores de equipo (arrastrando entre bandos), sin confirmación.
   const handleCrossSwap = (id1: string, id2: string) => {
     if (!balanceVivo) return
@@ -390,7 +404,16 @@ export function TeamGenerator() {
             <span className={completo ? 'text-emerald-400' : 'text-slate-400'}>
               {nConvocados} / {objetivo} seleccionados
             </span>
-            {reservaIds.length > 0 && (
+            {balance && puedeConfirmar && (
+              <button
+                onClick={editarConvocatoria}
+                className="rounded border border-slate-500 px-2 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700"
+                title="Descarta la alineación para poder marcar/desmarcar convocados libremente (se conservan los convocados actuales)"
+              >
+                ✏️ Editar convocados
+              </button>
+            )}
+            {reservaIds.length > 0 && !balance && (
               <button
                 onClick={completarConReservas}
                 disabled={faltan <= 0 || reservasDisponibles === 0}
@@ -437,6 +460,15 @@ export function TeamGenerator() {
           seleccionada={formacionB.nombre}
           onSelect={cambiarFormacionB}
         />
+
+        {/* Con una alineación activa, la rejilla sustituye en vez de convocar. Se avisa
+            de cómo sustituir y de dónde descartar para volver a editar convocados. */}
+        {balance && !salienteId && (
+          <p className="rounded-md border border-slate-600 bg-slate-800/50 px-3 py-2 text-sm text-slate-300">
+            🔁 Alineación creada: toca a un jugador del campo para <b>sustituirlo</b>. Para
+            marcar o quitar convocados, pulsa <b>«✏️ Editar convocados»</b> arriba.
+          </p>
+        )}
 
         {/* Rejilla inteligente: al marcar a un saliente, la rejilla pasa a sustituir
             sin regenerar ni perder posiciones. */}
