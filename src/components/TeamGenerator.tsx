@@ -22,6 +22,7 @@ import { useConvocatoriaStore } from '../store/convocatoriaStore'
 export function TeamGenerator() {
   const players = useEffectivePlayers()
   const lineups = useLineupsStore((s) => s.lineups)
+  const lineupsLoaded = useLineupsStore((s) => s.loaded)
   const addLineup = useLineupsStore((s) => s.addLineup)
   const removeLineup = useLineupsStore((s) => s.removeLineup)
   const { current: turnoActual, isMyTurn } = useTurno()
@@ -81,17 +82,20 @@ export function TeamGenerator() {
   }
 
   // Cierre de partido: se limpia todo (formato, formaciones, convocados y la gráfica)
-  // para empezar la siguiente de cero cuando la alineación que teníamos en marcha
-  //   a) ya tiene resultado (el admin lo registró tras jugarse), o
+  // para empezar la siguiente de cero cuando la alineación que teníamos en marcha ya
+  // no es la pendiente de la semana, es decir cuando:
+  //   a) ya tiene resultado (se registró tras jugarse), o
   //   b) su día de partido ya ha pasado (al día siguiente), aunque no se registrara
-  //      resultado → así el editor no arrastra la alineación de la semana anterior y
-  //      queda listo para la nueva convocatoria (a juego con el banner).
-  // Cada dispositivo se autolimpia al ver el estado de su `confirmedLineupId`.
+  //      resultado, o
+  //   c) ya no existe en el backend (se borró, o el resultado se metió en OTRA
+  //      alineación duplicada con distinto id → la que teníamos cargada quedó huérfana).
+  // Se espera a que los lineups estén CARGADOS para no resetear durante el arranque
+  // (cuando la lista aún está vacía). Cada dispositivo se autolimpia solo.
   useEffect(() => {
-    if (!confirmedLineupId) return
+    if (!confirmedLineupId || !lineupsLoaded) return
     const lu = lineups.find((l) => l.id === confirmedLineupId)
-    if (lu && (lu.resultado || partidoPasado(lu.fecha))) reset()
-  }, [confirmedLineupId, lineups, reset])
+    if (!lu || lu.resultado || partidoPasado(lu.fecha)) reset()
+  }, [confirmedLineupId, lineups, lineupsLoaded, reset])
 
   // Pre-relleno en vivo: cada vez que cambia la lista de apuntados (o la jornada),
   // siembra los convocados con los titulares ('Me apunto'). El diff incremental del

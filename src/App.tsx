@@ -9,6 +9,7 @@ import { useConvocatoriaStore } from './store/convocatoriaStore'
 import { useAuthStore } from './store/authStore'
 import { useEffectivePlayers } from './hooks/useEffectivePlayers'
 import { useTurno } from './hooks/useTurno'
+import { partidoPasado } from './domain/matchday'
 import { RotationBanner } from './components/RotationBanner'
 import { PlayerForm } from './components/PlayerForm'
 import { PlayerList } from './components/PlayerList'
@@ -47,8 +48,9 @@ function App() {
   // Quién puede GENERAR/editar equipos (el del turno o admin).
   const puedeGenerar = isMyTurn || isAdmin
   // Alineación confirmada de la semana pendiente de resultado (visible para todos).
+  // Caduca al día siguiente del partido (a juego con el banner y el editor de Equipos).
   const pendingLineup = [...lineups]
-    .filter((l) => !l.resultado)
+    .filter((l) => !l.resultado && !partidoPasado(l.fecha))
     .sort((a, b) => b.fecha - a.fecha)[0]
   // La pestaña Equipos se ve si puedes generar o si hay alineación confirmada que mostrar.
   const puedeEquipos = puedeGenerar || !!pendingLineup
