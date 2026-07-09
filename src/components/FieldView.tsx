@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import type { Player } from '../domain/types'
 import { fotoVisible, nombreVisible } from '../domain/types'
 import { asignarFormacion, type FieldLine, type Formacion } from '../domain/formation'
@@ -6,12 +7,6 @@ import type { TeamBalance } from '../domain/balancer'
 import { useGeneratorStore } from '../store/generatorStore'
 import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
-
-/** Datos que viajan en el arrastre de una ficha. */
-interface DragData {
-  id: string
-  lado: 'A' | 'B'
-}
 
 const ORDEN_BANDAS: FieldLine[] = ['POR', 'DEF', 'MED', 'ATA']
 
@@ -102,16 +97,15 @@ function aplicarPlacement(auto: Punto[], placement: string[] | null): Punto[] {
 function Ficha({
   punto,
   lado,
-  onSwap,
-  onCrossSwap,
+  onDrop,
   readOnly = false,
   marca,
   tocado,
 }: {
   punto: Punto
   lado: 'A' | 'B'
-  onSwap: (lado: 'A' | 'B', dragId: string, dropId: string) => void
-  onCrossSwap: (dragId: string, dropId: string) => void
+  /** Se llama al soltar la ficha: el padre resuelve por coordenadas sobre qué ficha se suelta. */
+  onDrop: (dragId: string, lado: 'A' | 'B', clientX: number, clientY: number) => void
   readOnly?: boolean
   /** Goles/asistencias del jugador en este partido (solo en la vista del historial). */
   marca?: { goles: number; asist: number }
@@ -119,33 +113,45 @@ function Ficha({
   tocado: boolean
 }) {
   const { player, x, y } = punto
+  // Arrastre con Pointer Events (unifica ratón + táctil; el HTML5 DnD no funciona en móvil).
+  const startRef = useRef<{ x: number; y: number } | null>(null)
+  const [offset, setOffset] = useState<{ dx: number; dy: number } | null>(null)
+
+  const finDrag = () => {
+    startRef.current = null
+    setOffset(null)
+  }
+
   return (
     <div
-      draggable={!readOnly}
-      onDragStart={(e) => {
+      onPointerDown={(e) => {
         if (readOnly) return
-        e.dataTransfer.setData('text/plain', JSON.stringify({ id: player.id, lado } as DragData))
-        e.dataTransfer.effectAllowed = 'move'
+        e.currentTarget.setPointerCapture(e.pointerId)
+        startRef.current = { x: e.clientX, y: e.clientY }
+        setOffset({ dx: 0, dy: 0 })
       }}
-      onDragOver={(e) => !readOnly && e.preventDefault()}
-      onDrop={(e) => {
-        if (readOnly) return
-        e.preventDefault()
-        try {
-          const d = JSON.parse(e.dataTransfer.getData('text/plain')) as DragData
-          if (d.id === player.id) return
-          // Mismo equipo: intercambia puesto. Distinto equipo: cambia de bando (con confirmación).
-          if (d.lado === lado) onSwap(lado, d.id, player.id)
-          else onCrossSwap(d.id, player.id)
-        } catch {
-          /* drop inválido, se ignora */
-        }
+      onPointerMove={(e) => {
+        if (!startRef.current) return
+        setOffset({ dx: e.clientX - startRef.current.x, dy: e.clientY - startRef.current.y })
       }}
+      onPointerUp={(e) => {
+        if (!startRef.current) return
+        const moved = Math.hypot(e.clientX - startRef.current.x, e.clientY - startRef.current.y)
+        finDrag()
+        // Solo cuenta como arrastre si el dedo/ratón se movió algo (evita swaps por un simple toque).
+        if (moved > 6) onDrop(player.id, lado, e.clientX, e.clientY)
+      }}
+      onPointerCancel={finDrag}
       className={
-        'absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center ' +
-        (readOnly ? '' : 'cursor-grab active:cursor-grabbing')
+        'absolute flex flex-col items-center ' +
+        (readOnly ? '' : 'cursor-grab touch-none select-none active:cursor-grabbing') +
+        (offset ? ' z-20' : '')
       }
-      style={{ left: `${x}%`, top: `${y}%` }}
+      style={{
+        left: `${x}%`,
+        top: `${y}%`,
+        transform: `translate(-50%, -50%) translate(${offset?.dx ?? 0}px, ${offset?.dy ?? 0}px)`,
+      }}
       title={
         readOnly
           ? `${nombreVisible(player)} · ${POSITION_LABEL[player.posiciones[0]]}`
@@ -213,6 +219,8 @@ export function FieldView({
   // Tocado: en el historial manda la foto del partido (`tocadoIds`); en las vistas en vivo, el flag.
   const esTocado = (p: Player) => (tocadoIds ? tocadoIds.has(p.id) : p.tocado)
 
+  const fieldRef = useRef<HTMLDivElement>(null)
+
   const puntosA = aplicarPlacement(posiciones(balance.teamA, 'A', formacionA), placementA)
   const puntosB = aplicarPlacement(posiciones(balance.teamB, 'B', formacionB), placementB)
 
@@ -228,9 +236,36 @@ export function FieldView({
     ;(lado === 'A' ? setPlacementA : setPlacementB)(orden)
   }
 
+  // Al soltar una ficha, busca por coordenadas la ficha más cercana al punto de suelta
+  // (hit-testing manual: los Pointer Events no traen un "drop target" como el HTML5 DnD).
+  const handleDrop = (dragId: string, ladoDrag: 'A' | 'B', clientX: number, clientY: number) => {
+    if (readOnly) return
+    const rect = fieldRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const px = clientX - rect.left
+    const py = clientY - rect.top
+    let best: { player: Player; lado: 'A' | 'B' } | null = null
+    let bestDist = Infinity
+    for (const pt of puntosA) {
+      if (pt.player.id === dragId) continue
+      const d = Math.hypot((pt.x / 100) * rect.width - px, (pt.y / 100) * rect.height - py)
+      if (d < bestDist) (bestDist = d), (best = { player: pt.player, lado: 'A' })
+    }
+    for (const pt of puntosB) {
+      if (pt.player.id === dragId) continue
+      const d = Math.hypot((pt.x / 100) * rect.width - px, (pt.y / 100) * rect.height - py)
+      if (d < bestDist) (bestDist = d), (best = { player: pt.player, lado: 'B' })
+    }
+    // Debe soltarse razonablemente cerca de una ficha; si no, se ignora (soltar en vacío = cancelar).
+    if (!best || bestDist > 60) return
+    // Mismo equipo: intercambia puesto. Distinto equipo: cambia de bando (con confirmación).
+    if (best.lado === ladoDrag) handleSwap(ladoDrag, dragId, best.player.id)
+    else onCrossSwap(dragId, best.player.id)
+  }
+
   return (
     <div className="relative w-full overflow-hidden rounded-lg border border-slate-700">
-      <div className="relative aspect-[3/2] w-full">
+      <div ref={fieldRef} className="relative aspect-[3/2] w-full">
         {/* Campo */}
         <svg viewBox="0 0 300 200" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
           <rect x="0" y="0" width="300" height="200" fill="#15803d" />
@@ -261,10 +296,10 @@ export function FieldView({
 
         {/* Jugadores */}
         {puntosA.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="A" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} tocado={esTocado(pt.player)} />
+          <Ficha key={pt.player.id} punto={pt} lado="A" onDrop={handleDrop} readOnly={readOnly} marca={marcas?.get(pt.player.id)} tocado={esTocado(pt.player)} />
         ))}
         {puntosB.map((pt) => (
-          <Ficha key={pt.player.id} punto={pt} lado="B" onSwap={handleSwap} onCrossSwap={onCrossSwap} readOnly={readOnly} marca={marcas?.get(pt.player.id)} tocado={esTocado(pt.player)} />
+          <Ficha key={pt.player.id} punto={pt} lado="B" onDrop={handleDrop} readOnly={readOnly} marca={marcas?.get(pt.player.id)} tocado={esTocado(pt.player)} />
         ))}
 
         {/* Etiquetas de equipo */}
