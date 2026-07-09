@@ -54,6 +54,8 @@ export function TeamGenerator() {
   const loadConfirmed = useGeneratorStore((s) => s.loadConfirmed)
   const substitute = useGeneratorStore((s) => s.substitute)
   const reset = useGeneratorStore((s) => s.reset)
+  // Jornada a la que pertenece la sesión de generación persistida (convocados/balance).
+  const convocatoriaDate = useGeneratorStore((s) => s.convocatoriaDate)
   // Jugador marcado como "sale" en la rejilla inteligente (sustitución in-place).
   const [salienteId, setSalienteId] = useState<string | null>(null)
   const addPlayer = usePlayersStore((s) => s.addPlayer)
@@ -82,20 +84,27 @@ export function TeamGenerator() {
   }
 
   // Cierre de partido: se limpia todo (formato, formaciones, convocados y la gráfica)
-  // para empezar la siguiente de cero cuando la alineación que teníamos en marcha ya
-  // no es la pendiente de la semana, es decir cuando:
-  //   a) ya tiene resultado (se registró tras jugarse), o
-  //   b) su día de partido ya ha pasado (al día siguiente), aunque no se registrara
-  //      resultado, o
-  //   c) ya no existe en el backend (se borró, o el resultado se metió en OTRA
-  //      alineación duplicada con distinto id → la que teníamos cargada quedó huérfana).
-  // Se espera a que los lineups estén CARGADOS para no resetear durante el arranque
-  // (cuando la lista aún está vacía). Cada dispositivo se autolimpia solo.
+  // para empezar la siguiente de cero. Dos vías:
+  //
+  // 1) Sesión de una jornada YA PASADA: si los convocados/alineación persistidos son
+  //    de una jornada cuyo día ya pasó, se descartan aunque NUNCA se confirmaran (una
+  //    alineación generada y no confirmada no tiene `confirmedLineupId`, así que la vía
+  //    2 no la cazaría y se arrastraba a la semana siguiente). Independiente del backend.
+  //
+  // 2) La alineación confirmada que teníamos cargada ya no es la pendiente porque:
+  //    a) tiene resultado (se registró tras jugarse), b) su día de partido ya pasó, o
+  //    c) ya no existe en el backend (se borró, o el resultado se metió en OTRA
+  //    alineación duplicada → la cargada quedó huérfana). Espera a `lineupsLoaded`
+  //    para no resetear durante el arranque (lista aún vacía).
   useEffect(() => {
+    if (convocatoriaDate && partidoPasado(parseISO(convocatoriaDate).getTime())) {
+      reset()
+      return
+    }
     if (!confirmedLineupId || !lineupsLoaded) return
     const lu = lineups.find((l) => l.id === confirmedLineupId)
     if (!lu || lu.resultado || partidoPasado(lu.fecha)) reset()
-  }, [confirmedLineupId, lineups, lineupsLoaded, reset])
+  }, [convocatoriaDate, confirmedLineupId, lineups, lineupsLoaded, reset])
 
   // Pre-relleno en vivo: cada vez que cambia la lista de apuntados (o la jornada),
   // siembra los convocados con los titulares ('Me apunto'). El diff incremental del
