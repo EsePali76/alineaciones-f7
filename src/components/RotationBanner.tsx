@@ -19,7 +19,7 @@ import type { PlayerInput } from '../store/playersStore'
  *  3. La cabecera "Convocatoria" con los botones para apuntarse (desde el domingo 12:00).
  */
 export function RotationBanner() {
-  const { current, next, isMyTurn } = useTurno()
+  const { current, next, isMyTurn, congelado } = useTurno()
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const isLinked = useAuthStore((s) => s.isLinked)
   const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
@@ -38,11 +38,12 @@ export function RotationBanner() {
   const borrarse = useConvocatoriaStore((s) => s.borrarse)
   const lineups = useLineupsStore((s) => s.lineups)
 
-  // Alineación confirmada pendiente de jugar (la de esta semana, sin resultado aún).
-  // Caduca al día siguiente del partido: aunque no se registre resultado, deja de
-  // mostrarse y vuelve la convocatoria de la próxima jornada.
+  // Alineación de la jornada en curso. Se sigue mostrando aunque ya se haya registrado
+  // el resultado (el partido es hoy): así no reaparece la convocatoria de una jornada
+  // ya jugada. Caduca al día siguiente del partido, que es cuando vuelve la convocatoria
+  // (y cuando se anuncia el relevo del turno).
   const pendingLineup = lineups
-    .filter((l) => !l.resultado && !partidoPasado(l.fecha))
+    .filter((l) => !partidoPasado(l.fecha))
     .sort((a, b) => b.fecha - a.fecha)[0]
 
   const yo = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
@@ -154,18 +155,20 @@ export function RotationBanner() {
       <div className="flex flex-col gap-1">
         <span className="flex items-center gap-2 text-slate-200">
           <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_2px] shadow-red-500/70" />
-          La siguiente alineación es de...
+          {congelado ? 'La alineación de esta jornada es de...' : 'La siguiente alineación es de...'}
         </span>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-5">
           <b className="text-xl text-red-400">{current ? current.nombre : '— sin asignar —'}</b>
-          {isMyTurn && (
+          {isMyTurn && !congelado && (
             <span className="animate-pulse font-semibold text-emerald-300">
               ¡te toca! Ve a “Equipos”.
             </span>
           )}
 
-          {/* Acción junto al nombre: pasar/avanzar el turno */}
-          {isMyTurn && (
+          {/* Acción junto al nombre: pasar/avanzar el turno. Mientras el turno está
+              congelado (alineación de la jornada ya hecha) no hay nada que pasar:
+              el relevo se anuncia al día siguiente del partido. */}
+          {isMyTurn && !congelado && (
             <button
               onClick={() => {
                 if (confirm('¿No puedes hacerla esta semana? Pasa el turno al siguiente.')) pasarTurno()
@@ -175,7 +178,7 @@ export function RotationBanner() {
               No puedo → pasar turno
             </button>
           )}
-          {isAdmin && (
+          {isAdmin && !congelado && (
             <button
               onClick={() => {
                 if (
@@ -221,6 +224,7 @@ export function RotationBanner() {
         {next && (
           <span className="pl-5 text-sm text-slate-400">
             ... y la próxima es de... <b className="text-slate-300">{next.nombre}</b>
+            {congelado && ' (a partir de mañana)'}
           </span>
         )}
         {isAdmin && (

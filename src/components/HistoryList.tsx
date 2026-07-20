@@ -256,7 +256,9 @@ function ResultadoRow({
   const setResultado = useLineupsStore((s) => s.setResultado)
   const clearResultado = useLineupsStore((s) => s.clearResultado)
   const alConfirmar = useRotationStore((s) => s.alConfirmar)
-  const { current: turnoActual } = useTurno()
+  // Turno REAL de la cola (no el "congelado" que se muestra en el banner): así, si se
+  // borra y vuelve a registrar el resultado, la rotación no avanza dos veces.
+  const { currentColaId } = useTurno()
 
   const r = lineup.resultado
   const [editando, setEditando] = useState(false)
@@ -282,7 +284,7 @@ function ResultadoRow({
     setEditando(false)
     // Partido jugado → el turno pasa al siguiente. Solo al registrar el resultado por
     // primera vez y si la hizo quien tiene el turno actual (evita avances al rellenar antiguas).
-    if (eraSinResultado && lineup.madeBy && lineup.madeBy === turnoActual?.id) {
+    if (eraSinResultado && lineup.madeBy && lineup.madeBy === currentColaId) {
       alConfirmar(lineup.madeBy).catch((e) => console.error('No se pudo avanzar el turno', e))
     }
   }
