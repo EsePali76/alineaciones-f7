@@ -224,7 +224,6 @@ export function RotationBanner() {
         {next && (
           <span className="pl-5 text-sm text-slate-400">
             ... y la próxima es de... <b className="text-slate-300">{next.nombre}</b>
-            {congelado && ' (a partir de mañana)'}
           </span>
         )}
         {isAdmin && (
