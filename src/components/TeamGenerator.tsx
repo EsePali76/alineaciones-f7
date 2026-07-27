@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { toBlob, toPng } from 'html-to-image'
+import { toBlob } from 'html-to-image'
 import { useLineupsStore } from '../store/lineupsStore'
 import { useGeneratorStore } from '../store/generatorStore'
 import { useAuthStore } from '../store/authStore'
@@ -715,36 +715,77 @@ function BalanceResult({
   const fieldRef = useRef<HTMLDivElement>(null)
   const [imgMsg, setImgMsg] = useState('')
 
-  const descargarImagen = async () => {
-    if (!fieldRef.current) return
-    // cacheBust: fuerza recargar las fotos remotas (Supabase) para que se inlinen bien.
-    const dataUrl = await toPng(fieldRef.current, {
+  const flash = (msg: string) => {
+    setImgMsg(msg)
+    setTimeout(() => setImgMsg(''), 2500)
+  }
+
+  const nombreImagen = () => `equipos-${new Date().toISOString().slice(0, 10)}.png`
+
+  // cacheBust: fuerza recargar las fotos remotas (Supabase) para que se inlinen bien.
+  const renderBlob = async () => {
+    if (!fieldRef.current) throw new Error('sin campo')
+    const blob = await toBlob(fieldRef.current, {
       pixelRatio: 2,
       backgroundColor: '#0f1115',
       cacheBust: true,
     })
+    if (!blob) throw new Error('sin imagen')
+    return blob
+  }
+
+  const descargarBlob = (blob: Blob) => {
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = dataUrl
-    a.download = `equipos-${new Date().toISOString().slice(0, 10)}.png`
+    a.href = url
+    a.download = nombreImagen()
     a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  }
+
+  const descargarImagen = async () => {
+    try {
+      descargarBlob(await renderBlob())
+    } catch {
+      flash('✕ No se pudo generar')
+    }
   }
 
   const copiarImagen = async () => {
     if (!fieldRef.current) return
+
+    // Safari/iOS exige crear el ClipboardItem en el mismo tick del gesto: se le pasa
+    // la promesa del blob, no el blob ya resuelto (si no, pierde la activación).
     try {
-      const blob = await toBlob(fieldRef.current, {
-        pixelRatio: 2,
-        backgroundColor: '#0f1115',
-        cacheBust: true,
-      })
-      if (!blob) throw new Error('sin imagen')
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      setImgMsg('✓ Imagen copiada')
-      setTimeout(() => setImgMsg(''), 2500)
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': renderBlob() })])
+        flash('✓ Imagen copiada')
+        return
+      }
     } catch {
-      // El portapapeles de imágenes no está disponible (p.ej. móvil) → descarga.
-      await descargarImagen()
+      // sigue con compartir
     }
+
+    // Móviles sin portapapeles de imágenes: compartir (WhatsApp, etc.) es el equivalente útil.
+    let blob: Blob
+    try {
+      blob = await renderBlob()
+    } catch {
+      flash('✕ No se pudo generar')
+      return
+    }
+    const file = new File([blob], nombreImagen(), { type: 'image/png' })
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Equipos' })
+        return
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return // el usuario canceló
+      }
+    }
+
+    descargarBlob(blob)
+    flash('⬇ Descargada (sin portapapeles)')
   }
 
   return (
@@ -788,7 +829,7 @@ function BalanceResult({
           <button
             onClick={copiarImagen}
             className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
-            title="Copia la imagen del campo al portapapeles (o la descarga si no se puede)"
+            title="Copia la imagen del campo al portapapeles (en móvil, abre el menú de compartir)"
           >
             {imgMsg || '📷 Copiar imagen'}
           </button>
