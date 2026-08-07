@@ -30,27 +30,14 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
 }
 
 /**
- * Factor que multiplica el puntaje de un jugador "tocado / bajo de forma".
- * 0.82 = rinde al ~82% de su nivel ese día (≈18% menos). Ajustable.
- */
-export const TOCADO_FACTOR = 0.82
-
-/**
  * Influencia MÁXIMA (en puntos de score) del estado de ánimo sobre la nota final.
  * El ánimo es 0-10 con base 5; el modificador = (animo-5)/5 * ANIMO_MAX_DELTA,
  * así que va de -0.5 (ánimo 0) a +0.5 (ánimo 10). Influencia pequeña, a propósito.
  */
 export const ANIMO_MAX_DELTA = 0.5
 
-// RETIRADO: penalización por "tocado" en el método de resultados. El método de
-// resultados va limpio, sin modificadores de ningún tipo — reparte por lo que se
-// gana en el campo y nada más. Los modificadores (ánimo, tocado) son propios del
-// método de valoraciones. Se conserva por si algún día se quiere matizar.
-// export const TOCADO_PENALTY_RESULTADOS = 1.0
-
 export interface ScoreOptions {
   weights?: ScoreWeights
-  tocadoFactor?: number
   /**
    * Ánimo calculado del jugador (0-10) para aplicar el modificador suave.
    * `undefined` = sin efecto (aún no hay historial / no se quiere aplicar).
@@ -59,13 +46,13 @@ export interface ScoreOptions {
   animoMaxDelta?: number
   /** Método de ponderación. Por defecto `valoraciones` (el de siempre). */
   metodo?: MetodoEquilibrado
-  /** Nota 0-10 por resultados de cada jugador. Solo se usa con `metodo: 'resultados'`. */
+  /** Nota 0-10 por resultados de cada jugador. La usan `resultados` y `mixto`. */
   puntos?: Map<string, number>
 }
 
 /**
- * Media PONDERADA de las valoraciones (sin tocado ni ánimo): el "nivel base" del
- * jugador. Es lo que muestra también la columna "Valoración" del Plantel.
+ * Media PONDERADA de las valoraciones (sin el modificador de ánimo): el "nivel base"
+ * del jugador. Es lo que muestra también la columna "Valoración" del Plantel.
  *
  * Relleno de huecos: una faceta sin valorar toma el valor de la "general" (el juicio
  * de conjunto); si tampoco hay general, se usa 5. Así, valorar solo la general da
@@ -82,10 +69,12 @@ export function weightedRatings(player: Player, weights: ScoreWeights = DEFAULT_
 }
 
 /**
- * Puntaje de un jugador en escala ~0-10, para el reparto: media ponderada (ver
- * `weightedRatings`) + modificadores de situación:
- * - Si va "tocado / bajo de forma", factor de penalización (~18% menos).
- * - El ánimo (si se pasa) aplica un modificador suave de ±ANIMO_MAX_DELTA puntos.
+ * Puntaje de un jugador en escala 0-10, para el reparto. Qué se usa de base depende
+ * del método elegido en la pantalla de Equipos:
+ * - `valoraciones` (por defecto): media ponderada de lo que vota el grupo (ver
+ *   `weightedRatings`), MÁS el modificador suave de ánimo (±ANIMO_MAX_DELTA).
+ * - `resultados`: la nota que sale de sus victorias y derrotas, y nada más.
+ * - `mixto`: la media de las dos bases anteriores, sin ánimo.
  *
  * NOTA: la edad NO entra directamente en el puntaje a propósito. Su efecto real
  * (menos chispa, menos físico) ya lo recogen las valoraciones de velocidad y físico,
@@ -93,13 +82,10 @@ export function weightedRatings(player: Player, weights: ScoreWeights = DEFAULT_
  */
 export function playerScore(player: Player, opts: ScoreOptions = {}): number {
   if (opts.metodo === 'resultados') return resultadosScore(player, opts)
+  if (opts.metodo === 'mixto') return mixtoScore(player, opts)
 
   const weights = opts.weights ?? DEFAULT_WEIGHTS
-  const tocadoFactor = opts.tocadoFactor ?? TOCADO_FACTOR
-
   let score = weightedRatings(player, weights)
-
-  if (player.tocado) score *= tocadoFactor
 
   // Modificador suave de ánimo (automático): influencia mínima.
   // Usa el ánimo de opciones o, si no, el calculado y adjuntado al jugador.
@@ -116,17 +102,33 @@ export function playerScore(player: Player, opts: ScoreOptions = {}): number {
  * Puntaje por RESULTADOS: la nota 0-10 que sale de sus victorias y derrotas y NADA
  * MÁS (ver `notasPorResultados`).
  *
- * SIN MODIFICADORES, a propósito y por decisión de Santi: ni ánimo, ni tocado, ni
- * nada. Este método reparte por lo que se gana en el campo y punto — esa pureza es
- * medio motivo de su existencia, porque es lo que lo hace indiscutible frente a
- * quien dice que las valoraciones son subjetivas. Los modificadores siguen vivos,
- * pero son propios del método de valoraciones (ver `playerScore`).
+ * SIN EL MODIFICADOR DE ÁNIMO, a propósito: sale de los mismos partidos que la
+ * propia nota, así que sumarlo haría que lo reciente contase dos veces con un peso
+ * que nadie ha decidido. Si algún día se quiere que lo reciente pese más, va DENTRO
+ * de la fórmula (un decaimiento explícito), no como término aparte.
  *
  * Un jugador sin partidos (invitado nuevo, alta reciente) vale 5, el centro de la
  * escala: no hay nada que le suba ni que le baje.
  */
 function resultadosScore(player: Player, opts: ScoreOptions): number {
   return opts.puntos?.get(player.id) ?? DEFAULT_RATING
+}
+
+/**
+ * Puntaje MIXTO: la media simple de las dos bases anteriores, la votada y la ganada
+ * en el campo. Ambas están en escala 0-10, así que se promedian directamente.
+ *
+ * Sin ánimo, igual que el de resultados: la mitad de esta base ya son resultados, y
+ * el ánimo sale de esos mismos partidos.
+ *
+ * A medias exactas (50/50), no ponderado. Si algún día se quiere inclinar la balanza
+ * hacia un lado, este es el sitio — pero conviene decidirlo con los datos de la
+ * comparativa de métodos, no a ojo.
+ */
+function mixtoScore(player: Player, opts: ScoreOptions): number {
+  const valoraciones = weightedRatings(player, opts.weights ?? DEFAULT_WEIGHTS)
+  const resultados = opts.puntos?.get(player.id) ?? DEFAULT_RATING
+  return (valoraciones + resultados) / 2
 }
 
 /** Líneas de campo a grandes rasgos, para equilibrar el reparto por zonas. */

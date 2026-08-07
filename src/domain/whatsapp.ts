@@ -2,11 +2,10 @@ import type { Player } from './types'
 import { nombreVisible } from './types'
 import type { TeamBalance } from './balancer'
 
-/** Etiqueta corta de un jugador: "Nombre (POS)" con marcas de invitado/tocado. */
+/** Etiqueta corta de un jugador: "Nombre (POS)", con asterisco si es invitado. */
 function playerLine(p: Player): string {
   const pos = p.posiciones[0] ?? ''
-  const marks = `${p.invitado ? ' *' : ''}${p.tocado ? ' 🤕' : ''}`
-  return ` • ${nombreVisible(p)} (${pos})${marks}`
+  return ` • ${nombreVisible(p)} (${pos})${p.invitado ? ' *' : ''}`
 }
 
 /** Genera el texto listo para pegar en WhatsApp con los dos equipos. */

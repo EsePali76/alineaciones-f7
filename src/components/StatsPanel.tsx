@@ -16,7 +16,6 @@ import {
 import { temporadasDisponibles, filtrarPorTemporada, TODAS } from '../domain/season'
 import { SeasonPicker } from './SeasonPicker'
 import { Avatar } from './Avatar'
-import { TocadoIcon } from './TocadoIcon'
 import { fotoVisible, nombreVisible } from '../domain/types'
 
 type Sub = 'equipo' | 'jugador' | 'menciones'
@@ -30,7 +29,6 @@ type JugSortKey =
   | 'goles'
   | 'asistencias'
   | 'mvps'
-  | 'tocado'
 type SortDir = 'asc' | 'desc'
 
 export function StatsPanel() {
@@ -108,8 +106,6 @@ export function StatsPanel() {
           return s.asistencias
         case 'mvps':
           return s.mvps
-        case 'tocado':
-          return s.partidosTocado
       }
     }
     return [...statsArr].sort((a, b) => {
@@ -267,12 +263,6 @@ export function StatsPanel() {
                   </button>
                 </th>
                 <th className="px-2 py-2 text-center font-medium" title="Veces de blanco / de rojo">⚪/🔴</th>
-                <th className="px-2 py-2 text-center font-medium" title="Partidos jugados tocado / bajo de forma">
-                  <button onClick={() => toggleJug('tocado')} className="font-medium hover:text-slate-200">
-                    <TocadoIcon />
-                    {jugArrow('tocado')}
-                  </button>
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -298,7 +288,6 @@ export function StatsPanel() {
                   <td className="px-2 py-2 text-center text-slate-400">
                     {s.vecesBlanco}/{s.vecesRojo}
                   </td>
-                  <td className="px-2 py-2 text-center text-slate-300">{s.partidosTocado || '—'}</td>
                 </tr>
               ))}
             </tbody>

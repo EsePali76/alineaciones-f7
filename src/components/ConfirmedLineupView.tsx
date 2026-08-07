@@ -5,7 +5,6 @@ import { useAuthStore } from '../store/authStore'
 import { evaluatePartition } from '../domain/balancer'
 import { formacionPorNombre } from '../domain/formation'
 import { FieldView } from './FieldView'
-import { TocadoIcon } from './TocadoIcon'
 import type { ConfirmedLineup, Player } from '../domain/types'
 import { nombreVisible } from '../domain/types'
 
@@ -101,7 +100,6 @@ function TeamCol({
           <li key={p.id} className="text-slate-200">
             {nombreVisible(p)}
             {p.invitado && <span className="text-amber-300"> *</span>}
-            {p.tocado && <TocadoIcon className="ml-1" />}
           </li>
         ))}
       </ul>

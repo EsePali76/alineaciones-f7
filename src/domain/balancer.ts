@@ -4,7 +4,6 @@ import {
   lineaPrincipal,
   esZurdo,
   DEFAULT_WEIGHTS,
-  TOCADO_FACTOR,
   type Linea,
   type ScoreOptions,
 } from './scoring'
@@ -53,7 +52,6 @@ export interface BalanceOptions extends ScoreOptions {
 function scoreOptionsDe(opts: BalanceOptions): ScoreOptions {
   return {
     weights: opts.weights ?? DEFAULT_WEIGHTS,
-    tocadoFactor: opts.tocadoFactor ?? TOCADO_FACTOR,
     metodo: opts.metodo,
     puntos: opts.puntos,
   }

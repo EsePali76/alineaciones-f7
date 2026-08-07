@@ -1,12 +1,17 @@
 import type { ConfirmedLineup } from './types'
 
 /**
- * Método de ponderación con el que se equilibran los equipos.
- * - `valoraciones`: el de siempre. Media ponderada de lo que vota el grupo.
+ * Método de ponderación con el que se equilibran los equipos. Se elige en la
+ * pantalla de Equipos antes de generar.
+ * - `valoraciones`: el de siempre. Media ponderada de lo que vota el grupo, más el
+ *   modificador de ánimo.
  * - `resultados`: solo lo que ha pasado en el campo (ver `notasPorResultados`).
- * Se elige en la pantalla de Equipos antes de generar.
+ * - `mixto`: la media de las dos bases anteriores, sin ánimo.
+ *
+ * Los tres comparten los términos secundarios de la función de coste (líneas,
+ * zurdos y repetición de parejas): eso no depende del método.
  */
-export type MetodoEquilibrado = 'valoraciones' | 'resultados'
+export type MetodoEquilibrado = 'valoraciones' | 'resultados' | 'mixto'
 
 /**
  * Partidos "fantasma" que se suman al divisor para amortiguar a los de poca muestra.
@@ -38,8 +43,8 @@ const NOTA_NEUTRA = 5
  * pensados contra una diferencia de nivel en escala 0-10. Con la media cruda
  * (-1..+1) el reparto lo acabarían decidiendo ellos y no los resultados.
  *
- * Este método NO lleva modificadores (ni ánimo ni tocado): reparte por lo que se
- * gana en el campo y nada más. Ver `resultadosScore` en `scoring.ts`.
+ * Este método NO lleva el modificador de ánimo: reparte por lo que se gana en el
+ * campo y nada más. Ver `resultadosScore` en `scoring.ts`.
  *
  * Quien no ha jugado ningún partido no aparece en el mapa; `playerScore` lo trata
  * como 5 (el centro), que es lo razonable: no hay nada que le suba ni que le baje.

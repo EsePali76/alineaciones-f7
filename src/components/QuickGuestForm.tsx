@@ -41,7 +41,6 @@ export function QuickGuestForm({
       ratings: g != null ? { general: g } : {},
       invitado: true,
       habitual: false,
-      tocado: false,
       excluidoRotacion: false,
       reserva: false,
       activo: true,

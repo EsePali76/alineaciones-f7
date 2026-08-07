@@ -79,18 +79,18 @@ export interface Asignacion {
  * Elige UN portero para el dibujo (cada equipo debe mostrar uno; en la pachanga se
  * turnan). Prioridad:
  *   1º posición preferida POR
- *   2º un tocado (el de mayor nivel entre ellos; suelen ir más de portero por físico)
- *   3º alguien que sepa jugar de POR
- *   4º el de menor nivel (al que menos penaliza ir a portería)
+ *   2º alguien que sepa jugar de POR
+ *   3º el de menor nivel (al que menos penaliza ir a portería)
+ *
+ * RETIRADO el criterio de "un tocado" (iba en 2º lugar): el flag ya no existe. En la
+ * práctica la gente lo usaba para avisar de que ese día se ponía de portero, que es
+ * otra cosa distinta y merecería su propia marca si se quiere recuperar.
  */
 function elegirPortero(team: Player[]): Player | null {
   if (team.length === 0) return null
 
   const porPreferida = team.find((p) => p.posiciones[0] === 'POR')
   if (porPreferida) return porPreferida
-
-  const tocados = team.filter((p) => p.tocado)
-  if (tocados.length > 0) return [...tocados].sort((a, b) => playerScore(b) - playerScore(a))[0]
 
   const sabePortero = team.find((p) => p.posiciones.includes('POR'))
   if (sabePortero) return sabePortero

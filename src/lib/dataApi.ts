@@ -56,7 +56,6 @@ function normalizePlayer(raw: Player): Player {
     activo: raw.activo ?? true,
     invitado: raw.invitado ?? false,
     habitual: raw.habitual ?? false,
-    tocado: raw.tocado ?? false,
     fotoOculta: raw.fotoOculta ?? false,
   }
 }

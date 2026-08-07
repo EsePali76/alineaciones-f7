@@ -14,24 +14,31 @@ import { notasPorResultados, type MetodoEquilibrado } from '../domain/resultados
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
 import { parseISO, partidoPasado } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
-import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
 import { QuickGuestForm } from './QuickGuestForm'
 import { usePlayersStore, type PlayerInput } from '../store/playersStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 
-/** Los dos criterios con los que se puede repartir. Ver `domain/resultados.ts`. */
-const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string }[] = [
+/** Los tres criterios con los que se puede repartir. Ver `domain/resultados.ts`. */
+const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string; pie: string }[] = [
   {
     valor: 'valoraciones',
     etiqueta: '⭐ Valoraciones',
     ayuda: 'Nivel según las valoraciones que os habéis puesto entre vosotros',
+    pie: 'Reparte según las valoraciones que os habéis puesto entre vosotros, con un pequeño ajuste por la racha de cada uno.',
   },
   {
     valor: 'resultados',
     etiqueta: '🏆 Resultados',
     ayuda:
       'Nivel según los partidos ganados y perdidos, en nota de 0 a 10 (amortiguada para quien lleva pocos partidos)',
+    pie: 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota), en nota de 0 a 10. A quien lleva pocos partidos se le acerca al 5, para que un día suelto no le dispare la nota.',
+  },
+  {
+    valor: 'mixto',
+    etiqueta: '⚖️ Mixto',
+    ayuda: 'La media entre la nota por valoraciones y la nota por resultados',
+    pie: 'Reparte por la media entre lo que opináis unos de otros y lo que gana cada uno en el campo, a partes iguales.',
   },
 ]
 
@@ -58,7 +65,7 @@ export function TeamGenerator() {
    */
   const scoreOpts = useMemo<ScoreOptions>(
     () =>
-      metodo === 'resultados' ? { metodo, puntos: notasPorResultados(lineups) } : { metodo },
+      metodo === 'valoraciones' ? { metodo } : { metodo, puntos: notasPorResultados(lineups) },
     [metodo, lineups],
   )
   const formacionNombreA = useGeneratorStore((s) => s.formacionNombreA)
@@ -245,7 +252,7 @@ export function TeamGenerator() {
   }
 
   // Refresca la alineación generada con los datos ACTUALES de los jugadores (por id),
-  // para que editar un jugador (quitar "tocado", renombrar…) se vea sin regenerar.
+  // para que editar un jugador (renombrar, cambiar posiciones…) se vea sin regenerar.
   const balanceVivo = useMemo(() => {
     if (!balance) return null
     const porId = new Map(players.map((p) => [p.id, p]))
@@ -520,9 +527,7 @@ export function TeamGenerator() {
           ))}
         </div>
         <p className="-mt-1 text-xs text-slate-500">
-          {metodo === 'valoraciones'
-            ? 'Reparte según las valoraciones que os habéis puesto entre vosotros.'
-            : 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota), en nota de 0 a 10. A quien lleva pocos partidos se le acerca al 5, para que un día suelto no le dispare la nota.'}
+          {METODOS.find((m) => m.valor === metodo)?.pie}
         </p>
 
         {/* Selectores de formación por equipo */}
@@ -724,7 +729,6 @@ function GrupoConvocados({
                 <Avatar src={fotoVisible(p)} alt={nombreVisible(p)} className="h-6 w-6" />
                 <span className="truncate">
                   {nombreVisible(p)}
-                  {p.tocado && <TocadoIcon className="ml-1" />}
                 </span>
               </span>
               {noVa ? (
@@ -1003,7 +1007,6 @@ function TeamColumn({
             <span>
               {nombreVisible(p)}
               {p.invitado && <span className="text-amber-400" title="Invitado"> *</span>}
-              {p.tocado && <TocadoIcon className="ml-1" />}
             </span>
           </li>
         ))}

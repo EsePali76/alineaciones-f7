@@ -105,12 +105,6 @@ export interface Player {
    */
   habitual: boolean
   /**
-   * Tocado / bajo de forma: viene mermado a ESTE partido (molestias, vuelve de
-   * lesión, etc.). Condición puntual del día que marca quien hace la alineación.
-   * El motor de equilibrado penaliza su puntaje (~18%).
-   */
-  tocado: boolean
-  /**
    * Excluido de la rotación de turnos: no entra en la cola para "hacer la
    * alineación" (viene poco, lesión larga, apartado…). NO impide ser convocado
    * para jugar. Lo marca el Admin o el propio usuario (autoexclusión).
@@ -154,14 +148,6 @@ export interface ConfirmedLineup {
   placementB?: string[]
   /** Resultado del partido, si ya se ha registrado tras jugar. */
   resultado?: MatchResult
-  /**
-   * Ids de los jugadores que disputaron ESTE partido "tocados". Es una FOTO que se
-   * congela al registrar el resultado por primera vez (no se recaptura al reeditar),
-   * para que el historial refleje quién jugó tocado ese día y no el estado actual del
-   * flag (que es puntual y cambia cada semana). Los partidos previos a esta función no
-   * lo tienen (`undefined`) → no muestran a nadie tocado.
-   */
-  tocados?: string[]
 }
 
 /** Un gol concreto del partido: a qué equipo, quién lo metió y quién lo asistió. */

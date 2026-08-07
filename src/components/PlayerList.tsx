@@ -4,7 +4,6 @@ import { fotoVisible } from '../domain/types'
 import { POSITION_LABEL, FOOT_LABEL } from '../domain/constants'
 import { weightedRatings } from '../domain/scoring'
 import { animoLabel } from '../domain/animo'
-import { TocadoIcon } from './TocadoIcon'
 import { Avatar } from './Avatar'
 
 interface PlayerListProps {
@@ -21,7 +20,7 @@ interface PlayerListProps {
 
 /**
  * Valoración mostrada en la columna: la MISMA media ponderada que usa el balanceador
- * (`weightedRatings`), sin los modificadores de situación (tocado / ánimo). Las facetas
+ * (`weightedRatings`), sin el modificador de ánimo. Las facetas
  * vacías toman el valor de la general; si solo hay general, sale esa nota tal cual.
  */
 function mediaValoracion(p: Player): number {
@@ -141,7 +140,6 @@ export function PlayerList({
                         {p.invitado && !p.habitual && (
                           <span className="ml-2 text-xs text-amber-400">(no habitual)</span>
                         )}
-                        {p.tocado && <TocadoIcon className="ml-1" />}
                         {p.reserva && <span className="ml-2 text-xs text-sky-400">(reserva)</span>}
                         {!p.activo && <span className="ml-2 text-xs text-slate-500">(baja)</span>}
                       </span>

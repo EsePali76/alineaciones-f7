@@ -52,8 +52,6 @@ export interface PlayerStats {
   mvps: number
   vecesBlanco: number
   vecesRojo: number
-  /** Partidos que jugó "tocado" (según la foto congelada de cada partido). */
-  partidosTocado: number
   /** Racha actual con signo: +3 = 3 victorias seguidas, -2 = 2 derrotas; 0 = sin racha. */
   racha: number
   /** Mejor racha de victorias del histórico filtrado (nº de victorias seguidas). */
@@ -69,7 +67,6 @@ interface MatchOfPlayer {
   gc: number
   goles: number
   asistencias: number
-  tocado: boolean
 }
 
 /** Estadísticas por jugador, a partir del historial con resultados. */
@@ -83,7 +80,6 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
     const { golesA, golesB } = r
     const goleadores = goleadoresDe(r)
     const asistencias = asistenciasDe(r)
-    const tocados = new Set(l.tocados ?? [])
     const add = (id: string, enA: boolean) => {
       const gf = enA ? golesA : golesB
       const gc = enA ? golesB : golesA
@@ -95,7 +91,6 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
         gc,
         goles: goleadores?.[id] ?? 0,
         asistencias: asistencias?.[id] ?? 0,
-        tocado: tocados.has(id),
       })
       porJugador.set(id, lista)
     }
@@ -119,7 +114,6 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
       mvps: 0,
       vecesBlanco: 0,
       vecesRojo: 0,
-      partidosTocado: 0,
       racha: 0,
       mejorRachaV: 0,
       peorRachaD: 0,
@@ -134,7 +128,6 @@ export function statsPorJugador(lineups: ConfirmedLineup[]): Map<string, PlayerS
       s.asistencias += m.asistencias
       if (m.enA) s.vecesBlanco++
       else s.vecesRojo++
-      if (m.tocado) s.partidosTocado++
     }
     s.pctVictorias = s.partidos > 0 ? Math.round((s.victorias / s.partidos) * 100) : 0
 

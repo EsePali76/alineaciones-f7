@@ -238,7 +238,6 @@ function MatchField({
       placementA={lineup.placementA ?? null}
       placementB={lineup.placementB ?? null}
       marcas={marcas}
-      tocadoIds={new Set(lineup.tocados ?? [])}
     />
   )
 }
