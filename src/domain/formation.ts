@@ -76,24 +76,42 @@ export interface Asignacion {
 }
 
 /**
- * Cuántas veces ha ido de portero cada jugador, según el historial confirmado.
+ * Balance de porterías de cada jugador: las veces que ha ido MENOS las que le
+ * tocaban. Negativo = debe porterías; positivo = ya ha ido de más.
  *
- * De dónde sale: al confirmar una alineación se congela `placementA`/`placementB`
- * (ids en el orden en que se dibujan las fichas), y `ORDEN_BANDAS` empieza por
- * 'POR' — así que **el primer id de cada placement es el portero de ese equipo**.
- * Las alineaciones antiguas sin placement se saltan: no hay forma de saberlo.
+ *   esperado = Σ 1/(tamaño de su equipo) por cada partido jugado
+ *   balance  = veces que fue portero − esperado
+ *
+ * POR QUÉ NO EL RECUENTO BRUTO NI LA PROPORCIÓN. Con el recuento, al que lleva
+ * pocos partidos le toca siempre (tiene pocas porterías por pura aritmética). Con
+ * la proporción pasa exactamente lo mismo: un novato con 0 de 1 partido sale a
+ * 0,00 y sigue siendo el más bajo. Restando lo que le tocaba, un fijo con 9
+ * partidos y ninguna portería debe 1,29 y un novato de un día debe 0,14 — va antes
+ * el fijo, que es lo justo. El tamaño del equipo se toma del partido concreto, así
+ * que vale igual para 6v6 que para 8v8.
+ *
+ * De dónde sale quién fue portero: al confirmar se congela `placementA`/`placementB`
+ * (ids en el orden en que se dibujan las fichas) y `ORDEN_BANDAS` empieza por 'POR',
+ * así que **el primer id de cada placement es el portero de ese equipo**. Las
+ * alineaciones sin placement se saltan ENTERAS (ni veces ni esperado): no se sabe
+ * quién fue, y contarlas solo en el esperado inventaría deuda a quien sí fue.
  */
-export function vecesDePortero(lineups: ConfirmedLineup[]): Map<string, number> {
-  const veces = new Map<string, number>()
-  const contar = (placement?: string[]) => {
+export function balancePorterias(lineups: ConfirmedLineup[]): Map<string, number> {
+  const balance = new Map<string, number>()
+  const suma = (id: string, delta: number) => balance.set(id, (balance.get(id) ?? 0) + delta)
+
+  const contarEquipo = (ids: string[], placement?: string[]) => {
     const portero = placement?.[0]
-    if (portero) veces.set(portero, (veces.get(portero) ?? 0) + 1)
+    if (!portero || ids.length === 0) return
+    const cuota = 1 / ids.length
+    for (const id of ids) suma(id, id === portero ? 1 - cuota : -cuota)
   }
+
   for (const l of lineups) {
-    contar(l.placementA)
-    contar(l.placementB)
+    contarEquipo(l.teamA, l.placementA)
+    contarEquipo(l.teamB, l.placementB)
   }
-  return veces
+  return balance
 }
 
 /**
@@ -101,18 +119,14 @@ export function vecesDePortero(lineups: ConfirmedLineup[]): Map<string, number> 
  * turnan). Prioridad:
  *   1º posición preferida POR
  *   2º alguien que sepa jugar de POR
- *   3º el que MENOS veces ha ido de portero (turno rotativo de hecho); a igualdad,
- *      el de menor nivel, que es a quien menos penaliza ir a portería
+ *   3º el que MÁS porterías debe (ver `balancePorterias`); a igualdad, el de menor
+ *      nivel, que es a quien menos penaliza ir a portería
  *
  * RETIRADO el criterio de "un tocado" (iba en 2º lugar): el flag ya no existe. En la
  * práctica la gente lo usaba para avisar de que ese día se ponía de portero, que es
  * otra cosa distinta y merecería su propia marca si se quiere recuperar.
- *
- * OJO con el 3º: es un recuento BRUTO, así que quien lleva pocos partidos en el
- * grupo tiene pocas porterías por pura aritmética y le tocará antes. Si eso molesta,
- * la alternativa es la proporción sobre partidos jugados.
  */
-function elegirPortero(team: Player[], vecesPortero?: Map<string, number>): Player | null {
+function elegirPortero(team: Player[], balance?: Map<string, number>): Player | null {
   if (team.length === 0) return null
 
   const porPreferida = team.find((p) => p.posiciones[0] === 'POR')
@@ -121,10 +135,9 @@ function elegirPortero(team: Player[], vecesPortero?: Map<string, number>): Play
   const sabePortero = team.find((p) => p.posiciones.includes('POR'))
   if (sabePortero) return sabePortero
 
-  const veces = (p: Player) => vecesPortero?.get(p.id) ?? 0
-  return [...team].sort(
-    (a, b) => veces(a) - veces(b) || playerScore(a) - playerScore(b),
-  )[0]
+  // Menor balance = más porterías debe.
+  const debe = (p: Player) => balance?.get(p.id) ?? 0
+  return [...team].sort((a, b) => debe(a) - debe(b) || playerScore(a) - playerScore(b))[0]
 }
 
 /**
@@ -135,9 +148,9 @@ function elegirPortero(team: Player[], vecesPortero?: Map<string, number>): Play
 export function asignarFormacion(
   team: Player[],
   cupos: Record<CampoLine, number>,
-  vecesPortero?: Map<string, number>,
+  balancePortero?: Map<string, number>,
 ): Asignacion[] {
-  const portero = elegirPortero(team, vecesPortero)
+  const portero = elegirPortero(team, balancePortero)
   const campo = team.filter((p) => p !== portero)
 
   const restante: Record<CampoLine, number> = { ...cupos }

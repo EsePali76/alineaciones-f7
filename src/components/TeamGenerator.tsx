@@ -11,7 +11,7 @@ import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore, type ScoreOptions } from '../domain/scoring'
 import { notasPorResultados, type MetodoEquilibrado } from '../domain/resultados'
-import { formacionesDe, formacionPorNombre, vecesDePortero, type Formacion } from '../domain/formation'
+import { formacionesDe, formacionPorNombre, balancePorterias, type Formacion } from '../domain/formation'
 import { parseISO, partidoPasado } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
 import { Avatar } from './Avatar'
@@ -32,7 +32,7 @@ const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string; pie:
     etiqueta: '🏆 Resultados',
     ayuda:
       'Nivel según los partidos ganados y perdidos, en nota de 0 a 10 (amortiguada para quien lleva pocos partidos)',
-    pie: 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota), en nota de 0 a 10. A quien lleva pocos partidos se le acerca al 5, para que un día suelto no le dispare la nota.',
+    pie: 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota).',
   },
   {
     valor: 'mixto',
@@ -274,9 +274,9 @@ export function TeamGenerator() {
     const nuevo = evaluatePartition(teamA, teamB, { history: lineups, ...scoreOpts })
     // Congela el orden actual y cambia solo el id que sale por el que entra, para que
     // el sustituto quede EXACTAMENTE en el puesto del que se va (misma banda/posición).
-    const vecesPortero = vecesDePortero(lineups)
-    const curPlA = placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA, vecesPortero)
-    const curPlB = placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB, vecesPortero)
+    const balancePortero = balancePorterias(lineups)
+    const curPlA = placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA, balancePortero)
+    const curPlB = placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB, balancePortero)
     const newPlA = enA ? curPlA.map((x) => (x === outId ? inId : x)) : curPlA
     const newPlB = enA ? curPlB : curPlB.map((x) => (x === outId ? inId : x))
     substitute({
@@ -384,12 +384,12 @@ export function TeamGenerator() {
     // Congela la colocación: si no se han movido fichas, guarda el orden AUTOMÁTICO
     // actual para que el historial reproduzca el campo idéntico aunque luego cambien
     // las valoraciones de los jugadores.
-    const vecesPorteroHist = vecesDePortero(lineups)
+    const balancePorteriasHist = balancePorterias(lineups)
     const meta = {
       formacionA: formacionNombreA,
       formacionB: formacionNombreB,
-      placementA: placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA, vecesPorteroHist),
-      placementB: placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB, vecesPorteroHist),
+      placementA: placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA, balancePorteriasHist),
+      placementB: placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB, balancePorteriasHist),
     }
     // Solo se actualiza si el partido referenciado SIGUE existiendo; si se borró del
     // historial, el id quedó huérfano → hay que crear uno nuevo (si no, no pasaría nada).
