@@ -1,4 +1,4 @@
-import type { Player, PositionCode } from './types'
+import type { ConfirmedLineup, Player, PositionCode } from './types'
 import { playerScore } from './scoring'
 
 export type FieldLine = 'POR' | 'DEF' | 'MED' | 'ATA'
@@ -76,17 +76,43 @@ export interface Asignacion {
 }
 
 /**
+ * Cuántas veces ha ido de portero cada jugador, según el historial confirmado.
+ *
+ * De dónde sale: al confirmar una alineación se congela `placementA`/`placementB`
+ * (ids en el orden en que se dibujan las fichas), y `ORDEN_BANDAS` empieza por
+ * 'POR' — así que **el primer id de cada placement es el portero de ese equipo**.
+ * Las alineaciones antiguas sin placement se saltan: no hay forma de saberlo.
+ */
+export function vecesDePortero(lineups: ConfirmedLineup[]): Map<string, number> {
+  const veces = new Map<string, number>()
+  const contar = (placement?: string[]) => {
+    const portero = placement?.[0]
+    if (portero) veces.set(portero, (veces.get(portero) ?? 0) + 1)
+  }
+  for (const l of lineups) {
+    contar(l.placementA)
+    contar(l.placementB)
+  }
+  return veces
+}
+
+/**
  * Elige UN portero para el dibujo (cada equipo debe mostrar uno; en la pachanga se
  * turnan). Prioridad:
  *   1º posición preferida POR
  *   2º alguien que sepa jugar de POR
- *   3º el de menor nivel (al que menos penaliza ir a portería)
+ *   3º el que MENOS veces ha ido de portero (turno rotativo de hecho); a igualdad,
+ *      el de menor nivel, que es a quien menos penaliza ir a portería
  *
  * RETIRADO el criterio de "un tocado" (iba en 2º lugar): el flag ya no existe. En la
  * práctica la gente lo usaba para avisar de que ese día se ponía de portero, que es
  * otra cosa distinta y merecería su propia marca si se quiere recuperar.
+ *
+ * OJO con el 3º: es un recuento BRUTO, así que quien lleva pocos partidos en el
+ * grupo tiene pocas porterías por pura aritmética y le tocará antes. Si eso molesta,
+ * la alternativa es la proporción sobre partidos jugados.
  */
-function elegirPortero(team: Player[]): Player | null {
+function elegirPortero(team: Player[], vecesPortero?: Map<string, number>): Player | null {
   if (team.length === 0) return null
 
   const porPreferida = team.find((p) => p.posiciones[0] === 'POR')
@@ -95,7 +121,10 @@ function elegirPortero(team: Player[]): Player | null {
   const sabePortero = team.find((p) => p.posiciones.includes('POR'))
   if (sabePortero) return sabePortero
 
-  return [...team].sort((a, b) => playerScore(a) - playerScore(b))[0]
+  const veces = (p: Player) => vecesPortero?.get(p.id) ?? 0
+  return [...team].sort(
+    (a, b) => veces(a) - veces(b) || playerScore(a) - playerScore(b),
+  )[0]
 }
 
 /**
@@ -106,8 +135,9 @@ function elegirPortero(team: Player[]): Player | null {
 export function asignarFormacion(
   team: Player[],
   cupos: Record<CampoLine, number>,
+  vecesPortero?: Map<string, number>,
 ): Asignacion[] {
-  const portero = elegirPortero(team)
+  const portero = elegirPortero(team, vecesPortero)
   const campo = team.filter((p) => p !== portero)
 
   const restante: Record<CampoLine, number> = { ...cupos }

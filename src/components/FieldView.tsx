@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { Player } from '../domain/types'
 import { fotoVisible, nombreVisible } from '../domain/types'
-import { asignarFormacion, type FieldLine, type Formacion } from '../domain/formation'
+import { asignarFormacion, vecesDePortero, type FieldLine, type Formacion } from '../domain/formation'
 import { POSITION_LABEL } from '../domain/constants'
 import type { TeamBalance } from '../domain/balancer'
 import { useGeneratorStore } from '../store/generatorStore'
+import { useLineupsStore } from '../store/lineupsStore'
 import { Avatar } from './Avatar'
 
 const ORDEN_BANDAS: FieldLine[] = ['POR', 'DEF', 'MED', 'ATA']
@@ -51,8 +52,13 @@ interface Punto {
 }
 
 /** Calcula las posiciones (x,y en %) de un equipo. `lado` 'A' = izquierda, 'B' = derecha (espejo). */
-function posiciones(team: Player[], lado: 'A' | 'B', formacion: Formacion): Punto[] {
-  const asignaciones = asignarFormacion(team, formacion.cupos)
+function posiciones(
+  team: Player[],
+  lado: 'A' | 'B',
+  formacion: Formacion,
+  vecesPortero?: Map<string, number>,
+): Punto[] {
+  const asignaciones = asignarFormacion(team, formacion.cupos, vecesPortero)
   const puntos: Punto[] = []
   for (const banda of ORDEN_BANDAS) {
     const enBanda = asignaciones
@@ -79,8 +85,13 @@ function posiciones(team: Player[], lado: 'A' | 'B', formacion: Formacion): Punt
  * ninguna ficha, de modo que el historial reproduzca el campo idéntico para siempre,
  * independientemente de cómo cambien después las valoraciones de los jugadores.
  */
-export function ordenAutomatico(team: Player[], lado: 'A' | 'B', formacion: Formacion): string[] {
-  return posiciones(team, lado, formacion).map((p) => p.player.id)
+export function ordenAutomatico(
+  team: Player[],
+  lado: 'A' | 'B',
+  formacion: Formacion,
+  vecesPortero?: Map<string, number>,
+): string[] {
+  return posiciones(team, lado, formacion, vecesPortero).map((p) => p.player.id)
 }
 
 /** Aplica una colocación manual (placement) sobre los puntos automáticos, si es válida. */
@@ -215,8 +226,19 @@ export function FieldView({
 
   const fieldRef = useRef<HTMLDivElement>(null)
 
-  const puntosA = aplicarPlacement(posiciones(balance.teamA, 'A', formacionA), placementA)
-  const puntosB = aplicarPlacement(posiciones(balance.teamB, 'B', formacionB), placementB)
+  // Reparto de porterías del historial: sin porteros declarados, va el que menos veces
+  // ha ido. Solo importa cuando NO hay placement (con placement manda el congelado).
+  const lineups = useLineupsStore((s) => s.lineups)
+  const vecesPortero = useMemo(() => vecesDePortero(lineups), [lineups])
+
+  const puntosA = aplicarPlacement(
+    posiciones(balance.teamA, 'A', formacionA, vecesPortero),
+    placementA,
+  )
+  const puntosB = aplicarPlacement(
+    posiciones(balance.teamB, 'B', formacionB, vecesPortero),
+    placementB,
+  )
 
   // Intercambia dos fichas del mismo equipo: cambian de puesto en el campo.
   const handleSwap = (lado: 'A' | 'B', dragId: string, dropId: string) => {
