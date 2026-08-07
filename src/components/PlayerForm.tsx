@@ -37,6 +37,15 @@ interface PlayerFormProps {
   kind?: 'plantel' | 'invitado'
 }
 
+/**
+ * Aclaración junto a la casilla de "tocado". Desde que hay dos métodos de
+ * equilibrado, este flag SOLO baja el nivel en el de valoraciones: el de
+ * resultados reparte por lo que se gana en el campo y no admite modificadores
+ * (ver `domain/resultados.ts`). Sin este aviso, marcarse tocado y ver que la
+ * alineación no cambia parece un fallo.
+ */
+const AVISO_TOCADO = 'Solo tiene efecto en las alineaciones hechas por valoraciones.'
+
 const EMPTY: PlayerInput = {
   nombre: '',
   edad: undefined,
@@ -323,17 +332,20 @@ export function PlayerForm({
 
       {/* "Tocado": el propio usuario puede marcarlo desde su perfil (también el admin, abajo). */}
       {soloIdentidad && (
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={data.tocado}
-            onChange={(e) => setData((d) => ({ ...d, tocado: e.target.checked }))}
-            className="h-4 w-4"
-          />
-          <span title="Márcalo si vienes mermado a este partido (molestias, vuelves de lesión). Baja un poco tu nivel para equilibrar mejor los equipos.">
-            Voy tocado / bajo de forma este partido
-          </span>
-        </label>
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={data.tocado}
+              onChange={(e) => setData((d) => ({ ...d, tocado: e.target.checked }))}
+              className="h-4 w-4"
+            />
+            <span title="Márcalo si vienes mermado a este partido (molestias, vuelves de lesión). Baja un poco tu nivel para equilibrar mejor los equipos.">
+              Voy tocado / bajo de forma este partido
+            </span>
+          </label>
+          <p className="ml-6 text-xs text-slate-500">{AVISO_TOCADO}</p>
+        </div>
       )}
 
       {/* Valoraciones 0-10: SOLO para el invitado puntual (al resto lo vota el grupo). */}
@@ -395,17 +407,20 @@ export function PlayerForm({
       {/* Flags del jugador del plantel (solo admin / modo completo). */}
       {!soloIdentidad && !esInvitado && (
       <div className="flex flex-wrap gap-5 text-sm">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={data.tocado}
-            onChange={(e) => setData((d) => ({ ...d, tocado: e.target.checked }))}
-            className="h-4 w-4"
-          />
-          <span title="Viene mermado a este partido (molestias, vuelve de lesión). Penaliza su puntaje.">
-            Tocado / bajo de forma
-          </span>
-        </label>
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={data.tocado}
+              onChange={(e) => setData((d) => ({ ...d, tocado: e.target.checked }))}
+              className="h-4 w-4"
+            />
+            <span title="Viene mermado a este partido (molestias, vuelve de lesión). Penaliza su puntaje.">
+              Tocado / bajo de forma
+            </span>
+          </label>
+          <p className="ml-6 text-xs text-slate-500">{AVISO_TOCADO}</p>
+        </div>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"

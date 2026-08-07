@@ -2,7 +2,7 @@
 export function TocadoIcon({ className = '' }: { className?: string }) {
   return (
     <span
-      title="Tocado / en baja forma · penaliza su puntaje"
+      title="Tocado / en baja forma · penaliza su puntaje en las alineaciones por valoraciones"
       aria-label="tocado"
       className={'font-bold text-red-500 ' + className}
     >
