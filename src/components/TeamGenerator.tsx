@@ -10,7 +10,7 @@ import type { Player } from '../domain/types'
 import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore, type ScoreOptions } from '../domain/scoring'
-import { puntosPorResultados, type MetodoEquilibrado } from '../domain/resultados'
+import { notasPorResultados, type MetodoEquilibrado } from '../domain/resultados'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
 import { parseISO, partidoPasado } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
@@ -30,7 +30,8 @@ const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string }[] =
   {
     valor: 'resultados',
     etiqueta: '🏆 Resultados',
-    ayuda: 'Nivel según los partidos ganados y perdidos: +1 victoria, 0 empate, −1 derrota',
+    ayuda:
+      'Nivel según los partidos ganados y perdidos, en nota de 0 a 10 (amortiguada para quien lleva pocos partidos)',
   },
 ]
 
@@ -57,7 +58,7 @@ export function TeamGenerator() {
    */
   const scoreOpts = useMemo<ScoreOptions>(
     () =>
-      metodo === 'resultados' ? { metodo, puntos: puntosPorResultados(lineups) } : { metodo },
+      metodo === 'resultados' ? { metodo, puntos: notasPorResultados(lineups) } : { metodo },
     [metodo, lineups],
   )
   const formacionNombreA = useGeneratorStore((s) => s.formacionNombreA)
@@ -521,7 +522,7 @@ export function TeamGenerator() {
         <p className="-mt-1 text-xs text-slate-500">
           {metodo === 'valoraciones'
             ? 'Reparte según las valoraciones que os habéis puesto entre vosotros.'
-            : 'Reparte según los puntos de cada uno en los partidos jugados: +1 si gana, 0 si empata, −1 si pierde.'}
+            : 'Reparte según lo que gana y pierde cada uno (+1 victoria, −1 derrota), en nota de 0 a 10. A quien lleva pocos partidos se le acerca al 5, para que un día suelto no le dispare la nota.'}
         </p>
 
         {/* Selectores de formación por equipo */}

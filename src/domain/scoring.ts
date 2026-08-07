@@ -43,11 +43,10 @@ export const TOCADO_FACTOR = 0.82
 export const ANIMO_MAX_DELTA = 0.5
 
 /**
- * Penalización por ir "tocado" en el método de RESULTADOS, en puntos.
- * Aquí NO vale el factor multiplicativo del método de valoraciones: la puntuación
- * por resultados puede ser negativa, y multiplicar -4 por 0.82 daría -3.28, o sea
- * que ir tocado MEJORARÍA la nota. Por eso se resta. 1.0 = "como haber perdido un
- * partido más". Ajustable.
+ * Penalización por ir "tocado" en el método de RESULTADOS, en puntos de la escala
+ * 0-10. Se RESTA en vez de multiplicar como en el método de valoraciones: la nota
+ * por resultados se mueve en una banda estrecha alrededor de 5, así que un factor
+ * del 18% apenas la rozaría. 1.0 punto es equivalente en la práctica. Ajustable.
  */
 export const TOCADO_PENALTY_RESULTADOS = 1.0
 
@@ -118,20 +117,20 @@ export function playerScore(player: Player, opts: ScoreOptions = {}): number {
 }
 
 /**
- * Puntaje por RESULTADOS: los puntos que lleva el jugador (+1 victoria, 0 empate,
- * -1 derrota), penalizados si viene tocado y matizados por el ánimo.
+ * Puntaje por RESULTADOS: la nota 0-10 que sale de sus victorias y derrotas (ver
+ * `notasPorResultados`), penalizada si viene tocado y matizada por el ánimo.
  *
- * Un jugador sin historial (invitado nuevo, alta reciente) vale 0, que es justo el
- * centro de la escala: ni suma ni resta. No hay que rellenarle nada.
+ * Un jugador sin partidos (invitado nuevo, alta reciente) vale 5, el centro de la
+ * escala: no hay nada que le suba ni que le baje. No hay que rellenarle nada.
  *
  * SÍ se aplica el ánimo, aunque salga de los mismos partidos. No es contarlo dos
- * veces: la suma es PLANA (el partido de hace dos meses vale igual que el del
- * lunes) y el ánimo lleva decaimiento, así que lo que aporta es la RECENCIA, que
- * esta métrica no tiene por ningún otro lado. Además cuenta el MVP, que aquí no
+ * veces: la nota es PLANA en el tiempo (el partido de hace dos meses vale igual que
+ * el del lunes) y el ánimo lleva decaimiento, así que lo que aporta es la RECENCIA,
+ * que esta métrica no tiene por ningún otro lado. Además cuenta el MVP, que aquí no
  * entra. Sigue siendo un matiz de ±0.5 puntos.
  */
 function resultadosScore(player: Player, opts: ScoreOptions): number {
-  let score = opts.puntos?.get(player.id) ?? 0
+  let score = opts.puntos?.get(player.id) ?? DEFAULT_RATING
   if (player.tocado) score -= opts.tocadoPenalty ?? TOCADO_PENALTY_RESULTADOS
 
   const animo = opts.animo ?? player.animoCalculado
