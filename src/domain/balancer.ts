@@ -43,6 +43,23 @@ export interface BalanceOptions extends ScoreOptions {
   history?: ConfirmedLineup[]
 }
 
+/**
+ * Opciones de puntuación a partir de las de equilibrado, con los valores por
+ * defecto puestos. Centralizado a propósito: estaba duplicado en `balanceTeams` y
+ * `evaluatePartition`, y al añadir un campo nuevo (el método de ponderación) es muy
+ * fácil ponerlo en uno y olvidarlo en el otro — con el efecto de que la alineación
+ * se genera con un criterio y luego se muestra evaluada con otro.
+ */
+function scoreOptionsDe(opts: BalanceOptions): ScoreOptions {
+  return {
+    weights: opts.weights ?? DEFAULT_WEIGHTS,
+    tocadoFactor: opts.tocadoFactor ?? TOCADO_FACTOR,
+    metodo: opts.metodo,
+    puntos: opts.puntos,
+    tocadoPenalty: opts.tocadoPenalty,
+  }
+}
+
 export interface CostBreakdown {
   score: number
   posicion: number
@@ -225,10 +242,7 @@ function buildResult(
  *   Si el nº fuese enorme, cae a una heurística greedy.
  */
 export function balanceTeams(players: Player[], opts: BalanceOptions = {}): TeamBalance | null {
-  const scoreOpts: ScoreOptions = {
-    weights: opts.weights ?? DEFAULT_WEIGHTS,
-    tocadoFactor: opts.tocadoFactor ?? TOCADO_FACTOR,
-  }
+  const scoreOpts = scoreOptionsDe(opts)
   const costW = opts.costWeights ?? DEFAULT_COST_WEIGHTS
   const pairW = buildPairWeights(opts.history ?? [])
 
@@ -290,10 +304,7 @@ export function evaluatePartition(
   teamB: Player[],
   opts: BalanceOptions = {},
 ): TeamBalance {
-  const scoreOpts: ScoreOptions = {
-    weights: opts.weights ?? DEFAULT_WEIGHTS,
-    tocadoFactor: opts.tocadoFactor ?? TOCADO_FACTOR,
-  }
+  const scoreOpts = scoreOptionsDe(opts)
   const costW = opts.costWeights ?? DEFAULT_COST_WEIGHTS
   const pairW = buildPairWeights(opts.history ?? [])
   return buildResult(teamA, teamB, scoreOpts, costW, pairW, 'bruteforce', 0)

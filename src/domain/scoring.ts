@@ -1,5 +1,6 @@
 import type { Player, PositionCode } from './types'
 import { DEFAULT_RATING, RATING_KEYS } from './constants'
+import type { MetodoEquilibrado } from './resultados'
 
 /**
  * Pesos de cada valoración en el puntaje del jugador. Suman 1.
@@ -41,6 +42,15 @@ export const TOCADO_FACTOR = 0.82
  */
 export const ANIMO_MAX_DELTA = 0.5
 
+/**
+ * Penalización por ir "tocado" en el método de RESULTADOS, en puntos.
+ * Aquí NO vale el factor multiplicativo del método de valoraciones: la puntuación
+ * por resultados puede ser negativa, y multiplicar -4 por 0.82 daría -3.28, o sea
+ * que ir tocado MEJORARÍA la nota. Por eso se resta. 1.0 = "como haber perdido un
+ * partido más". Ajustable.
+ */
+export const TOCADO_PENALTY_RESULTADOS = 1.0
+
 export interface ScoreOptions {
   weights?: ScoreWeights
   tocadoFactor?: number
@@ -50,6 +60,12 @@ export interface ScoreOptions {
    */
   animo?: number
   animoMaxDelta?: number
+  /** Método de ponderación. Por defecto `valoraciones` (el de siempre). */
+  metodo?: MetodoEquilibrado
+  /** Puntos por resultados (V-D) por jugador. Solo se usa con `metodo: 'resultados'`. */
+  puntos?: Map<string, number>
+  /** Penalización de "tocado" en el método de resultados. */
+  tocadoPenalty?: number
 }
 
 /**
@@ -81,6 +97,8 @@ export function weightedRatings(player: Player, weights: ScoreWeights = DEFAULT_
  * así que sumarla otra vez sería contarla dos veces. Se guarda solo como dato.
  */
 export function playerScore(player: Player, opts: ScoreOptions = {}): number {
+  if (opts.metodo === 'resultados') return resultadosScore(player, opts)
+
   const weights = opts.weights ?? DEFAULT_WEIGHTS
   const tocadoFactor = opts.tocadoFactor ?? TOCADO_FACTOR
 
@@ -95,6 +113,29 @@ export function playerScore(player: Player, opts: ScoreOptions = {}): number {
     const delta = opts.animoMaxDelta ?? ANIMO_MAX_DELTA
     score += ((animo - 5) / 5) * delta
   }
+
+  return score
+}
+
+/**
+ * Puntaje por RESULTADOS: los puntos que lleva el jugador (+1 victoria, 0 empate,
+ * -1 derrota), penalizados si viene tocado y matizados por el ánimo.
+ *
+ * Un jugador sin historial (invitado nuevo, alta reciente) vale 0, que es justo el
+ * centro de la escala: ni suma ni resta. No hay que rellenarle nada.
+ *
+ * SÍ se aplica el ánimo, aunque salga de los mismos partidos. No es contarlo dos
+ * veces: la suma es PLANA (el partido de hace dos meses vale igual que el del
+ * lunes) y el ánimo lleva decaimiento, así que lo que aporta es la RECENCIA, que
+ * esta métrica no tiene por ningún otro lado. Además cuenta el MVP, que aquí no
+ * entra. Sigue siendo un matiz de ±0.5 puntos.
+ */
+function resultadosScore(player: Player, opts: ScoreOptions): number {
+  let score = opts.puntos?.get(player.id) ?? 0
+  if (player.tocado) score -= opts.tocadoPenalty ?? TOCADO_PENALTY_RESULTADOS
+
+  const animo = opts.animo ?? player.animoCalculado
+  if (animo != null) score += ((animo - 5) / 5) * (opts.animoMaxDelta ?? ANIMO_MAX_DELTA)
 
   return score
 }

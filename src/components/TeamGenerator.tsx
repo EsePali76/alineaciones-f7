@@ -9,7 +9,8 @@ import { useConvocatoria } from '../hooks/useConvocatoria'
 import type { Player } from '../domain/types'
 import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
-import { playerScore } from '../domain/scoring'
+import { playerScore, type ScoreOptions } from '../domain/scoring'
+import { puntosPorResultados, type MetodoEquilibrado } from '../domain/resultados'
 import { formacionesDe, formacionPorNombre, type Formacion } from '../domain/formation'
 import { parseISO, partidoPasado } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
@@ -18,6 +19,20 @@ import { Avatar } from './Avatar'
 import { QuickGuestForm } from './QuickGuestForm'
 import { usePlayersStore, type PlayerInput } from '../store/playersStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
+
+/** Los dos criterios con los que se puede repartir. Ver `domain/resultados.ts`. */
+const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string }[] = [
+  {
+    valor: 'valoraciones',
+    etiqueta: '⭐ Valoraciones',
+    ayuda: 'Nivel según las valoraciones que os habéis puesto entre vosotros',
+  },
+  {
+    valor: 'resultados',
+    etiqueta: '🏆 Resultados',
+    ayuda: 'Nivel según los partidos ganados y perdidos: +1 victoria, 0 empate, −1 derrota',
+  },
+]
 
 export function TeamGenerator() {
   const players = useEffectivePlayers()
@@ -32,6 +47,19 @@ export function TeamGenerator() {
   // Estado de la sesión de generación en store persistente (sobrevive a cambios de pestaña).
   const convocadosIds = useGeneratorStore((s) => s.convocados)
   const jugadoresPorEquipo = useGeneratorStore((s) => s.jugadoresPorEquipo)
+  const metodo = useGeneratorStore((s) => s.metodo)
+  const setMetodo = useGeneratorStore((s) => s.setMetodo)
+
+  /**
+   * Opciones de puntuación derivadas del método elegido. Se pasan a TODAS las
+   * llamadas del equilibrador (generar, reevaluar en vivo, sustituir e intercambiar)
+   * para que el reparto y los niveles que se muestran usen siempre el mismo criterio.
+   */
+  const scoreOpts = useMemo<ScoreOptions>(
+    () =>
+      metodo === 'resultados' ? { metodo, puntos: puntosPorResultados(lineups) } : { metodo },
+    [metodo, lineups],
+  )
   const formacionNombreA = useGeneratorStore((s) => s.formacionNombreA)
   const formacionNombreB = useGeneratorStore((s) => s.formacionNombreB)
   const balance = useGeneratorStore((s) => s.balance)
@@ -166,7 +194,7 @@ export function TeamGenerator() {
       formacionNombreB: pendingLineup.formacionB ?? formacionNombreB,
       placementA: pendingLineup.placementA ?? null,
       placementB: pendingLineup.placementB ?? null,
-      balance: evaluatePartition(teamA, teamB, { history: lineups }),
+      balance: evaluatePartition(teamA, teamB, { history: lineups, ...scoreOpts }),
       confirmedLineupId: pendingLineup.id,
       convocatoriaDate: fecha,
       lastSyncedSignupIds: titularIds,
@@ -222,9 +250,9 @@ export function TeamGenerator() {
     const porId = new Map(players.map((p) => [p.id, p]))
     const teamA = balance.teamA.map((p) => porId.get(p.id) ?? p)
     const teamB = balance.teamB.map((p) => porId.get(p.id) ?? p)
-    const re = evaluatePartition(teamA, teamB, { history: lineups })
+    const re = evaluatePartition(teamA, teamB, { history: lineups, ...scoreOpts })
     return { ...re, method: balance.method, evaluated: balance.evaluated }
-  }, [balance, players, lineups])
+  }, [balance, players, lineups, scoreOpts])
 
   // Sustitución in-place: el jugador `inId` entra por `outId` conservando su puesto.
   // Recalcula el balance y fija los placements para que el sustituto ocupe el hueco.
@@ -235,7 +263,7 @@ export function TeamGenerator() {
     const enA = balanceVivo.teamA.some((p) => p.id === outId)
     const teamA = balanceVivo.teamA.map((p) => (p.id === outId ? inPlayer : p))
     const teamB = balanceVivo.teamB.map((p) => (p.id === outId ? inPlayer : p))
-    const nuevo = evaluatePartition(teamA, teamB, { history: lineups })
+    const nuevo = evaluatePartition(teamA, teamB, { history: lineups, ...scoreOpts })
     // Congela el orden actual y cambia solo el id que sale por el que entra, para que
     // el sustituto quede EXACTAMENTE en el puesto del que se va (misma banda/posición).
     const curPlA = placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA)
@@ -330,7 +358,7 @@ export function TeamGenerator() {
 
   const generar = () => {
     // Pasa el historial de alineaciones confirmadas para evitar repetir parejas.
-    const result = balanceTeams(seleccionados, { history: lineups })
+    const result = balanceTeams(seleccionados, { history: lineups, ...scoreOpts })
     setBalance(result)
     setConfirmada(false)
     setConfirmedLineupId(null) // nueva alineación → ya no re-confirma la anterior
@@ -413,7 +441,7 @@ export function TeamGenerator() {
 
     const nuevoA = balanceVivo.teamA.map((p) => (p.id === enA ? pB : p))
     const nuevoB = balanceVivo.teamB.map((p) => (p.id === enB ? pA : p))
-    const nuevo = evaluatePartition(nuevoA, nuevoB, { history: lineups })
+    const nuevo = evaluatePartition(nuevoA, nuevoB, { history: lineups, ...scoreOpts })
     setBalance({ ...nuevo, method: 'manual', evaluated: 0 })
     setPlacementA(null)
     setPlacementB(null)
@@ -470,6 +498,31 @@ export function TeamGenerator() {
             </button>
           ))}
         </div>
+
+        {/* Selector de método de ponderación */}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="w-20 shrink-0 text-slate-400">Equilibrar:</span>
+          {METODOS.map((m) => (
+            <button
+              key={m.valor}
+              onClick={() => setMetodo(m.valor)}
+              title={m.ayuda}
+              className={
+                'rounded border px-3 py-1 transition-colors ' +
+                (metodo === m.valor
+                  ? 'border-emerald-500 bg-emerald-600 text-white'
+                  : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
+              }
+            >
+              {m.etiqueta}
+            </button>
+          ))}
+        </div>
+        <p className="-mt-1 text-xs text-slate-500">
+          {metodo === 'valoraciones'
+            ? 'Reparte según las valoraciones que os habéis puesto entre vosotros.'
+            : 'Reparte según los puntos de cada uno en los partidos jugados: +1 si gana, 0 si empata, −1 si pierde.'}
+        </p>
 
         {/* Selectores de formación por equipo */}
         <FormacionSelector
@@ -571,6 +624,7 @@ export function TeamGenerator() {
           confirmada={confirmada}
           canConfirm={puedeConfirmar}
           onCrossSwap={handleCrossSwap}
+          scoreOpts={scoreOpts}
         />
       )}
     </div>
@@ -698,6 +752,7 @@ function BalanceResult({
   confirmada,
   canConfirm,
   onCrossSwap,
+  scoreOpts,
 }: {
   balance: TeamBalance
   formacionA: Formacion
@@ -707,6 +762,8 @@ function BalanceResult({
   confirmada: boolean
   canConfirm: boolean
   onCrossSwap: (dragId: string, dropId: string) => void
+  /** Criterio con el que se puntúa (para ordenar cada equipo igual que se repartió). */
+  scoreOpts: ScoreOptions
 }) {
   const pctA = Math.round(balance.balancePctA)
   const pctB = 100 - pctA
@@ -870,8 +927,20 @@ function BalanceResult({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <TeamColumn title="⚪ Equipo A" color="white" team={balance.teamA} score={balance.scoreA} />
-        <TeamColumn title="🔴 Equipo B" color="red" team={balance.teamB} score={balance.scoreB} />
+        <TeamColumn
+          title="⚪ Equipo A"
+          color="white"
+          team={balance.teamA}
+          score={balance.scoreA}
+          scoreOpts={scoreOpts}
+        />
+        <TeamColumn
+          title="🔴 Equipo B"
+          color="red"
+          team={balance.teamB}
+          score={balance.scoreB}
+          scoreOpts={scoreOpts}
+        />
       </div>
 
       {/* Desglose técnico (solo admin: detalle de cómo equilibra el algoritmo) */}
@@ -903,14 +972,16 @@ function TeamColumn({
   color,
   team,
   score,
+  scoreOpts,
 }: {
   title: string
   color: 'white' | 'red'
   team: Player[]
   score: number
+  scoreOpts: ScoreOptions
 }) {
   const border = color === 'white' ? 'border-slate-300' : 'border-red-800'
-  const ordenados = [...team].sort((a, b) => playerScore(b) - playerScore(a))
+  const ordenados = [...team].sort((a, b) => playerScore(b, scoreOpts) - playerScore(a, scoreOpts))
   return (
     <div className={'rounded-lg border ' + border + ' bg-slate-900/60 p-3'}>
       <div className="mb-2 flex items-center justify-between">
