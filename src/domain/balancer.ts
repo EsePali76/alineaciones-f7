@@ -56,7 +56,6 @@ function scoreOptionsDe(opts: BalanceOptions): ScoreOptions {
     tocadoFactor: opts.tocadoFactor ?? TOCADO_FACTOR,
     metodo: opts.metodo,
     puntos: opts.puntos,
-    tocadoPenalty: opts.tocadoPenalty,
   }
 }
 

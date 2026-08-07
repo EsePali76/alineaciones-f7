@@ -522,7 +522,7 @@ export function TeamGenerator() {
         <p className="-mt-1 text-xs text-slate-500">
           {metodo === 'valoraciones'
             ? 'Reparte según las valoraciones que os habéis puesto entre vosotros.'
-            : 'Reparte según lo que gana y pierde cada uno (+1 victoria, −1 derrota), en nota de 0 a 10. A quien lleva pocos partidos se le acerca al 5, para que un día suelto no le dispare la nota.'}
+            : 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota), en nota de 0 a 10. A quien lleva pocos partidos se le acerca al 5, para que un día suelto no le dispare la nota. Aquí no cuentan ni las valoraciones ni el ánimo ni el "tocado".'}
         </p>
 
         {/* Selectores de formación por equipo */}

@@ -31,11 +31,15 @@ const NOTA_NEUTRA = 5
  *   media = (victorias - derrotas) / (partidos + PARTIDOS_FANTASMA)   → -1 .. +1
  *   nota  = 5 + 5 * media                                             →  0 .. 10
  *
- * SE DEVUELVE EN ESCALA 0-10 A PROPÓSITO, la misma que las valoraciones. Todo lo
- * que rodea al puntaje está calibrado para esa escala: el modificador de ánimo
- * (±0.5), la penalización por tocado y los pesos de líneas y zurdos de la función
- * de coste. Con la media cruda (-1..+1) el ánimo pasaría a pesar más que la propia
- * métrica y el reparto lo decidiría el modificador, no el criterio.
+ * SE DEVUELVE EN ESCALA 0-10 A PROPÓSITO, la misma que las valoraciones. No es un
+ * retoque de la métrica —es el mismo número en otras unidades y no cambia el orden
+ * de nadie—, pero hace falta para que los términos SECUNDARIOS de la función de
+ * coste sigan calibrados: líneas (0.4), zurdos (0.15) y repetición (0.3) están
+ * pensados contra una diferencia de nivel en escala 0-10. Con la media cruda
+ * (-1..+1) el reparto lo acabarían decidiendo ellos y no los resultados.
+ *
+ * Este método NO lleva modificadores (ni ánimo ni tocado): reparte por lo que se
+ * gana en el campo y nada más. Ver `resultadosScore` en `scoring.ts`.
  *
  * Quien no ha jugado ningún partido no aparece en el mapa; `playerScore` lo trata
  * como 5 (el centro), que es lo razonable: no hay nada que le suba ni que le baje.

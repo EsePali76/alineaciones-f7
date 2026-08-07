@@ -42,13 +42,11 @@ export const TOCADO_FACTOR = 0.82
  */
 export const ANIMO_MAX_DELTA = 0.5
 
-/**
- * Penalización por ir "tocado" en el método de RESULTADOS, en puntos de la escala
- * 0-10. Se RESTA en vez de multiplicar como en el método de valoraciones: la nota
- * por resultados se mueve en una banda estrecha alrededor de 5, así que un factor
- * del 18% apenas la rozaría. 1.0 punto es equivalente en la práctica. Ajustable.
- */
-export const TOCADO_PENALTY_RESULTADOS = 1.0
+// RETIRADO: penalización por "tocado" en el método de resultados. El método de
+// resultados va limpio, sin modificadores de ningún tipo — reparte por lo que se
+// gana en el campo y nada más. Los modificadores (ánimo, tocado) son propios del
+// método de valoraciones. Se conserva por si algún día se quiere matizar.
+// export const TOCADO_PENALTY_RESULTADOS = 1.0
 
 export interface ScoreOptions {
   weights?: ScoreWeights
@@ -61,10 +59,8 @@ export interface ScoreOptions {
   animoMaxDelta?: number
   /** Método de ponderación. Por defecto `valoraciones` (el de siempre). */
   metodo?: MetodoEquilibrado
-  /** Puntos por resultados (V-D) por jugador. Solo se usa con `metodo: 'resultados'`. */
+  /** Nota 0-10 por resultados de cada jugador. Solo se usa con `metodo: 'resultados'`. */
   puntos?: Map<string, number>
-  /** Penalización de "tocado" en el método de resultados. */
-  tocadoPenalty?: number
 }
 
 /**
@@ -117,26 +113,20 @@ export function playerScore(player: Player, opts: ScoreOptions = {}): number {
 }
 
 /**
- * Puntaje por RESULTADOS: la nota 0-10 que sale de sus victorias y derrotas (ver
- * `notasPorResultados`), penalizada si viene tocado y matizada por el ánimo.
+ * Puntaje por RESULTADOS: la nota 0-10 que sale de sus victorias y derrotas y NADA
+ * MÁS (ver `notasPorResultados`).
+ *
+ * SIN MODIFICADORES, a propósito y por decisión de Santi: ni ánimo, ni tocado, ni
+ * nada. Este método reparte por lo que se gana en el campo y punto — esa pureza es
+ * medio motivo de su existencia, porque es lo que lo hace indiscutible frente a
+ * quien dice que las valoraciones son subjetivas. Los modificadores siguen vivos,
+ * pero son propios del método de valoraciones (ver `playerScore`).
  *
  * Un jugador sin partidos (invitado nuevo, alta reciente) vale 5, el centro de la
- * escala: no hay nada que le suba ni que le baje. No hay que rellenarle nada.
- *
- * SÍ se aplica el ánimo, aunque salga de los mismos partidos. No es contarlo dos
- * veces: la nota es PLANA en el tiempo (el partido de hace dos meses vale igual que
- * el del lunes) y el ánimo lleva decaimiento, así que lo que aporta es la RECENCIA,
- * que esta métrica no tiene por ningún otro lado. Además cuenta el MVP, que aquí no
- * entra. Sigue siendo un matiz de ±0.5 puntos.
+ * escala: no hay nada que le suba ni que le baje.
  */
 function resultadosScore(player: Player, opts: ScoreOptions): number {
-  let score = opts.puntos?.get(player.id) ?? DEFAULT_RATING
-  if (player.tocado) score -= opts.tocadoPenalty ?? TOCADO_PENALTY_RESULTADOS
-
-  const animo = opts.animo ?? player.animoCalculado
-  if (animo != null) score += ((animo - 5) / 5) * (opts.animoMaxDelta ?? ANIMO_MAX_DELTA)
-
-  return score
+  return opts.puntos?.get(player.id) ?? DEFAULT_RATING
 }
 
 /** Líneas de campo a grandes rasgos, para equilibrar el reparto por zonas. */
