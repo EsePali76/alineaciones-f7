@@ -335,6 +335,10 @@ export function RotationBanner() {
         <div className="rounded-md border border-sky-500/50 bg-sky-900/30 px-3 py-2 text-sm text-sky-200">
           📝 <b>Plazo de reevaluación abierto{ratingsDeadline ? ` hasta el ${formatoFecha(ratingsDeadline)}` : ''}:</b>{' '}
           revisa tus valoraciones en «Valorar» y pulsa <b>Finalizar</b> al acabar.
+          <div className="mt-1 text-amber-300">
+            ⚠️ Quien no las tenga puestas al cerrarse el plazo se queda fuera de la cola para hacer
+            las alineaciones.
+          </div>
         </div>
       )}
     </div>
