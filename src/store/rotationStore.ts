@@ -34,6 +34,11 @@ interface RotationState {
   data: RotationData
   /** Ventana global de re-evaluación abierta (todos pueden revisar sus votos). */
   ratingsOpen: boolean
+  /**
+   * Filtro activo: solo entra en la cola de alineadores quien ha valorado a todos.
+   * Ver `filtrarPorValoraciones` (dominio) y `useTurno` (donde se aplica).
+   */
+  requireRatings: boolean
   /** Override de fecha del próximo partido ('YYYY-MM-DD'); null = automática. */
   matchDate: string | null
   loaded: boolean
@@ -50,6 +55,8 @@ interface RotationState {
   alConfirmar: (doerId: string) => Promise<void>
   /** Abre/cierra el plazo de re-evaluación de valoraciones (admin). */
   setRatingsOpen: (open: boolean) => Promise<void>
+  /** Activa/desactiva el filtro de valoraciones sobre la cola (admin). */
+  setRequireRatings: (on: boolean) => Promise<void>
 }
 
 async function persist(set: (p: Partial<RotationState>) => void, data: RotationData) {
@@ -60,12 +67,13 @@ async function persist(set: (p: Partial<RotationState>) => void, data: RotationD
 export const useRotationStore = create<RotationState>((set, get) => ({
   data: { currentPlayerId: null, orderIds: [], skippedIds: [] },
   ratingsOpen: false,
+  requireRatings: false,
   matchDate: null,
   loaded: false,
 
   load: async () => {
-    const { rotation, ratingsOpen, matchDate } = await api.fetchRotation()
-    set({ data: rotation, ratingsOpen, matchDate, loaded: true })
+    const { rotation, ratingsOpen, requireRatings, matchDate } = await api.fetchRotation()
+    set({ data: rotation, ratingsOpen, requireRatings, matchDate, loaded: true })
   },
 
   posponerJornada: async (nuevaFecha) => {
@@ -117,6 +125,16 @@ export const useRotationStore = create<RotationState>((set, get) => ({
     } catch (e) {
       // Revierte el optimista si la RPC falla.
       set({ ratingsOpen: !open })
+      throw e
+    }
+  },
+
+  setRequireRatings: async (on) => {
+    set({ requireRatings: on })
+    try {
+      await api.setRequireRatings(on)
+    } catch (e) {
+      set({ requireRatings: !on })
       throw e
     }
   },

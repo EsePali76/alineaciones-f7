@@ -36,6 +36,7 @@ function App() {
   const loadLineups = useLineupsStore((s) => s.load)
   const lineups = useLineupsStore((s) => s.lineups)
   const loadAverages = useRatingsStore((s) => s.loadAverages)
+  const loadProgress = useRatingsStore((s) => s.loadProgress)
   const loadRotation = useRotationStore((s) => s.load)
   const loadConvocatoria = useConvocatoriaStore((s) => s.load)
   const initAuth = useAuthStore((s) => s.init)
@@ -72,13 +73,29 @@ function App() {
       loadPlayers(),
       loadLineups(),
       loadAverages(),
+      loadProgress(),
       loadRotation(),
       loadConvocatoria(),
     ]).catch((e) => {
       console.error(e)
       setCargaError(true)
     })
-  }, [initAuth, loadPlayers, loadLineups, loadAverages, loadRotation, loadConvocatoria])
+  }, [
+    initAuth,
+    loadPlayers,
+    loadLineups,
+    loadAverages,
+    loadProgress,
+    loadRotation,
+    loadConvocatoria,
+  ])
+
+  // El progreso de valoraciones (vista `rating_progress`) solo es legible con sesión:
+  // en el arranque puede llegar vacío si la sesión aún no se ha restaurado. Se
+  // recarga en cuanto hay login para que el turno no se calcule con datos a medias.
+  useEffect(() => {
+    if (isLoggedIn) loadProgress().catch(console.error)
+  }, [isLoggedIn, loadProgress])
 
   // Si una pestaña restringida queda seleccionada y pierdes el permiso, vuelve a Plantel.
   useEffect(() => {

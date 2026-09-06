@@ -160,6 +160,15 @@ export function RatePlayers() {
         </p>
       )}
 
+      {/* Todo valorado pero sin finalizar: el paso que falta es pulsar el botón, y
+          sin él las valoraciones no quedan cerradas. En rojo y parpadeando porque
+          es fácil dar por hecho que con rellenar la lista ya está. */}
+      {!finalizado && completados === aValorar.length && aValorar.length > 0 && (
+        <p className="animate-pulse rounded-lg border-2 border-red-500 bg-red-900/30 p-3 text-center text-sm font-semibold text-red-300">
+          ⚠️ Ya has valorado a todos. Pulsa <b>Finalizar</b> para completar la valoración.
+        </p>
+      )}
+
       {finalizado && ratingsOpen && (
         <p className="rounded-lg border border-sky-600/50 bg-sky-900/20 p-3 text-sm text-sky-200">
           📝 Plazo de reevaluación abierto: aunque ya finalizaste, puedes revisar y ajustar tus

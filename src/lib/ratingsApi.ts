@@ -104,3 +104,29 @@ export async function adminUpsertRating(
   })
   if (error) throw error
 }
+
+/**
+ * Cuántos jugadores lleva valorados cada uno, de cuántos le tocan.
+ *
+ * Viene de la vista `rating_progress`, que cuenta en el servidor porque `ratings`
+ * está protegido por RLS y desde el navegador solo se ven los votos propios. La
+ * vista NO expone ningún voto, solo los dos recuentos.
+ */
+export interface RatingProgress {
+  playerId: string
+  valorados: number
+  total: number
+}
+
+export async function fetchRatingProgress(): Promise<Map<string, RatingProgress>> {
+  const { data, error } = await supabase
+    .from('rating_progress')
+    .select('player_id, valorados, total')
+  if (error) throw error
+  const m = new Map<string, RatingProgress>()
+  for (const row of data ?? []) {
+    const r = row as { player_id: string; valorados: number; total: number }
+    m.set(r.player_id, { playerId: r.player_id, valorados: r.valorados, total: r.total })
+  }
+  return m
+}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { usePlayersStore } from '../../store/playersStore'
 import { useAuthStore } from '../../store/authStore'
+import { useRotationStore } from '../../store/rotationStore'
+import { useRatingsStore } from '../../store/ratingsStore'
 import {
   fetchAllProfiles,
   adminLinkPlayer,
@@ -20,6 +22,9 @@ export function UsersPanel() {
   const updatePlayer = usePlayersStore((s) => s.updatePlayer)
   const myUserId = useAuthStore((s) => s.userId)
   const refreshMyProfile = useAuthStore((s) => s.refreshProfile)
+  const requireRatings = useRotationStore((s) => s.requireRatings)
+  const setRequireRatings = useRotationStore((s) => s.setRequireRatings)
+  const progress = useRatingsStore((s) => s.progress)
 
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [cargando, setCargando] = useState(true)
@@ -95,6 +100,29 @@ export function UsersPanel() {
           Vincula cada usuario registrado a su jugador del plantel. Sin vincular, el usuario
           solo puede consultar (no vota ni hace alineaciones).
         </p>
+      </div>
+
+      {/* Interruptor global: filtra la cola de alineadores por valoraciones. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-slate-200">
+            Solo alinea quien ha valorado a todos
+          </span>
+          <span className="text-xs text-slate-500">
+            Apagado, el turno rota entre todos como siempre.
+          </span>
+        </div>
+        <button
+          onClick={() => setRequireRatings(!requireRatings).catch(() => setError('No se pudo cambiar la opción.'))}
+          className={
+            'ml-auto rounded px-3 py-1.5 text-sm font-medium transition-colors ' +
+            (requireRatings
+              ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+              : 'border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
+          }
+        >
+          {requireRatings ? '● Activado' : '○ Desactivado'}
+        </button>
       </div>
 
       {profiles.length === 0 && (
@@ -177,6 +205,10 @@ export function UsersPanel() {
 
                   {/* Estado de valoraciones + reset */}
                   <td className="px-3 py-2">
+                    <ProgresoValoraciones
+                      progreso={pr.playerId ? progress.get(pr.playerId) : undefined}
+                      filtroActivo={requireRatings}
+                    />
                     {pr.ratingsFinalized ? (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-400">🔒 finalizadas</span>
@@ -256,6 +288,34 @@ export function UsersPanel() {
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Cuántas valoraciones lleva puestas un usuario. Es lo que decide si entra en la
+ * cola de alineadores cuando el filtro está activo, así que se ve aquí al lado del
+ * interruptor: si alguien desaparece del turno, esta es la explicación.
+ *
+ * Ojo: esto NO es lo mismo que "finalizadas". Se puede estar completo (5/5) y sin
+ * finalizar — entra en la cola igual; finalizar solo bloquea los votos.
+ */
+function ProgresoValoraciones({
+  progreso,
+  filtroActivo,
+}: {
+  progreso: { valorados: number; total: number } | undefined
+  filtroActivo: boolean
+}) {
+  if (!progreso) return null
+  const completo = progreso.total > 0 && progreso.valorados >= progreso.total
+  const fuera = filtroActivo && !completo
+  return (
+    <div className="mb-1 text-xs">
+      <span className={completo ? 'text-emerald-400' : 'text-amber-400'}>
+        {progreso.valorados}/{progreso.total} valorados
+      </span>
+      {fuera && <span className="ml-2 text-red-400">· fuera del turno</span>}
     </div>
   )
 }

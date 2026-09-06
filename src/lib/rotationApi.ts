@@ -7,6 +7,7 @@ interface RotationRow {
   order_ids: string[] | null
   skipped_ids: string[] | null
   ratings_open: boolean | null
+  require_ratings: boolean | null
   match_date: string | null
 }
 
@@ -14,6 +15,8 @@ interface RotationRow {
 export interface RotationFetch {
   rotation: RotationData
   ratingsOpen: boolean
+  /** Filtro "solo alinea quien ha valorado a todos" activado. */
+  requireRatings: boolean
   /** Override de fecha del próximo partido ('YYYY-MM-DD'), o null si automática. */
   matchDate: string | null
 }
@@ -22,7 +25,7 @@ export interface RotationFetch {
 export async function fetchRotation(): Promise<RotationFetch> {
   const { data, error } = await supabase
     .from('rotation')
-    .select('current_player_id, order_ids, skipped_ids, ratings_open, match_date')
+    .select('current_player_id, order_ids, skipped_ids, ratings_open, require_ratings, match_date')
     .eq('id', 1)
     .maybeSingle()
   if (error) throw error
@@ -34,6 +37,7 @@ export async function fetchRotation(): Promise<RotationFetch> {
       skippedIds: row.skipped_ids ?? [],
     },
     ratingsOpen: row.ratings_open ?? false,
+    requireRatings: row.require_ratings ?? false,
     matchDate: row.match_date ?? null,
   }
 }
@@ -50,6 +54,12 @@ export async function saveMatchDate(matchDate: string | null): Promise<void> {
 /** Abre/cierra la ventana global de re-evaluación (solo admin, vía RPC). */
 export async function setRatingsOpen(open: boolean): Promise<void> {
   const { error } = await supabase.rpc('admin_set_ratings_open', { p_open: open })
+  if (error) throw error
+}
+
+/** Activa/desactiva el filtro de valoraciones para la cola de alineadores (solo admin). */
+export async function setRequireRatings(on: boolean): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_require_ratings', { p_on: on })
   if (error) throw error
 }
 

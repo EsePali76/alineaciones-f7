@@ -29,6 +29,34 @@ export function esElegibleRotacion(p: Player): boolean {
   return p.activo && !p.excluidoRotacion && !p.reserva && !p.invitado
 }
 
+/**
+ * Aplica el filtro "solo alinea quien ha valorado a todos" sobre los elegibles.
+ *
+ * IMPORTANTE — esto NO se aplica al reconciliar la cola guardada (`reconcileOrder`,
+ * `advancePass`, `advanceAfterConfirm`): esos siguen usando `esElegibleRotacion` a
+ * secas. Si el filtro tocara la cola persistida, al que le falte una valoración se
+ * le borraría del orden y perdería su sitio para siempre; así, en cuanto complete
+ * sus votos vuelve exactamente donde estaba. El filtro es de TURNO, no de cola.
+ *
+ * Quien no tiene cuenta vinculada no aparece en `completos` y, por tanto, queda
+ * fuera mientras el filtro esté activo: no puede valorar, y tampoco podría entrar
+ * en la app a hacer la alineación.
+ *
+ * Red de seguridad: si el filtro dejase la cola VACÍA, se ignora y se devuelven
+ * todos los elegibles. Vale más un turno "sucio" que una semana sin alineador.
+ */
+export function filtrarPorValoraciones(
+  elegibles: Player[],
+  completos: Set<string>,
+  activo: boolean,
+): { ids: Set<string>; aplicado: boolean } {
+  const todos = new Set(elegibles.map((p) => p.id))
+  if (!activo) return { ids: todos, aplicado: false }
+  const pasan = elegibles.filter((p) => completos.has(p.id))
+  if (pasan.length === 0) return { ids: todos, aplicado: false }
+  return { ids: new Set(pasan.map((p) => p.id)), aplicado: true }
+}
+
 /** Primer elegible de la cola que no haya pasado turno; si todos pasaron, el primero. */
 export function computeCurrent(
   order: string[],
