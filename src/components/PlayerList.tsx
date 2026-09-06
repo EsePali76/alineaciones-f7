@@ -162,13 +162,7 @@ export function PlayerList({
                   <td className="px-3 py-2 text-slate-400">{FOOT_LABEL[p.pierna]}</td>
                   <td className="px-3 py-2 text-slate-300">{media.toFixed(1)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-slate-300">
-                    {p.animoCalculado != null ? (
-                      <span title={animoLabel(p.animoCalculado).texto}>
-                        {animoLabel(p.animoCalculado).emoji} {p.animoCalculado.toFixed(1)}
-                      </span>
-                    ) : (
-                      '—'
-                    )}
+                    <AnimoPill valor={p.animoCalculado} />
                   </td>
                   {isAdmin && (
                     <td className="px-3 py-2">
@@ -197,5 +191,39 @@ export function PlayerList({
         </table>
       </div>
     </div>
+  )
+}
+
+/**
+ * Ánimo de un jugador: el emoji dice CÓMO está y el color CUÁNTO.
+ *
+ * Se quitó el número (era el índice interno 0-10 y no se puede interpretar sin saber
+ * cómo se calcula). Para que siga notándose la intensidad, el emoji va en una
+ * pastilla con una rampa DIVERGENTE centrada en el gris: verde arriba, ámbar y rojo
+ * abajo. Color y emoji dicen lo mismo a propósito —quien no distinga bien los tonos
+ * tiene la cara, y el tooltip da la palabra—, que es la razón de no fiarlo al color
+ * solo.
+ */
+const ANIMO_TONO: Record<number, string> = {
+  2: 'border-emerald-500/60 bg-emerald-500/20',
+  1: 'border-lime-500/50 bg-lime-500/15',
+  0: 'border-slate-600 bg-slate-700/40',
+  [-1]: 'border-amber-500/50 bg-amber-500/15',
+  [-2]: 'border-red-500/60 bg-red-500/20',
+}
+
+function AnimoPill({ valor }: { valor: number | undefined }) {
+  if (valor == null) return <span className="text-slate-600">—</span>
+  const { emoji, texto, nivel } = animoLabel(valor)
+  return (
+    <span
+      title={texto}
+      className={
+        'inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-base leading-none ' +
+        ANIMO_TONO[nivel]
+      }
+    >
+      {emoji}
+    </span>
   )
 }

@@ -76,11 +76,18 @@ export function computeAnimo(playerId: string, lineups: ConfirmedLineup[]): numb
   return Math.max(0, Math.min(10, BASE + sum))
 }
 
-/** Etiqueta + emoji orientativos para un valor de ánimo. */
-export function animoLabel(v: number): { emoji: string; texto: string } {
-  if (v >= 6.5) return { emoji: '😀', texto: 'Animado' }
-  if (v >= 5.5) return { emoji: '🙂', texto: 'Bien' }
-  if (v > 4.5) return { emoji: '😐', texto: 'Normal' }
-  if (v > 3.5) return { emoji: '😕', texto: 'Tocado' }
-  return { emoji: '😞', texto: 'Bajo' }
+/**
+ * Etiqueta + emoji orientativos para un valor de ánimo, y el escalón en que cae.
+ *
+ * `nivel` va de -2 a +2 con el 0 en "Normal": es una escala DIVERGENTE, no una nota.
+ * El centro es el jugador que ni gana ni pierde de más, y se separa hacia arriba o
+ * hacia abajo. Se devuelve como número (y no como un color) porque el dominio no
+ * pinta: quien lo muestra decide cómo. Ver la tabla del Plantel en `PlayerList`.
+ */
+export function animoLabel(v: number): { emoji: string; texto: string; nivel: number } {
+  if (v >= 6.5) return { emoji: '😀', texto: 'Animado', nivel: 2 }
+  if (v >= 5.5) return { emoji: '🙂', texto: 'Bien', nivel: 1 }
+  if (v > 4.5) return { emoji: '😐', texto: 'Normal', nivel: 0 }
+  if (v > 3.5) return { emoji: '😕', texto: 'Tocado', nivel: -1 }
+  return { emoji: '😞', texto: 'Bajo', nivel: -2 }
 }
