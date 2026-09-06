@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePlayersStore } from '../store/playersStore'
 import { useRatingsStore } from '../store/ratingsStore'
 import { useAuthStore } from '../store/authStore'
-import { useRotationStore } from '../store/rotationStore'
+import { useRatingsWindow } from '../hooks/useRatingsWindow'
 import type { PlayerRatings, Rating } from '../domain/types'
 import { fotoVisible } from '../domain/types'
 import {
@@ -30,7 +30,7 @@ export function RatePlayers() {
   const loadMine = useRatingsStore((s) => s.loadMine)
   const saveMine = useRatingsStore((s) => s.saveMine)
   const finalize = useRatingsStore((s) => s.finalize)
-  const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
+  const { abierto: ratingsOpen } = useRatingsWindow()
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   // Borrador en edición del jugador seleccionado (no se guarda hasta pulsar Guardar).

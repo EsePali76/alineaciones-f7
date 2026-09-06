@@ -4,6 +4,7 @@ import { useConvocatoria } from '../hooks/useConvocatoria'
 import { useAuthStore } from '../store/authStore'
 import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
+import { useRatingsWindow } from '../hooks/useRatingsWindow'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 import { useLineupsStore } from '../store/lineupsStore'
 import { ConfirmedLineupView } from './ConfirmedLineupView'
@@ -30,7 +31,7 @@ export function RotationBanner() {
   const posponerJornada = useRotationStore((s) => s.posponerJornada)
   const fijarFecha = useRotationStore((s) => s.fijarFecha)
   const matchDate = useRotationStore((s) => s.matchDate)
-  const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
+  const { abierto: ratingsOpen, deadline: ratingsDeadline } = useRatingsWindow()
   const [fechaEdit, setFechaEdit] = useState('')
 
   const { fecha, abierta, titulares, reservas, noVienen, miEstado } = useConvocatoria()
@@ -332,8 +333,8 @@ export function RotationBanner() {
       {/* Aviso del plazo de re-evaluación de valoraciones (lo abre el admin). */}
       {ratingsOpen && isLinked && (
         <div className="rounded-md border border-sky-500/50 bg-sky-900/30 px-3 py-2 text-sm text-sky-200">
-          📝 <b>Plazo de reevaluación abierto:</b> puedes revisar y ajustar tus valoraciones en la
-          pestaña «Valorar» mientras esté activo.
+          📝 <b>Plazo de reevaluación abierto{ratingsDeadline ? ` hasta el ${formatoFecha(ratingsDeadline)}` : ''}:</b>{' '}
+          revisa tus valoraciones en «Valorar» y pulsa <b>Finalizar</b> al acabar.
         </div>
       )}
     </div>

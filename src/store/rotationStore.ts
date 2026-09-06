@@ -32,8 +32,14 @@ function eligibleShuffled(): string[] {
 
 interface RotationState {
   data: RotationData
-  /** Ventana global de re-evaluación abierta (todos pueden revisar sus votos). */
+  /**
+   * Ventana global de re-evaluación abierta (intención del admin). OJO: para saber
+   * si el plazo está REALMENTE vigente hay que cruzarlo con `ratingsDeadline` —
+   * usa el hook `useRatingsWindow`, no este flag a pelo.
+   */
   ratingsOpen: boolean
+  /** Fecha límite del plazo ('YYYY-MM-DD'); null = sin fecha de fin. */
+  ratingsDeadline: string | null
   /**
    * Filtro activo: solo entra en la cola de alineadores quien ha valorado a todos.
    * Ver `filtrarPorValoraciones` (dominio) y `useTurno` (donde se aplica).
@@ -55,6 +61,8 @@ interface RotationState {
   alConfirmar: (doerId: string) => Promise<void>
   /** Abre/cierra el plazo de re-evaluación de valoraciones (admin). */
   setRatingsOpen: (open: boolean) => Promise<void>
+  /** Fija/quita la fecha límite del plazo (admin). */
+  setRatingsDeadline: (fechaISO: string | null) => Promise<void>
   /** Activa/desactiva el filtro de valoraciones sobre la cola (admin). */
   setRequireRatings: (on: boolean) => Promise<void>
 }
@@ -67,13 +75,15 @@ async function persist(set: (p: Partial<RotationState>) => void, data: RotationD
 export const useRotationStore = create<RotationState>((set, get) => ({
   data: { currentPlayerId: null, orderIds: [], skippedIds: [] },
   ratingsOpen: false,
+  ratingsDeadline: null,
   requireRatings: false,
   matchDate: null,
   loaded: false,
 
   load: async () => {
-    const { rotation, ratingsOpen, requireRatings, matchDate } = await api.fetchRotation()
-    set({ data: rotation, ratingsOpen, requireRatings, matchDate, loaded: true })
+    const { rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate } =
+      await api.fetchRotation()
+    set({ data: rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate, loaded: true })
   },
 
   posponerJornada: async (nuevaFecha) => {
@@ -125,6 +135,17 @@ export const useRotationStore = create<RotationState>((set, get) => ({
     } catch (e) {
       // Revierte el optimista si la RPC falla.
       set({ ratingsOpen: !open })
+      throw e
+    }
+  },
+
+  setRatingsDeadline: async (fechaISO) => {
+    const prev = get().ratingsDeadline
+    set({ ratingsDeadline: fechaISO })
+    try {
+      await api.setRatingsDeadline(fechaISO)
+    } catch (e) {
+      set({ ratingsDeadline: prev })
       throw e
     }
   },

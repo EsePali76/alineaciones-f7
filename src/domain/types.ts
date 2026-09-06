@@ -1,3 +1,4 @@
+import { anioTemporada } from './season'
 // Modelo de dominio de alineaciones_F7
 
 /**
@@ -19,6 +20,27 @@ export function nombreVisible(p?: Pick<Player, 'nombre' | 'nombreReconocible'> |
   if (!p) return '(?)'
   const r = p.nombreReconocible?.trim()
   return r && r.length > 0 ? r : p.nombre
+}
+
+/**
+ * Edad a día de hoy: la anotada MÁS una por cada temporada empezada desde entonces.
+ *
+ * Se cumplen años, y nadie va a entrar a corregir su edad cada septiembre. En vez
+ * de tocar el dato de todo el mundo cada temporada (una escritura masiva que se
+ * puede quedar a medias o repetir), se guarda cuándo se anotó y se suma la
+ * diferencia al mostrarla. El dato original no se altera nunca.
+ *
+ * No es exacta al día —depende del mes en que cumpla cada uno— y no pretende serlo:
+ * la edad aquí es informativa y no entra en el reparto (ver `playerScore`).
+ */
+export function edadVisible(
+  p?: Pick<Player, 'edad' | 'edadTemporada' | 'createdAt'> | null,
+  hoy: Date = new Date(),
+): number | undefined {
+  if (!p || p.edad == null) return undefined
+  const sello = p.edadTemporada ?? anioTemporada(p.createdAt)
+  const transcurridas = anioTemporada(hoy.getTime()) - sello
+  return p.edad + Math.max(0, transcurridas)
 }
 
 /** Códigos de posición en fútbol 7. Un jugador puede tener varias. */
@@ -67,8 +89,17 @@ export interface Player {
    * jugador, sea cual sea el nombre que él se ponga. Vacío → se usa `nombre`.
    */
   nombreReconocible?: string
-  /** Edad en años (dato objetivo, opcional). */
+  /**
+   * Edad en años cuando se anotó (dato objetivo, opcional). NO se lee directamente
+   * para mostrar: usa `edadVisible`, que le suma las temporadas transcurridas.
+   */
   edad?: number
+  /**
+   * Temporada (año de inicio) en la que se anotó `edad`. Se sella al guardar la
+   * ficha. Sin sello, `edadVisible` cae a la temporada en que se dio de alta al
+   * jugador, que es cuando se escribió esa edad.
+   */
+  edadTemporada?: number
   /** Posiciones que sabe jugar (al menos una). */
   posiciones: PositionCode[]
   /** Perfil preferido (banda con la que actúa con naturalidad). Antes "pierna hábil". */

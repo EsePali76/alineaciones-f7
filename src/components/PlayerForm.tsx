@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { PlayerInput } from '../store/playersStore'
+import { anioTemporada } from '../domain/season'
 import type { Foot, PositionCode, Rating } from '../domain/types'
 import {
   POSITIONS,
@@ -133,7 +134,15 @@ export function PlayerForm({
     setGuardado(false)
     try {
       // En la lista de invitados, `invitado` va siempre implícito.
-      await onSubmit({ ...data, nombre, invitado: esInvitado ? true : data.invitado })
+      // Si el admin toca la edad, se sella con la temporada actual: a partir de ahí
+      // `edadVisible` cuenta desde este año y no vuelve a sumar lo ya sumado.
+      const edadCambiada = data.edad !== initial?.edad
+      await onSubmit({
+        ...data,
+        nombre,
+        invitado: esInvitado ? true : data.invitado,
+        edadTemporada: edadCambiada ? anioTemporada(Date.now()) : data.edadTemporada,
+      })
       setGuardado(true)
       setTimeout(() => setGuardado(false), 3000)
       if (!initial) setData(esInvitado ? { ...EMPTY, invitado: true } : EMPTY) // limpia tras un alta

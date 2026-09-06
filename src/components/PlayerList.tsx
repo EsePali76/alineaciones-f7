@@ -4,6 +4,7 @@ import { fotoVisible } from '../domain/types'
 import { POSITION_LABEL, FOOT_LABEL } from '../domain/constants'
 import { weightedRatings } from '../domain/scoring'
 import { animoLabel } from '../domain/animo'
+import { edadVisible } from '../domain/types'
 import { Avatar } from './Avatar'
 
 interface PlayerListProps {
@@ -69,8 +70,11 @@ export function PlayerList({
       cmp = mediaValoracion(a) - mediaValoracion(b)
     } else if (sortKey === 'edad') {
       // Sin edad siempre al final, independientemente de la dirección.
-      const ea = a.edad ?? null
-      const eb = b.edad ?? null
+      // Se ordena por la edad MOSTRADA: cada jugador puede llevar un número
+      // distinto de temporadas desde que se anotó, así que el orden por el dato
+      // crudo no tiene por qué coincidir.
+      const ea = edadVisible(a) ?? null
+      const eb = edadVisible(b) ?? null
       if (ea === null && eb === null) cmp = 0
       else if (ea === null) return 1
       else if (eb === null) return -1
@@ -145,7 +149,7 @@ export function PlayerList({
                       </span>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-slate-400">{p.edad ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-400">{edadVisible(p) ?? '—'}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
                       {p.posiciones.map((c) => (

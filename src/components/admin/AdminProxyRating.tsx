@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePlayersStore } from '../../store/playersStore'
 import { useRatingsStore } from '../../store/ratingsStore'
 import { useRotationStore } from '../../store/rotationStore'
+import { useRatingsWindow } from '../../hooks/useRatingsWindow'
 import { fetchAllProfiles, type Profile } from '../../lib/authApi'
 import { fetchRatingsOf, adminUpsertRating } from '../../lib/ratingsApi'
 import type { PlayerRatings, Rating } from '../../domain/types'
@@ -180,6 +181,9 @@ export function AdminProxyRating() {
  */
 function RatingsWindowControl() {
   const ratingsOpen = useRotationStore((s) => s.ratingsOpen)
+  const ratingsDeadline = useRotationStore((s) => s.ratingsDeadline)
+  const setRatingsDeadline = useRotationStore((s) => s.setRatingsDeadline)
+  const { abierto: vigente } = useRatingsWindow()
   const setRatingsOpen = useRotationStore((s) => s.setRatingsOpen)
   const [guardando, setGuardando] = useState(false)
 
@@ -200,7 +204,8 @@ function RatingsWindowControl() {
         <h3 className="text-base font-semibold">Plazo de reevaluación</h3>
         <p className="text-sm text-slate-400">
           Al abrirlo, cualquier usuario (también los que ya finalizaron) puede revisar y ajustar sus
-          valoraciones. Se avisa a cada uno bajo el banner de turno. Ciérralo cuando termine el plazo.
+          valoraciones. Se avisa a cada uno bajo el banner de turno. Si le pones fecha, se cierra
+          solo al acabar ese día.
         </p>
       </div>
 
@@ -208,12 +213,12 @@ function RatingsWindowControl() {
         <span
           className={
             'rounded-full px-3 py-1 text-xs font-medium ' +
-            (ratingsOpen
+            (vigente
               ? 'bg-sky-900/40 text-sky-300 ring-1 ring-sky-500/50'
               : 'bg-slate-700/60 text-slate-300')
           }
         >
-          {ratingsOpen ? '● Abierto' : '○ Cerrado'}
+          {vigente ? '● Abierto' : ratingsOpen ? '○ Vencido' : '○ Cerrado'}
         </span>
 
         <button
@@ -231,6 +236,26 @@ function RatingsWindowControl() {
           Cerrar valoraciones
         </button>
       </div>
+
+      {/* Fecha límite: el plazo se cierra solo al acabar ese día (cálculo derivado,
+          no hay tarea programada). Vacío = abierto hasta que el admin lo cierre. */}
+      <label className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+        <span>Cerrar automáticamente el:</span>
+        <input
+          type="date"
+          value={ratingsDeadline ?? ''}
+          onChange={(e) => setRatingsDeadline(e.target.value || null)}
+          className="rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-200"
+        />
+        {ratingsDeadline && (
+          <button
+            onClick={() => setRatingsDeadline(null)}
+            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+          >
+            Quitar fecha
+          </button>
+        )}
+      </label>
     </div>
   )
 }
