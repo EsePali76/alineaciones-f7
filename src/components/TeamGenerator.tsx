@@ -19,26 +19,29 @@ import { QuickGuestForm } from './QuickGuestForm'
 import { usePlayersStore, type PlayerInput } from '../store/playersStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 
-/** Los tres criterios con los que se puede repartir. Ver `domain/resultados.ts`. */
-const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string; pie: string }[] = [
+/**
+ * Los tres criterios con los que se puede repartir. Ver `domain/resultados.ts`.
+ *
+ * LOS TEXTOS VAN CORTOS A PROPÓSITO: dicen QUÉ mira cada método, no CÓMO lo calcula.
+ * Detallar la fórmula en pantalla solo invita a discutirla; el porqué de cada
+ * decisión (pesos por temporada, partidos fantasma, ánimo) está comentado en
+ * `domain/resultados.ts` y `domain/scoring.ts`, que es donde hace falta.
+ */
+const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string }[] = [
   {
     valor: 'valoraciones',
     etiqueta: '⭐ Valoraciones',
-    ayuda: 'Nivel según las valoraciones que os habéis puesto entre vosotros',
-    pie: 'Reparte según las valoraciones que os habéis puesto entre vosotros, con un pequeño ajuste por la racha de cada uno.',
+    ayuda: 'Según las valoraciones que os habéis puesto entre vosotros',
   },
   {
     valor: 'resultados',
     etiqueta: '🏆 Resultados',
-    ayuda:
-      'Nivel según los partidos ganados y perdidos, en nota de 0 a 10 (amortiguada para quien lleva pocos partidos)',
-    pie: 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota) esta temporada; la anterior cuenta la mitad.',
+    ayuda: 'Según los partidos ganados y perdidos',
   },
   {
     valor: 'mixto',
     etiqueta: '⚖️ Mixto',
-    ayuda: 'La media entre la nota por valoraciones y la nota por resultados',
-    pie: 'Reparte por la media entre lo que opináis unos de otros y lo que gana cada uno en el campo, a partes iguales.',
+    ayuda: 'La media de los otros dos',
   },
 ]
 
@@ -528,9 +531,6 @@ export function TeamGenerator() {
             </button>
           ))}
         </div>
-        <p className="-mt-1 text-xs text-slate-500">
-          {METODOS.find((m) => m.valor === metodo)?.pie}
-        </p>
 
         {/* Selectores de formación por equipo */}
         <FormacionSelector
