@@ -210,10 +210,9 @@ function App() {
           {tab === 'invitados' && isAdmin && (
             <>
               <p className="text-sm text-slate-400">
-                Gente de fuera del grupo (sin cuenta, no hacen alineaciones). Los{' '}
-                <b>habituales</b> los vota el grupo y cuentan en estadísticas; los{' '}
-                <b>puntuales</b> van con datos estimados y sin rastro en estadísticas. Para pasar a
-                uno al plantel, vincúlale una cuenta en «Usuarios».
+                Gente de fuera del grupo. Marca como <b>habitual</b> al que viene a menudo: lo
+                vota el grupo y cuenta en estadísticas. Para pasar a uno al plantel, vincúlale
+                una cuenta en «Usuarios».
               </p>
               <PlayerList
                 players={effectivePlayers.filter((p) => p.invitado)}

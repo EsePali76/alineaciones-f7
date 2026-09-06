@@ -475,7 +475,7 @@ export function TeamGenerator() {
               <button
                 onClick={editarConvocatoria}
                 className="rounded border border-slate-500 px-2 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700"
-                title="Descarta la alineación para poder marcar/desmarcar convocados libremente (se conservan los convocados actuales)"
+                title="Descarta la alineación para poder cambiar los convocados"
               >
                 ✏️ Editar convocados
               </button>
@@ -885,7 +885,7 @@ function BalanceResult({
                   onCancelConfirm()
               }}
               className="rounded border border-red-600 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-600/10"
-              title="Borra la alineación confirmada (vuelve la convocatoria al banner) y resetea la generación; conserva los convocados"
+              title="Borra la alineación confirmada. Los convocados se conservan"
             >
               ✕ Cancelar alineación
             </button>
@@ -913,8 +913,10 @@ function BalanceResult({
           <div className="bg-white" style={{ width: `${pctA}%` }} />
           <div className="bg-red-500" style={{ width: `${pctB}%` }} />
         </div>
+        {/* Solo el reparto en %. La diferencia de nivel en crudo es un número del
+            algoritmo: sigue estando en el desglose de admin, no en la vista de todos. */}
         <p className="mt-1 text-center text-sm text-slate-400">
-          Equilibrio {pctA}% / {pctB}% · diferencia de nivel {balance.diffScore.toFixed(2)}
+          Equilibrio {pctA}% / {pctB}%
         </p>
       </div>
 

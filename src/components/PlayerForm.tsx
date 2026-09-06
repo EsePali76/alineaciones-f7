@@ -323,10 +323,7 @@ export function PlayerForm({
       {/* Valoraciones 0-10: SOLO para el invitado puntual (al resto lo vota el grupo). */}
       {!soloIdentidad && mostrarValoraciones && (
       <div className="flex flex-col gap-3 text-sm">
-        <span className="text-slate-400">
-          Valoración estimada del invitado (0-10){' '}
-          <span className="text-amber-400">· sin valorar = 5 (media)</span>
-        </span>
+        <span className="text-slate-400">Valoración estimada del invitado (0-10)</span>
 
         {/* Ancla: destacada (la que más pondera) */}
         <div className="rounded-lg border-2 border-red-500 bg-red-600/25 p-3 shadow-[0_0_14px_-2px_rgba(239,68,68,0.5)]">
@@ -360,7 +357,7 @@ export function PlayerForm({
             onChange={(e) => setData((d) => ({ ...d, habitual: e.target.checked }))}
             className="h-4 w-4"
           />
-          <span title="Viene a menudo: lo vota el grupo y cuenta en las estadísticas. Si lo dejas sin marcar, es un invitado puntual (datos estimados a 5, sin rastro en estadísticas).">
+          <span title="Viene a menudo: lo vota el grupo y cuenta en las estadísticas.">
             Habitual (lo vota el grupo · cuenta en estadísticas)
           </span>
         </label>

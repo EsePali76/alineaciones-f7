@@ -70,7 +70,7 @@ export function QuickGuestForm({
     <div className="flex flex-col gap-3 rounded-lg border border-slate-600 bg-slate-900/60 p-3 text-sm">
       <div className="flex items-center justify-between">
         <span className="font-medium text-slate-200">Nuevo invitado puntual</span>
-        <span className="text-xs text-slate-500">se añade convocado · datos estimados</span>
+        <span className="text-xs text-slate-500">se añade convocado</span>
       </div>
 
       <input
@@ -130,7 +130,7 @@ export function QuickGuestForm({
           className="w-20 rounded border border-slate-600 bg-slate-900 px-2 py-1"
         />
         <span className="text-xs text-slate-500">
-          {general === '' ? 'sin valorar → 5' : ratingLabel(Number(general))}
+          {general === '' ? 'sin valorar' : ratingLabel(Number(general))}
         </span>
       </label>
 
