@@ -10,10 +10,19 @@ const INICIO_TEMPORADA = 8
 /** Valor especial del selector: agregado de todas las temporadas. */
 export const TODAS = 'Totales'
 
+/**
+ * Año en que arranca la temporada a la que pertenece una fecha. Es la forma
+ * NUMÉRICA de la temporada, para poder comparar dos (p.ej. "¿de cuántas temporadas
+ * atrás es este partido?") sin andar parseando la etiqueta "25/26".
+ */
+export function anioTemporada(fecha: number): number {
+  const d = new Date(fecha)
+  return d.getMonth() >= INICIO_TEMPORADA ? d.getFullYear() : d.getFullYear() - 1
+}
+
 /** Etiqueta de temporada de una fecha, p.ej. "25/26". */
 export function temporadaDe(fecha: number): string {
-  const d = new Date(fecha)
-  const inicio = d.getMonth() >= INICIO_TEMPORADA ? d.getFullYear() : d.getFullYear() - 1
+  const inicio = anioTemporada(fecha)
   const dd = (n: number) => String(((n % 100) + 100) % 100).padStart(2, '0')
   return `${dd(inicio)}/${dd(inicio + 1)}`
 }

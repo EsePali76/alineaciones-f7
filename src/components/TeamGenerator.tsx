@@ -32,7 +32,7 @@ const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string; pie:
     etiqueta: '🏆 Resultados',
     ayuda:
       'Nivel según los partidos ganados y perdidos, en nota de 0 a 10 (amortiguada para quien lleva pocos partidos)',
-    pie: 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota).',
+    pie: 'Reparte solo por lo que se gana en el campo (+1 victoria, −1 derrota) esta temporada; la anterior cuenta la mitad.',
   },
   {
     valor: 'mixto',
