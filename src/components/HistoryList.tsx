@@ -7,10 +7,9 @@ import { useTurno } from '../hooks/useTurno'
 import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
 import { mvpEfectivo } from '../domain/animo'
 import { goleadoresDe, asistenciasDe } from '../domain/result'
-import { temporadasDisponibles, filtrarPorTemporada, TODAS } from '../domain/season'
+import { temporadaDe } from '../domain/season'
 import { evaluatePartition } from '../domain/balancer'
 import { formacionPorNombre } from '../domain/formation'
-import { SeasonPicker } from './SeasonPicker'
 import { FieldView } from './FieldView'
 import type { ConfirmedLineup, GoalEvent, MatchResult, Player } from '../domain/types'
 import { nombreVisible } from '../domain/types'
@@ -27,13 +26,46 @@ export function HistoryList() {
   }, [players])
   const nombre = (id: string) => nombrePorId.get(id) ?? '(jugador eliminado)'
 
-  const temporadas = useMemo(() => temporadasDisponibles(lineups), [lineups])
-  const [temporada, setTemporada] = useState<string>(() => temporadasDisponibles(lineups)[0] ?? TODAS)
+  /**
+   * Partidos agrupados por temporada, de la más reciente a la más antigua y con los
+   * partidos de cada una también de más nuevo a más viejo.
+   *
+   * Sustituye al selector de pastillas que había antes: aquel enseñaba UNA temporada
+   * cada vez (y encima se auto-ocultaba mientras solo hubiera una, con lo que no había
+   * forma de plegar nada). Con secciones se pueden tener dos abiertas a la vez para
+   * comparar, y el historial viejo no estorba.
+   */
+  const grupos = useMemo(() => {
+    const porTemporada = new Map<string, ConfirmedLineup[]>()
+    for (const l of [...lineups].sort((a, b) => b.fecha - a.fecha)) {
+      const t = temporadaDe(l.fecha)
+      const arr = porTemporada.get(t)
+      if (arr) arr.push(l)
+      else porTemporada.set(t, [l])
+    }
+    // El Map conserva el orden de inserción y los lineups venían ya ordenados por
+    // fecha descendente, así que la primera temporada insertada es la más reciente.
+    return [...porTemporada.entries()].map(([temporada, partidos]) => ({ temporada, partidos }))
+  }, [lineups])
 
-  const ordenadas = useMemo(
-    () => filtrarPorTemporada(lineups, temporada).sort((a, b) => b.fecha - a.fecha),
-    [lineups, temporada],
-  )
+  /**
+   * Qué secciones están abiertas. Arranca con la temporada en curso desplegada y el
+   * resto plegado: lo que interesa casi siempre es lo último. Se guarda el conjunto
+   * de las ABIERTAS (no un booleano por sección) para que al aparecer una temporada
+   * nueva no herede el estado de otra.
+   */
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
+  const [tocado, setTocado] = useState(false)
+  const abiertaPorDefecto = grupos[0]?.temporada
+  const estaAbierta = (t: string) => (tocado ? abiertas.has(t) : t === abiertaPorDefecto)
+  const alternar = (t: string) => {
+    const base = tocado ? abiertas : new Set(abiertaPorDefecto ? [abiertaPorDefecto] : [])
+    const next = new Set(base)
+    if (next.has(t)) next.delete(t)
+    else next.add(t)
+    setAbiertas(next)
+    setTocado(true)
+  }
 
   if (lineups.length === 0) {
     return (
@@ -45,14 +77,27 @@ export function HistoryList() {
 
   return (
     <div className="flex flex-col gap-3">
-      <SeasonPicker temporadas={temporadas} valor={temporada} onChange={setTemporada} />
-      <p className="text-sm text-slate-400">
-        {ordenadas.length} {ordenadas.length === 1 ? 'partido' : 'partidos'}
-        {temporada === TODAS ? ' (todas las temporadas)' : ` · temporada ${temporada}`}
-      </p>
-      {ordenadas.map((lu) => (
-        <MatchCard key={lu.id} lineup={lu} isAdmin={isAdmin} nombre={nombre} />
-      ))}
+      {grupos.map(({ temporada, partidos }) => {
+        const open = estaAbierta(temporada)
+        return (
+          <div key={temporada} className="flex flex-col gap-3">
+            <button
+              onClick={() => alternar(temporada)}
+              className="flex w-full items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-left hover:border-slate-500"
+            >
+              <span className="text-xs text-slate-500">{open ? '▼' : '▶'}</span>
+              <span className="font-semibold text-slate-200">Temporada {temporada}</span>
+              <span className="ml-auto text-sm text-slate-400">
+                {partidos.length} {partidos.length === 1 ? 'partido' : 'partidos'}
+              </span>
+            </button>
+            {open &&
+              partidos.map((lu) => (
+                <MatchCard key={lu.id} lineup={lu} isAdmin={isAdmin} nombre={nombre} />
+              ))}
+          </div>
+        )
+      })}
     </div>
   )
 }
