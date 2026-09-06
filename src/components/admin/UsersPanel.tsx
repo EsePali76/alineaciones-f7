@@ -102,29 +102,6 @@ export function UsersPanel() {
         </p>
       </div>
 
-      {/* Interruptor global: filtra la cola de alineadores por valoraciones. */}
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-slate-200">
-            Solo alinea quien ha valorado a todos
-          </span>
-          <span className="text-xs text-slate-500">
-            Apagado, el turno rota entre todos como siempre.
-          </span>
-        </div>
-        <button
-          onClick={() => setRequireRatings(!requireRatings).catch(() => setError('No se pudo cambiar la opción.'))}
-          className={
-            'ml-auto rounded px-3 py-1.5 text-sm font-medium transition-colors ' +
-            (requireRatings
-              ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-              : 'border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
-          }
-        >
-          {requireRatings ? '● Activado' : '○ Desactivado'}
-        </button>
-      </div>
-
       {profiles.length === 0 && (
         <p className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-500">
           Aún no hay usuarios registrados.
@@ -287,6 +264,29 @@ export function UsersPanel() {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Interruptor global: filtra la cola de alineadores por valoraciones. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-slate-200">
+            Solo alinea quien ha valorado a todos
+          </span>
+          <span className="text-xs text-slate-500">
+            Apagado, el turno rota entre todos como siempre.
+          </span>
+        </div>
+        <button
+          onClick={() => setRequireRatings(!requireRatings).catch(() => setError('No se pudo cambiar la opción.'))}
+          className={
+            'ml-auto rounded px-3 py-1.5 text-sm font-medium transition-colors ' +
+            (requireRatings
+              ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+              : 'border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
+          }
+        >
+          {requireRatings ? '● Activado' : '○ Desactivado'}
+        </button>
       </div>
     </div>
   )
