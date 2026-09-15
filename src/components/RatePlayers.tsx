@@ -106,6 +106,12 @@ export function RatePlayers() {
 
   const completados = aValorar.filter((p) => mine.get(p.id)?.general != null).length
 
+  // Con el plazo abierto, finalizar no bloquea (se puede seguir retocando hasta
+  // que venza), así que no se promete lo contrario.
+  const textoFinalizar = ratingsOpen
+    ? '¿Dar por hechas tus valoraciones? Mientras el plazo siga abierto aún podrás retocarlas.'
+    : '¿Finalizar tus valoraciones? Ya no podrás editarlas.'
+
   const ratingRow = (key: RatingKey) => {
     const val = draft[key]
     return (
@@ -172,7 +178,7 @@ export function RatePlayers() {
       {finalizado && ratingsOpen && (
         <p className="rounded-lg border border-sky-600/50 bg-sky-900/20 p-3 text-sm text-sky-200">
           📝 Plazo de reevaluación abierto: aunque ya finalizaste, puedes revisar y ajustar tus
-          valoraciones mientras esté activo.
+          valoraciones mientras esté activo. Al terminar, vuelve a pulsar <b>Finalizar</b>.
         </p>
       )}
 
@@ -186,14 +192,18 @@ export function RatePlayers() {
               <span>
                 {completados}/{aValorar.length} valorados
               </span>
-              {!finalizado && (
+              {/* El botón sale siempre que se pueda editar, también en el plazo de
+                  reevaluación con las valoraciones ya finalizadas: si no, quien
+                  revisaba durante el plazo se quedaba sin forma de darlas por
+                  cerradas. Lo único que lo esconde es el bloqueo real. */}
+              {!bloqueado && (
                 <button
                   onClick={() => {
-                    if (confirm('¿Finalizar tus valoraciones? Ya no podrás editarlas.')) finalize()
+                    if (confirm(textoFinalizar)) finalize()
                   }}
                   className="rounded bg-emerald-600 px-2 py-1 font-medium text-white hover:bg-emerald-500"
                 >
-                  Finalizar
+                  {finalizado ? 'Finalizar de nuevo' : 'Finalizar'}
                 </button>
               )}
             </div>

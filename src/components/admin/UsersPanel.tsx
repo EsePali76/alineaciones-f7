@@ -3,6 +3,8 @@ import { usePlayersStore } from '../../store/playersStore'
 import { useAuthStore } from '../../store/authStore'
 import { useRotationStore } from '../../store/rotationStore'
 import { useRatingsStore } from '../../store/ratingsStore'
+import type { Player } from '../../domain/types'
+import type { PlayerInput } from '../../store/playersStore'
 import {
   fetchAllProfiles,
   adminLinkPlayer,
@@ -128,6 +130,7 @@ export function UsersPanel() {
                   )}
                 </div>
               </th>
+              <th className="px-3 py-2 font-medium">Turno</th>
               <th className="px-3 py-2 font-medium">Rol</th>
               <th className="px-3 py-2 font-medium"></th>
             </tr>
@@ -211,6 +214,29 @@ export function UsersPanel() {
                         </button>
                       </div>
                     )}
+                  </td>
+
+                  {/* Estado en la cola de alineadores (+ reingreso) */}
+                  <td className="px-3 py-2">
+                    <EstadoTurno
+                      jugador={pr.playerId ? players.find((p) => p.id === pr.playerId) : undefined}
+                      filtroActivo={requireRatings}
+                      completo={
+                        !!pr.playerId &&
+                        (() => {
+                          const pg = progress.get(pr.playerId!)
+                          return !!pg && pg.total > 0 && pg.valorados >= pg.total
+                        })()
+                      }
+                      onReingresar={(jugador) =>
+                        accion(() =>
+                          updatePlayer(jugador.id, {
+                            ...jugador,
+                            excluidoRotacion: false,
+                          } as PlayerInput),
+                        )
+                      }
+                    />
                   </td>
 
                   {/* Rol */}
@@ -318,4 +344,60 @@ function ProgresoValoraciones({
       {fuera && <span className="ml-2 text-red-400">· fuera del turno</span>}
     </div>
   )
+}
+
+/**
+ * Estado del usuario en la cola de alineadores y botón para reincorporarlo.
+ *
+ * Se sale de la cola por dos vías distintas y conviene no confundirlas:
+ *  · Autoexclusión ("No quiero hacer las alineaciones"): es un flag del jugador y
+ *    se queda puesto para siempre. Eso es lo que reincorpora este botón.
+ *  · Filtro "solo alinea quien ha valorado a todos": es automático. Ahí no hay
+ *    nada que pulsar — en cuanto complete sus votos vuelve solo, y a su sitio
+ *    (la cola guardada nunca se toca; ver `filtrarPorValoraciones`).
+ */
+function EstadoTurno({
+  jugador,
+  filtroActivo,
+  completo,
+  onReingresar,
+}: {
+  jugador: Player | undefined
+  filtroActivo: boolean
+  completo: boolean
+  onReingresar: (jugador: Player) => void
+}) {
+  if (!jugador) return <span className="text-xs text-slate-600">—</span>
+
+  if (jugador.excluidoRotacion) {
+    return (
+      <div className="flex flex-col items-start gap-1">
+        <span className="text-xs text-red-400">fuera (se autoexcluyó)</span>
+        <button
+          onClick={() => {
+            if (confirm(`¿Reincorporar a ${jugador.nombre} a la cola de alineadores?`))
+              onReingresar(jugador)
+          }}
+          title="Vuelve a entrar en la rotación (al final de la cola)."
+          className="rounded border border-emerald-700 px-2 py-0.5 text-xs text-emerald-300 hover:border-emerald-500"
+        >
+          Reincorporar
+        </button>
+      </div>
+    )
+  }
+
+  if (!jugador.activo) return <span className="text-xs text-slate-500">jugador inactivo</span>
+  if (jugador.invitado) return <span className="text-xs text-slate-500">invitado (no alinea)</span>
+  if (jugador.reserva) return <span className="text-xs text-slate-500">reserva (no alinea)</span>
+
+  if (filtroActivo && !completo) {
+    return (
+      <span className="text-xs text-amber-400" title="Vuelve solo en cuanto complete sus valoraciones.">
+        fuera (le faltan valoraciones)
+      </span>
+    )
+  }
+
+  return <span className="text-xs text-emerald-400">en la cola</span>
 }

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { RotationData } from '../domain/rotation'
+import { DIA_PARTIDO_DEFECTO } from '../domain/matchday'
 
 interface RotationRow {
   id: number
@@ -10,6 +11,7 @@ interface RotationRow {
   ratings_deadline: string | null
   require_ratings: boolean | null
   match_date: string | null
+  match_weekday: number | null
 }
 
 /** Estado de rotación + ventana de re-evaluación + override de fecha de partido. */
@@ -22,6 +24,8 @@ export interface RotationFetch {
   requireRatings: boolean
   /** Override de fecha del próximo partido ('YYYY-MM-DD'), o null si automática. */
   matchDate: string | null
+  /** Día fijo de partido (0 domingo … 6 sábado). */
+  matchWeekday: number
 }
 
 /** Lee el estado de rotación (fila singleton id=1) y el flag de ventana de revisión. */
@@ -29,7 +33,7 @@ export async function fetchRotation(): Promise<RotationFetch> {
   const { data, error } = await supabase
     .from('rotation')
     .select(
-      'current_player_id, order_ids, skipped_ids, ratings_open, ratings_deadline, require_ratings, match_date',
+      'current_player_id, order_ids, skipped_ids, ratings_open, ratings_deadline, require_ratings, match_date, match_weekday',
     )
     .eq('id', 1)
     .maybeSingle()
@@ -45,6 +49,7 @@ export async function fetchRotation(): Promise<RotationFetch> {
     ratingsDeadline: row.ratings_deadline ?? null,
     requireRatings: row.require_ratings ?? false,
     matchDate: row.match_date ?? null,
+    matchWeekday: row.match_weekday ?? DIA_PARTIDO_DEFECTO,
   }
 }
 
@@ -54,6 +59,17 @@ export async function saveMatchDate(matchDate: string | null): Promise<void> {
     .from('rotation')
     .update({ match_date: matchDate, updated_at: new Date().toISOString() })
     .eq('id', 1)
+  if (error) throw error
+}
+
+/**
+ * Fija el día fijo de partido (0 domingo … 6 sábado) para admin y superuser.
+ *
+ * Por RPC y no por update directo: la política RLS de `rotation` también deja
+ * escribir al jugador que tiene el turno, y este dato es de todo el grupo.
+ */
+export async function setMatchWeekday(dow: number): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_match_weekday', { p_dow: dow })
   if (error) throw error
 }
 

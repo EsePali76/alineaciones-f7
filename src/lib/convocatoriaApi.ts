@@ -52,8 +52,9 @@ export async function setSignup(
 
 /**
  * Repunta todos los apuntes de una jornada a otra fecha (admin; al reprogramar el
- * partido, p.ej. moverlo de lunes a miércoles). Conserva `created_at`, así que el
- * orden de llegada de la convocatoria se mantiene intacto. Requiere admin (RLS).
+ * partido: mover un partido suelto, o cambiar el día fijo de la semana). Conserva
+ * `created_at`, así que el orden de llegada de la convocatoria se mantiene
+ * intacto. Requiere admin (RLS).
  */
 export async function migrarSignups(desde: string, hasta: string): Promise<void> {
   if (desde === hasta) return

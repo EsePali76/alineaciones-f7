@@ -9,7 +9,7 @@ import {
 } from '../domain/rotation'
 import { usePlayersStore } from './playersStore'
 import { useConvocatoriaStore } from './convocatoriaStore'
-import { fechaEfectiva } from '../domain/matchday'
+import { DIA_PARTIDO_DEFECTO, fechaEfectiva } from '../domain/matchday'
 
 /** Ids de jugadores elegibles para la rotación, en orden estable (por antigüedad). */
 function eligibleOrdered(): string[] {
@@ -47,12 +47,19 @@ interface RotationState {
   requireRatings: boolean
   /** Override de fecha del próximo partido ('YYYY-MM-DD'); null = automática. */
   matchDate: string | null
+  /**
+   * Día fijo de partido (0 domingo … 6 sábado). Lo cambian admin y superuser desde
+   * el banner. `matchDate` (override de un partido suelto) manda sobre él.
+   */
+  matchWeekday: number
   loaded: boolean
   load: () => Promise<void>
-  /** "Este lunes no hay partido": empuja la fecha al siguiente lunes (admin). NO toca la cola. */
+  /** "Esta semana no hay partido": empuja la fecha una semana (admin). NO toca la cola. */
   posponerJornada: (nuevaFecha: string) => Promise<void>
   /** Fija una fecha arbitraria para el próximo partido, o null para volver al automático (admin). */
   fijarFecha: (fechaISO: string | null) => Promise<void>
+  /** Cambia el día fijo de partido (admin/superuser). NO toca la cola de turnos. */
+  fijarDiaSemana: (dow: number) => Promise<void>
   /** Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa. */
   pasarTurno: () => Promise<void>
   /** Siembra/reinicia la cola con los elegibles actuales (admin). */
@@ -67,6 +74,20 @@ interface RotationState {
   setRequireRatings: (on: boolean) => Promise<void>
 }
 
+/**
+ * Arrastra los apuntes de la convocatoria a la nueva fecha cuando la jornada se
+ * mueve (cambio de día fijo o de fecha suelta), para que no se "pierdan". No es
+ * crítico si falla: el admin puede reintentar volviendo a tocar la fecha.
+ */
+async function migrarConvocados(antes: string, despues: string) {
+  if (antes === despues) return
+  try {
+    await useConvocatoriaStore.getState().migrar(antes, despues)
+  } catch {
+    /* se puede reintentar cambiando la fecha de nuevo */
+  }
+}
+
 async function persist(set: (p: Partial<RotationState>) => void, data: RotationData) {
   set({ data })
   await api.saveRotation(data)
@@ -78,12 +99,21 @@ export const useRotationStore = create<RotationState>((set, get) => ({
   ratingsDeadline: null,
   requireRatings: false,
   matchDate: null,
+  matchWeekday: DIA_PARTIDO_DEFECTO,
   loaded: false,
 
   load: async () => {
-    const { rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate } =
+    const { rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate, matchWeekday } =
       await api.fetchRotation()
-    set({ data: rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate, loaded: true })
+    set({
+      data: rotation,
+      ratingsOpen,
+      ratingsDeadline,
+      requireRatings,
+      matchDate,
+      matchWeekday,
+      loaded: true,
+    })
   },
 
   posponerJornada: async (nuevaFecha) => {
@@ -92,8 +122,9 @@ export const useRotationStore = create<RotationState>((set, get) => ({
 
   fijarFecha: async (fechaISO) => {
     const prev = get().matchDate
-    const antes = fechaEfectiva(prev)
-    const despues = fechaEfectiva(fechaISO)
+    const dow = get().matchWeekday
+    const antes = fechaEfectiva(prev, dow)
+    const despues = fechaEfectiva(fechaISO, dow)
     set({ matchDate: fechaISO })
     try {
       await api.saveMatchDate(fechaISO)
@@ -101,15 +132,33 @@ export const useRotationStore = create<RotationState>((set, get) => ({
       set({ matchDate: prev })
       throw e
     }
-    // Reprogramación: arrastra los convocados de la jornada anterior a la nueva
-    // para que no se "pierdan" al cambiar el día. No es crítico si falla.
-    if (antes !== despues) {
+    await migrarConvocados(antes, despues)
+  },
+
+  fijarDiaSemana: async (dow) => {
+    const prev = get().matchWeekday
+    if (dow === prev) return
+    const override = get().matchDate
+    const antes = fechaEfectiva(override, prev)
+    set({ matchWeekday: dow })
+    try {
+      await api.setMatchWeekday(dow)
+    } catch (e) {
+      set({ matchWeekday: prev })
+      throw e
+    }
+    // Cambiar el día fijo tira el override de fecha suelta que hubiera pendiente:
+    // si no, un "este partido lo movemos al día X" de la semana pasada seguiría
+    // ganando y el cambio de día parecería no haber hecho nada.
+    if (override) {
+      set({ matchDate: null })
       try {
-        await useConvocatoriaStore.getState().migrar(antes, despues)
+        await api.saveMatchDate(null)
       } catch {
-        /* el admin puede reintentar cambiando la fecha de nuevo */
+        set({ matchDate: override })
       }
     }
+    await migrarConvocados(antes, fechaEfectiva(get().matchDate, dow))
   },
 
   pasarTurno: async () => {

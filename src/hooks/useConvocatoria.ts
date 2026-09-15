@@ -9,7 +9,7 @@ import type { SignupRow, SignupStatus } from '../lib/convocatoriaApi'
 export interface ConvocatoriaInfo {
   /** Fecha efectiva del próximo partido ('YYYY-MM-DD'). */
   fecha: string
-  /** ¿Está abierta la ventana de apuntarse (domingo 12:00 → fin del día del partido)? */
+  /** ¿Está abierta la ventana de apuntarse (2 días antes a las 12:00 → fin del día del partido)? */
   abierta: boolean
   /** Apuntados "Me apunto" (titulares), por orden de llegada. */
   titulares: SignupRow[]
@@ -29,12 +29,13 @@ export interface ConvocatoriaInfo {
 export function useConvocatoria(): ConvocatoriaInfo {
   const signups = useConvocatoriaStore((s) => s.signups)
   const matchDateOverride = useRotationStore((s) => s.matchDate)
+  const matchWeekday = useRotationStore((s) => s.matchWeekday)
   const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
   // Reacciona a cambios del plantel (p.ej. fichas eliminadas) sin acoplar nombres aquí.
   const playersLoaded = usePlayersStore((s) => s.loaded)
 
   return useMemo(() => {
-    const fecha = fechaEfectiva(matchDateOverride)
+    const fecha = fechaEfectiva(matchDateOverride, matchWeekday)
     const abierta = ventanaAbierta(fecha)
     const delDia = signups
       .filter((s) => s.match_date === fecha)
@@ -54,5 +55,5 @@ export function useConvocatoria(): ConvocatoriaInfo {
       miEstado: mio?.status ?? null,
     }
     // playersLoaded entra como dependencia para recomputar tras cargar el plantel.
-  }, [signups, matchDateOverride, myPlayerId, playersLoaded])
+  }, [signups, matchDateOverride, matchWeekday, myPlayerId, playersLoaded])
 }

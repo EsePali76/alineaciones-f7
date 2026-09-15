@@ -1,14 +1,19 @@
 /**
- * Lógica pura del "día de partido" (la pachanga es los LUNES).
+ * Lógica pura del "día de partido".
  *
  * Reglas de dominio (confirmadas por Santi):
- *  - Por defecto se juega cada lunes.
- *  - AGOSTO no se juega: si el próximo lunes cae en agosto, salta al primer lunes
+ *  - Se juega todas las semanas el MISMO día, pero cuál es ese día se configura
+ *    (lo cambia admin/superuser desde el banner). Histórico: eran los lunes; desde
+ *    septiembre de 2026 el campo se alquila los jueves. Por eso no hay ningún "1"
+ *    escrito a mano por aquí: el día entra como parámetro (`dow`, 0 domingo … 6
+ *    sábado) y solo se usa `DIA_PARTIDO_DEFECTO` si nadie lo ha configurado.
+ *  - AGOSTO no se juega: si la próxima jornada cae en agosto, salta a la primera
  *    de septiembre (ahí además empieza la temporada nueva; ver `domain/season.ts`).
- *  - La fecha auto-avanza: cuando el lunes ya ha pasado, pasa al siguiente.
- *  - El admin puede decir "este lunes no hay partido" → empuja la fecha al siguiente
- *    lunes (override persistido). NO toca la cola de turnos: el mismo del turno
- *    sigue siéndolo el lunes siguiente.
+ *  - La fecha auto-avanza: cuando el día del partido ya ha pasado, pasa al siguiente.
+ *  - El admin puede decir "esta semana no hay partido" → empuja la fecha una semana
+ *    (override persistido). NO toca la cola de turnos: el mismo del turno sigue
+ *    siéndolo la semana siguiente.
+ *  - Cambiar el día de la semana TAMPOCO toca la cola de turnos: solo mueve fechas.
  *
  * Las fechas se manejan como cadenas locales 'YYYY-MM-DD' (a juego con la columna
  * `date` de Supabase) para no arrastrar líos de zona horaria.
@@ -16,6 +21,28 @@
 
 /** Agosto en meses 0-indexados de JS. */
 const AGOSTO = 7
+
+/** Día de partido si no hay nada configurado: lunes (como era históricamente). */
+export const DIA_PARTIDO_DEFECTO = 1
+
+/** Nombres de los días, indexados como `Date.getDay()` (0 = domingo). */
+export const NOMBRES_DIA = [
+  'domingo',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+] as const
+
+/** La convocatoria abre este número de días antes del partido, a las 12:00. */
+export const DIAS_ANTES_CONVOCATORIA = 2
+
+/** Nombre del día de la semana (0 domingo … 6 sábado). */
+export function nombreDia(dow: number): string {
+  return NOMBRES_DIA[((dow % 7) + 7) % 7]
+}
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')
@@ -32,48 +59,49 @@ export function parseISO(iso: string): Date {
   return new Date(y, m - 1, dd)
 }
 
-/** Lunes de esta semana si hoy es lunes (el partido es hoy); si no, el próximo lunes. */
-function lunesDesde(d: Date): Date {
+/** Hoy si hoy ya es el día de partido; si no, el próximo día de partido. */
+function diaDesde(d: Date, dow: number): Date {
   const r = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const dow = r.getDay() // 0 domingo … 6 sábado
-  const add = (8 - dow) % 7 // lunes=1 → 0 (hoy); resto → días hasta el próximo lunes
+  const add = (((dow - r.getDay()) % 7) + 7) % 7 // 0 si hoy ya es ese día
   r.setDate(r.getDate() + add)
   return r
 }
 
-/** Primer lunes de septiembre del año dado. */
-function primerLunesSeptiembre(year: number): Date {
-  const d = new Date(year, AGOSTO + 1, 1) // 1 de septiembre
-  const add = (8 - d.getDay()) % 7
-  d.setDate(d.getDate() + add)
-  return d
+/** Primer día de partido de septiembre del año dado. */
+function primeroDeSeptiembre(year: number, dow: number): Date {
+  return diaDesde(new Date(year, AGOSTO + 1, 1), dow)
 }
 
-/** Aplica el salto de agosto: si el lunes cae en agosto, va al 1er lunes de septiembre. */
-function saltarAgosto(lunes: Date): Date {
-  return lunes.getMonth() === AGOSTO ? primerLunesSeptiembre(lunes.getFullYear()) : lunes
+/** Aplica el salto de agosto: si la jornada cae en agosto, va a la 1ª de septiembre. */
+function saltarAgosto(jornada: Date, dow: number): Date {
+  return jornada.getMonth() === AGOSTO ? primeroDeSeptiembre(jornada.getFullYear(), dow) : jornada
 }
 
-/** Próxima jornada (lunes) a partir de hoy, saltando agosto. */
-export function proximaJornada(hoy: Date = new Date()): Date {
-  return saltarAgosto(lunesDesde(hoy))
+/** Próxima jornada a partir de hoy, saltando agosto. */
+export function proximaJornada(dow: number = DIA_PARTIDO_DEFECTO, hoy: Date = new Date()): Date {
+  return saltarAgosto(diaDesde(hoy, dow), dow)
 }
 
-/** El lunes siguiente al dado (para el botón admin "este lunes no hay partido"), saltando agosto. */
-export function siguienteJornada(fechaISO: string): string {
+/** La jornada siguiente a la dada (botón admin "esta semana no hay partido"), saltando agosto. */
+export function siguienteJornada(fechaISO: string, dow: number = DIA_PARTIDO_DEFECTO): string {
   const d = parseISO(fechaISO)
   d.setDate(d.getDate() + 7)
-  return toISO(saltarAgosto(d))
+  return toISO(saltarAgosto(d, dow))
 }
 
 /**
- * Fecha efectiva del próximo partido: la calculada automáticamente, salvo que el
- * admin haya fijado un override para hoy o un día futuro (p.ej. mover el partido
- * de lunes a miércoles, o cancelar la jornada). El override caduca solo: en cuanto
- * su fecha queda en el pasado se ignora y se vuelve a la jornada automática.
+ * Fecha efectiva del próximo partido: la calculada automáticamente para el día de
+ * la semana configurado, salvo que el admin haya fijado un override para hoy o un
+ * día futuro (p.ej. mover un partido suelto, o cancelar la jornada). El override
+ * caduca solo: en cuanto su fecha queda en el pasado se ignora y se vuelve a la
+ * jornada automática.
  */
-export function fechaEfectiva(override: string | null | undefined, hoy: Date = new Date()): string {
-  const auto = proximaJornada(hoy)
+export function fechaEfectiva(
+  override: string | null | undefined,
+  dow: number = DIA_PARTIDO_DEFECTO,
+  hoy: Date = new Date(),
+): string {
+  const auto = proximaJornada(dow, hoy)
   if (override) {
     const ov = parseISO(override)
     const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
@@ -83,28 +111,30 @@ export function fechaEfectiva(override: string | null | undefined, hoy: Date = n
 }
 
 /**
- * ¿Está abierta la convocatoria? Abre el DOMINGO a las 12:00 de la semana del
- * partido y cierra al final del día del partido.
+ * ¿Está abierta la convocatoria? Abre DOS DÍAS antes del partido a las 12:00 y
+ * cierra al final del día del partido.
  *
- * La apertura se ancla al lunes de la semana del partido (no al día anterior sin
- * más): así, si el admin mueve el partido a un día más tarde de la semana (p.ej.
- * lunes → miércoles), la convocatoria sigue abriendo el domingo como de costumbre
- * y no queda un hueco lunes/martes sin poder apuntarse. El caso normal (partido el
- * lunes) da exactamente el mismo domingo 12:00 de siempre.
+ * Se ancla a la fecha del partido (no al día fijo de la semana): si el admin mueve
+ * un partido suelto, la convocatoria se mueve con él y mantiene los mismos dos días
+ * de margen.
  */
 export function ventanaAbierta(fechaISO: string, ahora: Date = new Date()): boolean {
   const partido = parseISO(fechaISO)
-  // Lunes de la semana del partido (si el partido es lunes, él mismo).
-  const lunesSemana = new Date(partido)
-  const dow = lunesSemana.getDay() // 0 domingo … 6 sábado
-  lunesSemana.setDate(lunesSemana.getDate() - ((dow + 6) % 7))
-  const apertura = new Date(lunesSemana)
-  apertura.setDate(apertura.getDate() - 1) // domingo anterior
-  apertura.setHours(12, 0, 0, 0) // 12:00
+  const apertura = new Date(partido)
+  apertura.setDate(apertura.getDate() - DIAS_ANTES_CONVOCATORIA)
+  apertura.setHours(12, 0, 0, 0)
   const cierre = new Date(partido)
   cierre.setHours(23, 59, 59, 999) // hasta el final del día del partido
   const t = ahora.getTime()
   return t >= apertura.getTime() && t <= cierre.getTime()
+}
+
+/** Fecha y hora en que abre la convocatoria de un partido (para anunciarla). */
+export function aperturaConvocatoria(fechaISO: string): Date {
+  const d = parseISO(fechaISO)
+  d.setDate(d.getDate() - DIAS_ANTES_CONVOCATORIA)
+  d.setHours(12, 0, 0, 0)
+  return d
 }
 
 /**
@@ -119,7 +149,7 @@ export function partidoPasado(fechaMs: number, ahora: Date = new Date()): boolea
   return ahora.getTime() > finDia.getTime()
 }
 
-/** Fecha legible, p.ej. "lunes, 16 de junio". */
+/** Fecha legible, p.ej. "jueves, 17 de septiembre". */
 export function formatoFecha(fechaISO: string): string {
   return parseISO(fechaISO).toLocaleDateString('es-ES', {
     weekday: 'long',

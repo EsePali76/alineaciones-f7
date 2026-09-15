@@ -5,19 +5,29 @@ import { useAuthStore } from '../store/authStore'
 import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
 import { useRatingsWindow } from '../hooks/useRatingsWindow'
+import { useRatingsStore } from '../store/ratingsStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 import { useLineupsStore } from '../store/lineupsStore'
 import { ConfirmedLineupView } from './ConfirmedLineupView'
-import { formatoFecha, siguienteJornada, partidoPasado } from '../domain/matchday'
+import {
+  formatoFecha,
+  siguienteJornada,
+  partidoPasado,
+  nombreDia,
+  NOMBRES_DIA,
+  aperturaConvocatoria,
+} from '../domain/matchday'
 import { nombreVisible } from '../domain/types'
 import type { SignupRow, SignupStatus } from '../lib/convocatoriaApi'
 import type { PlayerInput } from '../store/playersStore'
 
 /**
  * Banner de turno + convocatoria, visible para todos. Contiene, en este orden:
- *  1. La fecha del próximo partido (+ botón admin "este lunes no hay partido").
+ *  1. La fecha del próximo partido (+ día fijo de la semana y botón admin
+ *     "esta semana no hay partido").
  *  2. A quién le toca hacer la alineación (turno rotativo) y sus acciones.
- *  3. La cabecera "Convocatoria" con los botones para apuntarse (desde el domingo 12:00).
+ *  3. La cabecera "Convocatoria" con los botones para apuntarse (desde dos días
+ *     antes del partido, a las 12:00).
  */
 export function RotationBanner() {
   const { current, next, isMyTurn, congelado } = useTurno()
@@ -31,7 +41,11 @@ export function RotationBanner() {
   const posponerJornada = useRotationStore((s) => s.posponerJornada)
   const fijarFecha = useRotationStore((s) => s.fijarFecha)
   const matchDate = useRotationStore((s) => s.matchDate)
+  const matchWeekday = useRotationStore((s) => s.matchWeekday)
+  const fijarDiaSemana = useRotationStore((s) => s.fijarDiaSemana)
   const { abierto: ratingsOpen, deadline: ratingsDeadline } = useRatingsWindow()
+  const profile = useAuthStore((s) => s.profile)
+  const progress = useRatingsStore((s) => s.progress)
   const [fechaEdit, setFechaEdit] = useState('')
 
   const { fecha, abierta, titulares, reservas, noVienen, miEstado } = useConvocatoria()
@@ -46,6 +60,11 @@ export function RotationBanner() {
   const pendingLineup = lineups
     .filter((l) => !partidoPasado(l.fecha))
     .sort((a, b) => b.fecha - a.fecha)[0]
+
+  // Mi progreso de valoraciones (mismo recuento que ve el admin en «Usuarios»).
+  const miProgreso = myPlayerId ? progress.get(myPlayerId) : undefined
+  const miProgresoCompleto = !!miProgreso && miProgreso.total > 0 && miProgreso.valorados >= miProgreso.total
+  const yaFinalice = profile?.ratingsFinalized ?? false
 
   const yo = myPlayerId ? players.find((p) => p.id === myPlayerId) : undefined
   const estoyExcluido = yo?.excluidoRotacion ?? false
@@ -97,6 +116,14 @@ export function RotationBanner() {
     }
   }
 
+  const cambiarDiaSemana = async (dow: number) => {
+    try {
+      await fijarDiaSemana(dow)
+    } catch {
+      alert('No se pudo cambiar el día de partido.')
+    }
+  }
+
   const volverAutomatica = async () => {
     try {
       await fijarFecha(null)
@@ -116,12 +143,29 @@ export function RotationBanner() {
         </span>
         {isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
+            {/* Día fijo de la semana: lo que se juega TODAS las semanas. Va aparte
+                de la fecha suelta de abajo, que es un override de un solo partido. */}
+            <label className="flex items-center gap-1 text-xs text-slate-400">
+              Día de partido:
+              <select
+                value={matchWeekday}
+                onChange={(e) => cambiarDiaSemana(Number(e.target.value))}
+                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200"
+                title="Día fijo de la semana en que se juega. No altera la cola de turnos."
+              >
+                {NOMBRES_DIA.map((n, i) => (
+                  <option key={i} value={i}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
             <input
               type="date"
               value={fechaEdit || fecha}
               onChange={(e) => setFechaEdit(e.target.value)}
               className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200"
-              title="Fija el día del próximo partido (p.ej. moverlo de lunes a miércoles)."
+              title="Fija la fecha de UN partido suelto (p.ej. moverlo un día esa semana)."
             />
             <button
               onClick={guardarFecha}
@@ -133,20 +177,25 @@ export function RotationBanner() {
               <button
                 onClick={volverAutomatica}
                 className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-                title="Vuelve a la fecha automática (el lunes que toque)."
+                title={`Vuelve a la fecha automática (el ${nombreDia(matchWeekday)} que toque).`}
               >
                 Volver a automático
               </button>
             )}
             <button
               onClick={() => {
-                if (confirm('¿Este lunes no hay partido? La convocatoria pasará al siguiente lunes (el turno NO cambia).'))
-                  posponerJornada(siguienteJornada(fecha))
+                const dia = nombreDia(matchWeekday)
+                if (
+                  confirm(
+                    `¿Esta semana no hay partido? La convocatoria pasará al siguiente ${dia} (el turno NO cambia).`,
+                  )
+                )
+                  posponerJornada(siguienteJornada(fecha, matchWeekday))
               }}
               className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-              title="Mueve la fecha al siguiente lunes. No altera la cola de turnos."
+              title={`Mueve la fecha al siguiente ${nombreDia(matchWeekday)}. No altera la cola de turnos.`}
             >
-              Este lunes no hay partido
+              Esta semana no hay partido
             </button>
           </div>
         )}
@@ -254,7 +303,9 @@ export function RotationBanner() {
 
         {!abierta ? (
           <span className="text-sm text-slate-400">
-            La convocatoria se abre el <b>domingo a las 12:00</b>. ¡Atento!
+            La convocatoria se abre el{' '}
+            <b>{nombreDia(aperturaConvocatoria(fecha).getDay())} a las 12:00</b> (dos días antes del
+            partido). ¡Atento!
           </span>
         ) : isLinked ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -330,11 +381,30 @@ export function RotationBanner() {
       </div>
       )}
 
-      {/* Aviso del plazo de re-evaluación de valoraciones (lo abre el admin). */}
-      {ratingsOpen && isLinked && (
+      {/* Aviso del plazo de re-evaluación de valoraciones.
+          Se ve en dos casos: con el plazo GLOBAL abierto (lo abre el admin para
+          todos, y desaparece solo al vencer la fecha límite), o con el plazo
+          abierto solo para mí — que es lo que hace el botón "Reabrir" del menú
+          Usuarios: dejar mis valoraciones sin finalizar. Al cerrarlas (yo con
+          «Finalizar» o el admin con «Cerrar») el aviso se va. */}
+      {isLinked && (ratingsOpen || !yaFinalice) && (
         <div className="rounded-md border border-sky-500/50 bg-sky-900/30 px-3 py-2 text-sm text-sky-200">
-          📝 <b>Plazo de reevaluación abierto{ratingsDeadline ? ` hasta el ${formatoFecha(ratingsDeadline)}` : ''}:</b>{' '}
+          📝{' '}
+          <b>
+            {ratingsOpen
+              ? `Plazo de reevaluación abierto${ratingsDeadline ? ` hasta el ${formatoFecha(ratingsDeadline)}` : ''}:`
+              : 'Tienes las valoraciones sin finalizar:'}
+          </b>{' '}
           revisa tus valoraciones en «Valorar» y pulsa <b>Finalizar</b> al acabar.
+          {miProgreso && miProgreso.total > 0 && (
+            <div className="mt-1">
+              Llevas{' '}
+              <b className={miProgresoCompleto ? 'text-emerald-300' : 'text-amber-300'}>
+                {miProgreso.valorados}/{miProgreso.total}
+              </b>{' '}
+              jugadores valorados{miProgresoCompleto ? ' — solo te falta pulsar Finalizar.' : '.'}
+            </div>
+          )}
           <div className="mt-1 text-amber-300">
             ⚠️ Quien no las tenga puestas al cerrarse el plazo se queda fuera de la cola para hacer
             las alineaciones.
