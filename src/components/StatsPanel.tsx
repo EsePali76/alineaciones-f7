@@ -3,6 +3,7 @@ import { useLineupsStore } from '../store/lineupsStore'
 import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
 import { useRotationStore } from '../store/rotationStore'
 import { calcularAjustes } from '../domain/ajuste'
+import { weightedRatings } from '../domain/scoring'
 import { AjusteFlecha } from './AjusteFlecha'
 import {
   statsPorEquipo,
@@ -27,6 +28,7 @@ type JugSortKey =
   | 'nombre'
   | 'partidos'
   | 'victorias'
+  | 'valoracion'
   | 'ajuste'
   | 'pctVictorias'
   | 'racha'
@@ -96,6 +98,12 @@ export function StatsPanel() {
     return modo === 'totales' ? a?.total ?? 0 : a?.porTemporada.get(temporadaSel) ?? 0
   }
 
+  // Valoración del grupo SIN el ajuste (la misma que la columna de Plantel).
+  const valoracionDe = (id: string) => {
+    const p = players.find((pl) => pl.id === id)
+    return p ? weightedRatings(p) : undefined
+  }
+
   const nombre = (id: string) => nombreVisible(players.find((p) => p.id === id))
   const foto = (id: string) => fotoVisible(players.find((p) => p.id === id))
 
@@ -109,6 +117,8 @@ export function StatsPanel() {
           return s.partidos
         case 'victorias':
           return s.victorias
+        case 'valoracion':
+          return valoracionDe(s.playerId) ?? 0
         case 'ajuste':
           return ajusteDe(s.playerId)
         case 'pctVictorias':
@@ -137,7 +147,7 @@ export function StatsPanel() {
     })
     // `nombre` depende de `players`; se incluye vía statsArr/jugSort.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statsArr, jugSort, jugDir, modo, ajustes, temporadaSel])
+  }, [statsArr, jugSort, jugDir, modo, ajustes, temporadaSel, players])
 
   return (
     <div className="flex flex-col gap-4">
@@ -250,6 +260,11 @@ export function StatsPanel() {
                     V-E-D{jugArrow('victorias')}
                   </button>
                 </th>
+                <th className="px-2 py-2 text-center font-medium" title="Valoración del grupo, sin el ajuste">
+                  <button onClick={() => toggleJug('valoracion')} className="font-medium hover:text-slate-200">
+                    Valoración{jugArrow('valoracion')}
+                  </button>
+                </th>
                 <th
                   className="px-2 py-2 text-center font-medium"
                   title={modo === 'totales' ? 'Ajuste de su nota por resultados' : 'Lo que ha subido o bajado su nota esta temporada'}
@@ -301,6 +316,9 @@ export function StatsPanel() {
                   <td className="px-2 py-2 text-center text-slate-300">{s.partidos}</td>
                   <td className="px-2 py-2 text-center text-slate-300">
                     {s.victorias}-{s.empates}-{s.derrotas}
+                  </td>
+                  <td className="px-2 py-2 text-center text-slate-300">
+                    {valoracionDe(s.playerId)?.toFixed(1) ?? '—'}
                   </td>
                   <td className="px-2 py-2 text-center">
                     <AjusteFlecha valor={ajusteDe(s.playerId)} />
