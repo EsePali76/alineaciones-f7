@@ -26,6 +26,12 @@ export interface Formacion {
 
 /** Catálogo de formaciones disponibles por nº de jugadores por equipo. */
 export const FORMACIONES: Record<number, Formacion[]> = {
+  // Fútbol sala. Sin línea de medios en 1-2-2 y 1-3-1: los cupos a 0 se quedan vacíos.
+  5: [
+    { nombre: '1-2-2', porEquipo: 5, cupos: { DEF: 2, MED: 0, ATA: 2 } },
+    { nombre: '1-1-2-1', porEquipo: 5, cupos: { DEF: 1, MED: 2, ATA: 1 } },
+    { nombre: '1-3-1', porEquipo: 5, cupos: { DEF: 3, MED: 0, ATA: 1 } },
+  ],
   6: [
     { nombre: '1-2-2-1', porEquipo: 6, cupos: { DEF: 2, MED: 2, ATA: 1 } },
     { nombre: '1-2-1-2', porEquipo: 6, cupos: { DEF: 2, MED: 1, ATA: 2 } },

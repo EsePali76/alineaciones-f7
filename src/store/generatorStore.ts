@@ -11,7 +11,7 @@ import type { MetodoEquilibrado } from '../domain/resultados'
 interface GeneratorState {
   /** Ids de los jugadores convocados. */
   convocados: string[]
-  jugadoresPorEquipo: 6 | 7 | 8
+  jugadoresPorEquipo: 5 | 6 | 7 | 8
   /**
    * Con qué se equilibra: las valoraciones del grupo (por defecto, el de siempre) o
    * los puntos por resultados. Lo elige quien hace la alineación antes de generar.
@@ -50,7 +50,7 @@ interface GeneratorState {
    */
   syncConvocatoria: (titularIds: string[], fecha: string) => void
   setConvocados: (ids: string[]) => void
-  setJugadoresPorEquipo: (n: 6 | 7 | 8) => void
+  setJugadoresPorEquipo: (n: 5 | 6 | 7 | 8) => void
   setMetodo: (m: MetodoEquilibrado) => void
   setFormacionNombreA: (nombre: string) => void
   setFormacionNombreB: (nombre: string) => void
@@ -68,7 +68,7 @@ interface GeneratorState {
    */
   loadConfirmed: (payload: {
     convocados: string[]
-    jugadoresPorEquipo: 6 | 7 | 8
+    jugadoresPorEquipo: 5 | 6 | 7 | 8
     formacionNombreA: string
     formacionNombreB: string
     placementA: string[] | null
@@ -101,7 +101,7 @@ interface GeneratorState {
 /** Valores de partida (también los usa `reset`). */
 const INICIAL = {
   convocados: [] as string[],
-  jugadoresPorEquipo: 7 as 6 | 7 | 8,
+  jugadoresPorEquipo: 7 as 5 | 6 | 7 | 8,
   metodo: 'valoraciones' as MetodoEquilibrado,
   formacionNombreA: '1-3-2-1',
   formacionNombreB: '1-3-2-1',

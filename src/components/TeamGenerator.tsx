@@ -197,7 +197,7 @@ export function TeamGenerator() {
     if (teamA.length !== pendingLineup.teamA.length || teamB.length !== pendingLineup.teamB.length)
       return
     const por = teamA.length
-    if (por !== 6 && por !== 7 && por !== 8) return
+    if (por !== 5 && por !== 6 && por !== 7 && por !== 8) return
     loadConfirmed({
       convocados: [...pendingLineup.teamA, ...pendingLineup.teamB],
       jugadoresPorEquipo: por,
@@ -235,7 +235,7 @@ export function TeamGenerator() {
   const formacionB = formacionPorNombre(jugadoresPorEquipo, formacionNombreB) ?? formaciones[0]
 
   // Al cambiar de formato, ajusta las formaciones a unas válidas y descarta la colocación manual.
-  const cambiarFormato = (n: 6 | 7 | 8) => {
+  const cambiarFormato = (n: 5 | 6 | 7 | 8) => {
     setJugadoresPorEquipo(n)
     const lista = formacionesDe(n)
     if (!lista.some((f) => f.nombre === formacionNombreA)) setFormacionNombreA(lista[0].nombre)
@@ -355,7 +355,7 @@ export function TeamGenerator() {
 
   const seleccionados = disponibles.filter((p) => convocados.has(p.id))
   const nConvocados = seleccionados.length
-  const objetivo = jugadoresPorEquipo * 2 // 14 (7v7) o 16 (8v8)
+  const objetivo = jugadoresPorEquipo * 2 // 10 (5v5) … 16 (8v8)
   const faltan = objetivo - nConvocados
   const completo = faltan === 0
 
@@ -511,7 +511,7 @@ export function TeamGenerator() {
         {/* Selector de formato */}
         <div className="flex items-center gap-2 text-sm">
           <span className="w-20 text-slate-400">Formato:</span>
-          {([6, 7, 8] as const).map((n) => (
+          {([5, 6, 7, 8] as const).map((n) => (
             <button
               key={n}
               onClick={() => cambiarFormato(n)}

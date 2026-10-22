@@ -122,7 +122,7 @@ function App() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">⚽ Alineaciones F7</h1>
+          <h1 className="text-2xl font-bold">⚽ Alineaciones</h1>
           <p className="text-sm text-slate-400">Equipos equilibrados para la pachanga</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

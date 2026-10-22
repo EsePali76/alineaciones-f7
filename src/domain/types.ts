@@ -43,7 +43,7 @@ export function edadVisible(
   return p.edad + Math.max(0, transcurridas)
 }
 
-/** Códigos de posición en fútbol 7. Un jugador puede tener varias. */
+/** Códigos de posición (fútbol 7 y fútbol sala). Un jugador puede tener varias. */
 export type PositionCode = 'POR' | 'DEF' | 'CAR' | 'MED' | 'MP' | 'EXT' | 'DEL'
 
 /** Pierna hábil. */
