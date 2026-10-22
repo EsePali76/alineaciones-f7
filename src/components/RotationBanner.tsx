@@ -8,7 +8,6 @@ import { useRatingsWindow } from '../hooks/useRatingsWindow'
 import { useRatingsStore } from '../store/ratingsStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 import { useLineupsStore } from '../store/lineupsStore'
-import { useGeneratorStore } from '../store/generatorStore'
 import { ConfirmedLineupView } from './ConfirmedLineupView'
 import {
   formatoFecha,
@@ -53,8 +52,6 @@ export function RotationBanner() {
   const apuntarse = useConvocatoriaStore((s) => s.apuntarse)
   const borrarse = useConvocatoriaStore((s) => s.borrarse)
   const lineups = useLineupsStore((s) => s.lineups)
-  // Alineación generada en ESTE dispositivo y aún sin confirmar (vive en local).
-  const borradorSinConfirmar = useGeneratorStore((s) => !!s.balance && !s.confirmada)
 
   // Fijos (plantel activo, ni invitados ni reservas) que aún no han dicho nada esta jornada.
   const contestados = new Set([...titulares, ...reservas, ...noVienen].map((s) => s.player_id))
@@ -299,14 +296,6 @@ export function RotationBanner() {
         )}
       </div>
 
-      {/* Recordatorio al que ha generado la alineación en este dispositivo y no la ha
-            confirmado: sin confirmar no existe para nadie más (ni para meter el resultado). */}
-      {borradorSinConfirmar && (isMyTurn || isAdmin) && (
-        <div className="animate-pulse rounded-md border-2 border-red-500 bg-red-900/50 px-3 py-2 text-center font-semibold text-red-100">
-          ⚠️ Tienes una alineación SIN CONFIRMAR. Ve a «Equipos» y pulsa <b>Confirmar alineación</b>.
-        </div>
-      )}
-
       {/* 3) Convocatoria — o, si ya hay alineación confirmada, la alineación (sustituye
             a la convocatoria; el campo y "juegas de blanco/rojo" lo da ConfirmedLineupView). */}
       {pendingLineup ? (
@@ -391,7 +380,9 @@ export function RotationBanner() {
               {noVienen.length > 0 && ` · ${noVienen.length} baja${noVienen.length === 1 ? '' : 's'}`}
               {sinContestar.length > 0 && ` · ${sinContestar.length} sin contestar`}
             </span>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {/* flex-wrap y no grid: en rejilla la fila de Convocados (13) estiraba la
+                altura y dejaba muy separadas las listas cortas de debajo. */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-10">
               <ListaConvocatoria titulo="Convocados" color="text-emerald-400" ids={titulares.map((s) => s.player_id)} nombreDe={nombreDe} />
               <ListaConvocatoria titulo="Reservas" color="text-amber-400" ids={reservas.map((s) => s.player_id)} nombreDe={nombreDe} />
               <ListaConvocatoria titulo="Bajas" color="text-red-400" ids={noVienen.map((s) => s.player_id)} nombreDe={nombreDe} />

@@ -12,7 +12,7 @@ import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/bal
 import { playerScore, type ScoreOptions } from '../domain/scoring'
 import { notasPorResultados, type MetodoEquilibrado } from '../domain/resultados'
 import { formacionesDe, formacionPorNombre, balancePorterias, type Formacion } from '../domain/formation'
-import { parseISO, partidoPasado } from '../domain/matchday'
+import { parseISO, partidoPasado, toISO } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
 import { Avatar } from './Avatar'
 import { QuickGuestForm } from './QuickGuestForm'
@@ -405,10 +405,16 @@ export function TeamGenerator() {
     }
     // Solo se actualiza si el partido referenciado SIGUE existiendo; si se borró del
     // historial, el id quedó huérfano → hay que crear uno nuevo (si no, no pasaría nada).
+    // Si no, se busca otra del MISMO día de partido aún sin resultado: tras regenerar
+    // (o confirmar desde otro dispositivo) el id se pierde, y crear una nueva dejaba
+    // dos partidos el mismo día en «Partidos». Una jornada = una alineación.
     const existe = !!confirmedLineupId && lineups.some((l) => l.id === confirmedLineupId)
-    if (existe) {
+    const delMismoDia = lineups.find((l) => !l.resultado && toISO(new Date(l.fecha)) === fecha)
+    const idExistente = existe ? confirmedLineupId! : delMismoDia?.id
+    if (idExistente) {
       // Re-confirmar: actualiza la misma alineación (el autor puede editar y reconfirmar).
-      await updateLineupTeams(confirmedLineupId!, teamAids, teamBids, meta)
+      await updateLineupTeams(idExistente, teamAids, teamBids, meta)
+      setConfirmedLineupId(idExistente)
     } else {
       const madeBy = turnoActual?.id ?? myPlayerId ?? undefined
       // La alineación se fecha con el DÍA DEL PARTIDO (no el instante de confirmar),
