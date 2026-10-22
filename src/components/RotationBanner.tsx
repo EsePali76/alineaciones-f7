@@ -8,6 +8,7 @@ import { useRatingsWindow } from '../hooks/useRatingsWindow'
 import { useRatingsStore } from '../store/ratingsStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 import { useLineupsStore } from '../store/lineupsStore'
+import { useGeneratorStore } from '../store/generatorStore'
 import { ConfirmedLineupView } from './ConfirmedLineupView'
 import {
   formatoFecha,
@@ -18,7 +19,7 @@ import {
   aperturaConvocatoria,
 } from '../domain/matchday'
 import { nombreVisible } from '../domain/types'
-import type { SignupRow, SignupStatus } from '../lib/convocatoriaApi'
+import type { SignupStatus } from '../lib/convocatoriaApi'
 import type { PlayerInput } from '../store/playersStore'
 
 /**
@@ -52,6 +53,15 @@ export function RotationBanner() {
   const apuntarse = useConvocatoriaStore((s) => s.apuntarse)
   const borrarse = useConvocatoriaStore((s) => s.borrarse)
   const lineups = useLineupsStore((s) => s.lineups)
+  // Alineación generada en ESTE dispositivo y aún sin confirmar (vive en local).
+  const borradorSinConfirmar = useGeneratorStore((s) => !!s.balance && !s.confirmada)
+
+  // Fijos (plantel activo, ni invitados ni reservas) que aún no han dicho nada esta jornada.
+  const contestados = new Set([...titulares, ...reservas, ...noVienen].map((s) => s.player_id))
+  const sinContestar = players
+    .filter((p) => p.activo && !p.invitado && !p.reserva && !contestados.has(p.id))
+    .sort((a, b) => nombreVisible(a).localeCompare(nombreVisible(b)))
+    .map((p) => p.id)
 
   // Alineación de la jornada en curso. Se sigue mostrando aunque ya se haya registrado
   // el resultado (el partido es hoy): así no reaparece la convocatoria de una jornada
@@ -289,6 +299,14 @@ export function RotationBanner() {
         )}
       </div>
 
+      {/* Recordatorio al que ha generado la alineación en este dispositivo y no la ha
+            confirmado: sin confirmar no existe para nadie más (ni para meter el resultado). */}
+      {borradorSinConfirmar && (isMyTurn || isAdmin) && (
+        <div className="animate-pulse rounded-md border-2 border-red-500 bg-red-900/50 px-3 py-2 text-center font-semibold text-red-100">
+          ⚠️ Tienes una alineación SIN CONFIRMAR. Ve a «Equipos» y pulsa <b>Confirmar alineación</b>.
+        </div>
+      )}
+
       {/* 3) Convocatoria — o, si ya hay alineación confirmada, la alineación (sustituye
             a la convocatoria; el campo y "juegas de blanco/rojo" lo da ConfirmedLineupView). */}
       {pendingLineup ? (
@@ -364,17 +382,20 @@ export function RotationBanner() {
 
         {/* Contadores + listado provisional de convocados y reservas (visible a todos).
             El número va encima; la cabecera de cada lista solo aparece si tiene gente. */}
-        {(titulares.length > 0 || reservas.length > 0 || noVienen.length > 0) && (
+        {abierta &&
+          (titulares.length > 0 || reservas.length > 0 || noVienen.length > 0 || sinContestar.length > 0) && (
           <div className="flex flex-col gap-2">
             <span className="text-sm text-slate-400">
               {titulares.length} apuntado{titulares.length === 1 ? '' : 's'}
               {reservas.length > 0 && ` · ${reservas.length} de reserva`}
               {noVienen.length > 0 && ` · ${noVienen.length} baja${noVienen.length === 1 ? '' : 's'}`}
+              {sinContestar.length > 0 && ` · ${sinContestar.length} sin contestar`}
             </span>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <ListaConvocatoria titulo="Convocados" color="text-emerald-400" items={titulares} nombreDe={nombreDe} />
-              <ListaConvocatoria titulo="Reservas" color="text-amber-400" items={reservas} nombreDe={nombreDe} />
-              <ListaConvocatoria titulo="Bajas" color="text-red-400" items={noVienen} nombreDe={nombreDe} />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <ListaConvocatoria titulo="Convocados" color="text-emerald-400" ids={titulares.map((s) => s.player_id)} nombreDe={nombreDe} />
+              <ListaConvocatoria titulo="Reservas" color="text-amber-400" ids={reservas.map((s) => s.player_id)} nombreDe={nombreDe} />
+              <ListaConvocatoria titulo="Bajas" color="text-red-400" ids={noVienen.map((s) => s.player_id)} nombreDe={nombreDe} />
+              <ListaConvocatoria titulo="Sin contestar" color="text-slate-400" ids={sinContestar} nombreDe={nombreDe} />
             </div>
           </div>
         )}
@@ -415,29 +436,29 @@ export function RotationBanner() {
   )
 }
 
-/** Lista numerada de convocados o reservas (orden de llegada). Vacía → no renderiza nada. */
+/** Lista numerada de jugadores (los apuntes, por orden de llegada). Vacía → no renderiza nada. */
 function ListaConvocatoria({
   titulo,
   color,
-  items,
+  ids,
   nombreDe,
 }: {
   titulo: string
   color: string
-  items: SignupRow[]
+  ids: string[]
   nombreDe: (id: string) => string
 }) {
-  if (items.length === 0) return null
+  if (ids.length === 0) return null
   return (
     <div>
       <span className={`text-xs font-semibold uppercase tracking-wide ${color}`}>
-        {titulo} ({items.length})
+        {titulo} ({ids.length})
       </span>
       <ol className="mt-1 flex flex-col gap-0.5 text-sm text-slate-200">
-        {items.map((s, i) => (
-          <li key={s.player_id} className="flex items-center gap-2">
+        {ids.map((id, i) => (
+          <li key={id} className="flex items-center gap-2">
             <span className="w-5 shrink-0 text-right text-slate-500">{i + 1}.</span>
-            <span className="truncate">{nombreDe(s.player_id)}</span>
+            <span className="truncate">{nombreDe(id)}</span>
           </li>
         ))}
       </ol>

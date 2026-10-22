@@ -359,12 +359,21 @@ export function TeamGenerator() {
   const faltan = objetivo - nConvocados
   const completo = faltan === 0
 
-  // Añade reservas (por orden de llegada) a los convocados hasta llegar al objetivo.
-  const completarConReservas = () => {
+  // Añade reservas (por orden de llegada) a los convocados hasta llegar al objetivo, y
+  // los pasa a convocados en la lista compartida para que salgan así en el banner.
+  const completarConReservas = async () => {
     const huecos = objetivo - nConvocados
     if (huecos <= 0) return
     const add = reservaIds.filter((id) => !convocados.has(id)).slice(0, huecos)
-    if (add.length) setConvocados([...convocadosIds, ...add])
+    if (!add.length) return
+    setConvocados([...convocadosIds, ...add])
+    for (const id of add) {
+      try {
+        await apuntarse(id, 'in', fecha)
+      } catch {
+        // Sin permisos para apuntar a otros (RLS): queda seleccionado solo en local.
+      }
+    }
   }
   const reservasDisponibles = reservaIds.filter((id) => !convocados.has(id)).length
 
@@ -890,6 +899,10 @@ function BalanceResult({
               ✕ Cancelar alineación
             </button>
           )}
+          {/* La imagen solo sale de una alineación confirmada: así no se comparte por el
+              grupo una que no existe en la app (ni se podría meter su resultado). */}
+          {confirmada && (
+          <>
           <button
             onClick={copiarImagen}
             className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
@@ -904,8 +917,17 @@ function BalanceResult({
           >
             ⬇
           </button>
+          </>
+          )}
         </div>
       </div>
+
+      {canConfirm && !confirmada && (
+        <div className="animate-pulse rounded-md border-2 border-red-500 bg-red-900/50 px-3 py-2 text-center font-semibold text-red-100">
+          ⚠️ Alineación SIN CONFIRMAR: nadie más la ve y no se podrá meter el resultado. Pulsa{' '}
+          <b>Confirmar alineación</b> para poder compartirla.
+        </div>
+      )}
 
       {/* Barra de equilibrio */}
       <div>
