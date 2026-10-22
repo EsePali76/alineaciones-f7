@@ -14,7 +14,8 @@ import {
   siguienteJornada,
   partidoPasado,
   nombreDia,
-  NOMBRES_DIA,
+  nombresDias,
+  ordenarDias,
   aperturaConvocatoria,
 } from '../domain/matchday'
 import { nombreVisible } from '../domain/types'
@@ -26,7 +27,7 @@ import type { PlayerInput } from '../store/playersStore'
  *  1. La fecha del próximo partido (+ día fijo de la semana y botón admin
  *     "esta semana no hay partido").
  *  2. A quién le toca hacer la alineación (turno rotativo) y sus acciones.
- *  3. La cabecera "Convocatoria" con los botones para apuntarse (desde dos días
+ *  3. La cabecera "Convocatoria" con los botones para apuntarse (desde el día
  *     antes del partido, a las 12:00).
  */
 export function RotationBanner() {
@@ -41,8 +42,8 @@ export function RotationBanner() {
   const posponerJornada = useRotationStore((s) => s.posponerJornada)
   const fijarFecha = useRotationStore((s) => s.fijarFecha)
   const matchDate = useRotationStore((s) => s.matchDate)
-  const matchWeekday = useRotationStore((s) => s.matchWeekday)
-  const fijarDiaSemana = useRotationStore((s) => s.fijarDiaSemana)
+  const matchWeekdays = useRotationStore((s) => s.matchWeekdays)
+  const fijarDiasSemana = useRotationStore((s) => s.fijarDiasSemana)
   const { abierto: ratingsOpen, deadline: ratingsDeadline } = useRatingsWindow()
   const profile = useAuthStore((s) => s.profile)
   const progress = useRatingsStore((s) => s.progress)
@@ -123,9 +124,14 @@ export function RotationBanner() {
     }
   }
 
-  const cambiarDiaSemana = async (dow: number) => {
+  // Marca/desmarca un día de partido. Siempre queda al menos uno.
+  const alternarDiaSemana = async (dow: number) => {
+    const dias = matchWeekdays.includes(dow)
+      ? matchWeekdays.filter((d) => d !== dow)
+      : [...matchWeekdays, dow]
+    if (dias.length === 0) return
     try {
-      await fijarDiaSemana(dow)
+      await fijarDiasSemana(ordenarDias(dias))
     } catch {
       alert('No se pudo cambiar el día de partido.')
     }
@@ -150,23 +156,33 @@ export function RotationBanner() {
         </span>
         {isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
-            {/* Día fijo de la semana: lo que se juega TODAS las semanas. Va aparte
-                de la fecha suelta de abajo, que es un override de un solo partido. */}
-            <label className="flex items-center gap-1 text-xs text-slate-400">
-              Día de partido:
-              <select
-                value={matchWeekday}
-                onChange={(e) => cambiarDiaSemana(Number(e.target.value))}
-                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200"
-                title="Día fijo de la semana en que se juega. No altera la cola de turnos."
-              >
-                {NOMBRES_DIA.map((n, i) => (
-                  <option key={i} value={i}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {/* Días fijos de la semana: lo que se juega TODAS las semanas (uno o
+                varios). Va aparte de la fecha suelta de abajo, que es un override de
+                un solo partido. */}
+            <div
+              className="flex items-center gap-1 text-xs text-slate-400"
+              title="Días de la semana en que se juega. No altera la cola de turnos."
+            >
+              Días de partido:
+              {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
+                const on = matchWeekdays.includes(dow)
+                return (
+                  <button
+                    key={dow}
+                    onClick={() => alternarDiaSemana(dow)}
+                    title={nombreDia(dow)}
+                    className={
+                      'h-6 w-6 rounded border text-xs font-medium uppercase ' +
+                      (on
+                        ? 'border-emerald-500 bg-emerald-600 text-white'
+                        : 'border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-400')
+                    }
+                  >
+                    {dow === 3 ? 'x' : nombreDia(dow)[0]}
+                  </button>
+                )
+              })}
+            </div>
             <input
               type="date"
               value={fechaEdit || fecha}
@@ -184,25 +200,25 @@ export function RotationBanner() {
               <button
                 onClick={volverAutomatica}
                 className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-                title={`Vuelve a la fecha automática (el ${nombreDia(matchWeekday)} que toque).`}
+                title={`Vuelve a la fecha automática (el ${nombresDias(matchWeekdays)} que toque).`}
               >
                 Volver a automático
               </button>
             )}
             <button
               onClick={() => {
-                const dia = nombreDia(matchWeekday)
+                const siguiente = siguienteJornada(fecha, matchWeekdays)
                 if (
                   confirm(
-                    `¿Esta semana no hay partido? La convocatoria pasará al siguiente ${dia} (el turno NO cambia).`,
+                    `¿Este partido no se juega? La convocatoria pasará al ${formatoFecha(siguiente)} (el turno NO cambia).`,
                   )
                 )
-                  posponerJornada(siguienteJornada(fecha, matchWeekday))
+                  posponerJornada(siguiente)
               }}
               className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
-              title={`Mueve la fecha al siguiente ${nombreDia(matchWeekday)}. No altera la cola de turnos.`}
+              title="Pasa la convocatoria al siguiente día de partido. No altera la cola de turnos."
             >
-              Esta semana no hay partido
+              Este partido no se juega
             </button>
           </div>
         )}
@@ -311,7 +327,7 @@ export function RotationBanner() {
         {!abierta ? (
           <span className="text-sm text-slate-400">
             La convocatoria se abre el{' '}
-            <b>{nombreDia(aperturaConvocatoria(fecha).getDay())} a las 12:00</b> (dos días antes del
+            <b>{nombreDia(aperturaConvocatoria(fecha).getDay())} a las 12:00</b> (el día antes del
             partido). ¡Atento!
           </span>
         ) : isLinked ? (

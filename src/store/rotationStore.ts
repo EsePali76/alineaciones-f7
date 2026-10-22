@@ -9,7 +9,7 @@ import {
 } from '../domain/rotation'
 import { usePlayersStore } from './playersStore'
 import { useConvocatoriaStore } from './convocatoriaStore'
-import { DIA_PARTIDO_DEFECTO, fechaEfectiva } from '../domain/matchday'
+import { DIAS_PARTIDO_DEFECTO, fechaEfectiva } from '../domain/matchday'
 
 /** Ids de jugadores elegibles para la rotación, en orden estable (por antigüedad). */
 function eligibleOrdered(): string[] {
@@ -48,18 +48,19 @@ interface RotationState {
   /** Override de fecha del próximo partido ('YYYY-MM-DD'); null = automática. */
   matchDate: string | null
   /**
-   * Día fijo de partido (0 domingo … 6 sábado). Lo cambian admin y superuser desde
-   * el banner. `matchDate` (override de un partido suelto) manda sobre él.
+   * Días fijos de partido (0 domingo … 6 sábado), uno o varios por semana. Los
+   * cambian admin y superuser desde el banner. `matchDate` (override de un partido
+   * suelto) manda sobre ellos.
    */
-  matchWeekday: number
+  matchWeekdays: number[]
   loaded: boolean
   load: () => Promise<void>
-  /** "Esta semana no hay partido": empuja la fecha una semana (admin). NO toca la cola. */
+  /** "Este partido no se juega": empuja la fecha a la jornada siguiente (admin). NO toca la cola. */
   posponerJornada: (nuevaFecha: string) => Promise<void>
   /** Fija una fecha arbitraria para el próximo partido, o null para volver al automático (admin). */
   fijarFecha: (fechaISO: string | null) => Promise<void>
-  /** Cambia el día fijo de partido (admin/superuser). NO toca la cola de turnos. */
-  fijarDiaSemana: (dow: number) => Promise<void>
+  /** Cambia los días fijos de partido (admin/superuser). NO toca la cola de turnos. */
+  fijarDiasSemana: (dows: number[]) => Promise<void>
   /** Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa. */
   pasarTurno: () => Promise<void>
   /** Siembra/reinicia la cola con los elegibles actuales (admin). */
@@ -99,11 +100,11 @@ export const useRotationStore = create<RotationState>((set, get) => ({
   ratingsDeadline: null,
   requireRatings: false,
   matchDate: null,
-  matchWeekday: DIA_PARTIDO_DEFECTO,
+  matchWeekdays: [...DIAS_PARTIDO_DEFECTO],
   loaded: false,
 
   load: async () => {
-    const { rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate, matchWeekday } =
+    const { rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate, matchWeekdays } =
       await api.fetchRotation()
     set({
       data: rotation,
@@ -111,7 +112,7 @@ export const useRotationStore = create<RotationState>((set, get) => ({
       ratingsDeadline,
       requireRatings,
       matchDate,
-      matchWeekday,
+      matchWeekdays,
       loaded: true,
     })
   },
@@ -122,9 +123,9 @@ export const useRotationStore = create<RotationState>((set, get) => ({
 
   fijarFecha: async (fechaISO) => {
     const prev = get().matchDate
-    const dow = get().matchWeekday
-    const antes = fechaEfectiva(prev, dow)
-    const despues = fechaEfectiva(fechaISO, dow)
+    const dows = get().matchWeekdays
+    const antes = fechaEfectiva(prev, dows)
+    const despues = fechaEfectiva(fechaISO, dows)
     set({ matchDate: fechaISO })
     try {
       await api.saveMatchDate(fechaISO)
@@ -135,16 +136,17 @@ export const useRotationStore = create<RotationState>((set, get) => ({
     await migrarConvocados(antes, despues)
   },
 
-  fijarDiaSemana: async (dow) => {
-    const prev = get().matchWeekday
-    if (dow === prev) return
+  fijarDiasSemana: async (dows) => {
+    const prev = get().matchWeekdays
+    if (dows.length === 0) return // siempre queda al menos un día de partido
+    if (dows.length === prev.length && dows.every((d) => prev.includes(d))) return
     const override = get().matchDate
     const antes = fechaEfectiva(override, prev)
-    set({ matchWeekday: dow })
+    set({ matchWeekdays: dows })
     try {
-      await api.setMatchWeekday(dow)
+      await api.setMatchWeekdays(dows)
     } catch (e) {
-      set({ matchWeekday: prev })
+      set({ matchWeekdays: prev })
       throw e
     }
     // Cambiar el día fijo tira el override de fecha suelta que hubiera pendiente:
@@ -158,7 +160,7 @@ export const useRotationStore = create<RotationState>((set, get) => ({
         set({ matchDate: override })
       }
     }
-    await migrarConvocados(antes, fechaEfectiva(get().matchDate, dow))
+    await migrarConvocados(antes, fechaEfectiva(get().matchDate, dows))
   },
 
   pasarTurno: async () => {
