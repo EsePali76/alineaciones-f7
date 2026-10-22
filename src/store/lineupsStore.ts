@@ -27,8 +27,11 @@ interface LineupsState {
   removeLineup: (id: string) => Promise<void>
   /** Cambia la fecha (timestamp) de un partido, p.ej. para corregir el día real jugado. */
   setFecha: (id: string, fecha: number) => Promise<void>
-  /** Registra/edita el resultado completo de una alineación (marcador + goles + asistencias). */
-  setResultado: (id: string, resultado: MatchResult) => Promise<void>
+  /**
+   * Registra/edita el resultado completo de una alineación (marcador + goles +
+   * asistencias). `eloK` = K del ajuste por resultados con la que queda el partido.
+   */
+  setResultado: (id: string, resultado: MatchResult, eloK?: number) => Promise<void>
   /** Borra el marcador de una alineación (queda sin jugar). */
   clearResultado: (id: string) => Promise<void>
   /** Sube en bloque (import/migración). */
@@ -120,7 +123,8 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
 
   setFecha: (id, fecha) => actualizar(get, set, id, (l) => ({ ...l, fecha })),
 
-  setResultado: (id, resultado) => actualizar(get, set, id, (l) => ({ ...l, resultado })),
+  setResultado: (id, resultado, eloK) =>
+    actualizar(get, set, id, (l) => ({ ...l, resultado, eloK: eloK ?? l.eloK })),
 
   clearResultado: (id) => actualizar(get, set, id, (l) => ({ ...l, resultado: undefined })),
 

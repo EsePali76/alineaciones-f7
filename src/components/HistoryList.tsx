@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { kAlRegistrar } from '../domain/ajuste'
 import { useLineupsStore } from '../store/lineupsStore'
 import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
@@ -298,6 +299,7 @@ function ResultadoRow({
   nombre: (id: string) => string
 }) {
   const setResultado = useLineupsStore((s) => s.setResultado)
+  const eloK = useRotationStore((s) => s.eloK)
   const clearResultado = useLineupsStore((s) => s.clearResultado)
   const alConfirmar = useRotationStore((s) => s.alConfirmar)
   // Turno REAL de la cola (no el "congelado" que se muestra en el banner): así, si se
@@ -324,7 +326,7 @@ function ResultadoRow({
       goles,
       mvp: mvp || undefined,
     }
-    setResultado(lineup.id, resultado)
+    setResultado(lineup.id, resultado, kAlRegistrar(lineup, eloK))
     setEditando(false)
     // Partido jugado → el turno pasa al siguiente. Solo al registrar el resultado por
     // primera vez y si la hizo quien tiene el turno actual (evita avances al rellenar antiguas).

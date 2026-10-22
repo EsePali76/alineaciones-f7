@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import type { RotationData } from '../domain/rotation'
 import { DIAS_PARTIDO_DEFECTO } from '../domain/matchday'
+import { K_DEFECTO } from '../domain/ajuste'
 
 interface RotationRow {
   id: number
@@ -51,6 +52,23 @@ export async function fetchRotation(): Promise<RotationFetch> {
     matchDate: row.match_date ?? null,
     matchWeekdays: row.match_weekdays?.length ? row.match_weekdays : [...DIAS_PARTIDO_DEFECTO],
   }
+}
+
+/**
+ * K del ajuste por resultados (ver `domain/ajuste.ts`). Va en su propia consulta y
+ * tolera el fallo: si la columna aún no existe en la base, se usa la K por defecto
+ * en vez de dejar sin cargar toda la rotación.
+ */
+export async function fetchEloK(): Promise<number> {
+  const { data, error } = await supabase.from('rotation').select('elo_k').eq('id', 1).maybeSingle()
+  const k = Number((data as { elo_k?: number | string | null } | null)?.elo_k)
+  return error || !Number.isFinite(k) || k <= 0 ? K_DEFECTO : k
+}
+
+/** Cambia la K del ajuste por resultados (solo admin, vía RPC). */
+export async function setEloK(k: number): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_elo_k', { p_k: k })
+  if (error) throw error
 }
 
 /** Fija (o limpia con null → automática) el override de fecha del próximo partido (admin). */

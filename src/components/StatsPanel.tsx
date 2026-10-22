@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useLineupsStore } from '../store/lineupsStore'
 import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
+import { useRotationStore } from '../store/rotationStore'
+import { calcularAjustes } from '../domain/ajuste'
+import { AjusteFlecha } from './AjusteFlecha'
 import {
   statsPorEquipo,
   statsPorJugador,
@@ -24,6 +27,7 @@ type JugSortKey =
   | 'nombre'
   | 'partidos'
   | 'victorias'
+  | 'ajuste'
   | 'pctVictorias'
   | 'racha'
   | 'goles'
@@ -34,6 +38,7 @@ type SortDir = 'asc' | 'desc'
 export function StatsPanel() {
   const lineups = useLineupsStore((s) => s.lineups)
   const players = useEffectivePlayers()
+  const eloK = useRotationStore((s) => s.eloK)
   const [sub, setSub] = useState<Sub>('jugador')
   const [modo, setModo] = useState<Modo>('temporada')
   const [jugSort, setJugSort] = useState<JugSortKey>('pctVictorias')
@@ -82,6 +87,15 @@ export function StatsPanel() {
   const masGoleadores = useMemo(() => equiposMasGoleadores(statsArr), [statsArr])
   const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr), [statsArr])
 
+  // Ajuste por resultados: en «Totales», el acumulado (el que lleva la nota); en una
+  // temporada, solo lo ganado o perdido en ella. El ajuste no se reinicia por
+  // temporada, pero así cada temporada tiene su propia clasificación.
+  const ajustes = useMemo(() => calcularAjustes(lineups, players, eloK), [lineups, players, eloK])
+  const ajusteDe = (id: string) => {
+    const a = ajustes.get(id)
+    return modo === 'totales' ? a?.total ?? 0 : a?.porTemporada.get(temporadaSel) ?? 0
+  }
+
   const nombre = (id: string) => nombreVisible(players.find((p) => p.id === id))
   const foto = (id: string) => fotoVisible(players.find((p) => p.id === id))
 
@@ -95,6 +109,8 @@ export function StatsPanel() {
           return s.partidos
         case 'victorias':
           return s.victorias
+        case 'ajuste':
+          return ajusteDe(s.playerId)
         case 'pctVictorias':
           return s.pctVictorias
         case 'racha':
@@ -121,7 +137,7 @@ export function StatsPanel() {
     })
     // `nombre` depende de `players`; se incluye vía statsArr/jugSort.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statsArr, jugSort, jugDir, modo])
+  }, [statsArr, jugSort, jugDir, modo, ajustes, temporadaSel])
 
   return (
     <div className="flex flex-col gap-4">
@@ -234,6 +250,14 @@ export function StatsPanel() {
                     V-E-D{jugArrow('victorias')}
                   </button>
                 </th>
+                <th
+                  className="px-2 py-2 text-center font-medium"
+                  title={modo === 'totales' ? 'Ajuste de su nota por resultados' : 'Lo que ha subido o bajado su nota esta temporada'}
+                >
+                  <button onClick={() => toggleJug('ajuste')} className="font-medium hover:text-slate-200">
+                    Ajuste{jugArrow('ajuste')}
+                  </button>
+                </th>
                 <th className="px-2 py-2 text-center font-medium" title="% de victorias">
                   <button onClick={() => toggleJug('pctVictorias')} className="font-medium hover:text-slate-200">
                     %V{jugArrow('pctVictorias')}
@@ -277,6 +301,9 @@ export function StatsPanel() {
                   <td className="px-2 py-2 text-center text-slate-300">{s.partidos}</td>
                   <td className="px-2 py-2 text-center text-slate-300">
                     {s.victorias}-{s.empates}-{s.derrotas}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <AjusteFlecha valor={ajusteDe(s.playerId)} />
                   </td>
                   <td className="px-2 py-2 text-center text-slate-300">{s.pctVictorias}%</td>
                   <td className="px-2 py-2 whitespace-nowrap text-center">

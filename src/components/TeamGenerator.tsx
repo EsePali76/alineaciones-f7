@@ -10,7 +10,6 @@ import type { Player } from '../domain/types'
 import { fotoVisible, nombreVisible } from '../domain/types'
 import { balanceTeams, evaluatePartition, type TeamBalance } from '../domain/balancer'
 import { playerScore, type ScoreOptions } from '../domain/scoring'
-import { notasPorResultados, type MetodoEquilibrado } from '../domain/resultados'
 import { formacionesDe, formacionPorNombre, balancePorterias, type Formacion } from '../domain/formation'
 import { parseISO, partidoPasado, toISO } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
@@ -20,30 +19,11 @@ import { usePlayersStore, type PlayerInput } from '../store/playersStore'
 import { useConvocatoriaStore } from '../store/convocatoriaStore'
 
 /**
- * Los tres criterios con los que se puede repartir. Ver `domain/resultados.ts`.
- *
- * LOS TEXTOS VAN CORTOS A PROPÓSITO: dicen QUÉ mira cada método, no CÓMO lo calcula.
- * Detallar la fórmula en pantalla solo invita a discutirla; el porqué de cada
- * decisión (pesos por temporada, partidos fantasma, ánimo) está comentado en
- * `domain/resultados.ts` y `domain/scoring.ts`, que es donde hace falta.
+ * Opciones de puntuación del reparto. Ya no hay método que elegir (la nota es
+ * valoración + ajuste por resultados, ver `domain/scoring.ts`); se sigue pasando
+ * a todas las llamadas del equilibrador por si algún día vuelve a haber opciones.
  */
-const METODOS: { valor: MetodoEquilibrado; etiqueta: string; ayuda: string }[] = [
-  {
-    valor: 'valoraciones',
-    etiqueta: '⭐ Valoraciones',
-    ayuda: 'Según las valoraciones que os habéis puesto entre vosotros',
-  },
-  {
-    valor: 'resultados',
-    etiqueta: '🏆 Resultados',
-    ayuda: 'Según los partidos ganados y perdidos',
-  },
-  {
-    valor: 'mixto',
-    etiqueta: '⚖️ Mixto',
-    ayuda: 'La media de los otros dos',
-  },
-]
+const SCORE_OPTS: ScoreOptions = {}
 
 export function TeamGenerator() {
   const players = useEffectivePlayers()
@@ -58,19 +38,7 @@ export function TeamGenerator() {
   // Estado de la sesión de generación en store persistente (sobrevive a cambios de pestaña).
   const convocadosIds = useGeneratorStore((s) => s.convocados)
   const jugadoresPorEquipo = useGeneratorStore((s) => s.jugadoresPorEquipo)
-  const metodo = useGeneratorStore((s) => s.metodo)
-  const setMetodo = useGeneratorStore((s) => s.setMetodo)
-
-  /**
-   * Opciones de puntuación derivadas del método elegido. Se pasan a TODAS las
-   * llamadas del equilibrador (generar, reevaluar en vivo, sustituir e intercambiar)
-   * para que el reparto y los niveles que se muestran usen siempre el mismo criterio.
-   */
-  const scoreOpts = useMemo<ScoreOptions>(
-    () =>
-      metodo === 'valoraciones' ? { metodo } : { metodo, puntos: notasPorResultados(lineups) },
-    [metodo, lineups],
-  )
+  const scoreOpts = SCORE_OPTS
   const formacionNombreA = useGeneratorStore((s) => s.formacionNombreA)
   const formacionNombreB = useGeneratorStore((s) => s.formacionNombreB)
   const balance = useGeneratorStore((s) => s.balance)
@@ -523,26 +491,6 @@ export function TeamGenerator() {
               }
             >
               {n} vs {n} <span className="opacity-70">({n * 2})</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Selector de método de ponderación */}
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="w-20 shrink-0 text-slate-400">Equilibrar:</span>
-          {METODOS.map((m) => (
-            <button
-              key={m.valor}
-              onClick={() => setMetodo(m.valor)}
-              title={m.ayuda}
-              className={
-                'rounded border px-3 py-1 transition-colors ' +
-                (metodo === m.valor
-                  ? 'border-emerald-500 bg-emerald-600 text-white'
-                  : 'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
-              }
-            >
-              {m.etiqueta}
             </button>
           ))}
         </div>

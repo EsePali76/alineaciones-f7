@@ -10,6 +10,7 @@ import {
 import { usePlayersStore } from './playersStore'
 import { useConvocatoriaStore } from './convocatoriaStore'
 import { DIAS_PARTIDO_DEFECTO, fechaEfectiva } from '../domain/matchday'
+import { K_DEFECTO } from '../domain/ajuste'
 
 /** Ids de jugadores elegibles para la rotación, en orden estable (por antigüedad). */
 function eligibleOrdered(): string[] {
@@ -53,6 +54,8 @@ interface RotationState {
    * suelto) manda sobre ellos.
    */
   matchWeekdays: number[]
+  /** K vigente del ajuste por resultados (la configura el admin en «Usuarios»). */
+  eloK: number
   loaded: boolean
   load: () => Promise<void>
   /** "Este partido no se juega": empuja la fecha a la jornada siguiente (admin). NO toca la cola. */
@@ -61,6 +64,8 @@ interface RotationState {
   fijarFecha: (fechaISO: string | null) => Promise<void>
   /** Cambia los días fijos de partido (admin/superuser). NO toca la cola de turnos. */
   fijarDiasSemana: (dows: number[]) => Promise<void>
+  /** Cambia la K del ajuste por resultados (admin). Solo afecta a los resultados que se registren después. */
+  setEloK: (k: number) => Promise<void>
   /** Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa. */
   pasarTurno: () => Promise<void>
   /** Siembra/reinicia la cola con los elegibles actuales (admin). */
@@ -101,12 +106,15 @@ export const useRotationStore = create<RotationState>((set, get) => ({
   requireRatings: false,
   matchDate: null,
   matchWeekdays: [...DIAS_PARTIDO_DEFECTO],
+  eloK: K_DEFECTO,
   loaded: false,
 
   load: async () => {
     const { rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate, matchWeekdays } =
       await api.fetchRotation()
+    const eloK = await api.fetchEloK()
     set({
+      eloK,
       data: rotation,
       ratingsOpen,
       ratingsDeadline,
@@ -161,6 +169,17 @@ export const useRotationStore = create<RotationState>((set, get) => ({
       }
     }
     await migrarConvocados(antes, fechaEfectiva(get().matchDate, dows))
+  },
+
+  setEloK: async (k) => {
+    const prev = get().eloK
+    set({ eloK: k })
+    try {
+      await api.setEloK(k)
+    } catch (e) {
+      set({ eloK: prev })
+      throw e
+    }
   },
 
   pasarTurno: async () => {

@@ -26,6 +26,9 @@ export function UsersPanel() {
   const refreshMyProfile = useAuthStore((s) => s.refreshProfile)
   const requireRatings = useRotationStore((s) => s.requireRatings)
   const setRequireRatings = useRotationStore((s) => s.setRequireRatings)
+  const eloK = useRotationStore((s) => s.eloK)
+  const setEloK = useRotationStore((s) => s.setEloK)
+  const [kEdit, setKEdit] = useState('')
   const progress = useRatingsStore((s) => s.progress)
 
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -312,6 +315,60 @@ export function UsersPanel() {
           }
         >
           {requireRatings ? '● Activado' : '○ Desactivado'}
+        </button>
+      </div>
+
+      {/* Ajuste por resultados (ver domain/ajuste.ts): la K y la puesta a cero. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-slate-200">Ajuste por resultados</span>
+          <span className="text-xs text-slate-500">
+            Cuánto sube o baja la nota por partido. Solo afecta a los resultados que se registren desde ahora.
+          </span>
+        </div>
+        <label className="ml-auto flex items-center gap-2 text-sm text-slate-300">
+          K
+          <input
+            type="number"
+            min={0.05}
+            max={2}
+            step={0.05}
+            value={kEdit || String(eloK)}
+            onChange={(e) => setKEdit(e.target.value)}
+            className="w-20 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-200"
+          />
+        </label>
+        <button
+          onClick={() => {
+            const k = Number(kEdit)
+            if (!kEdit || !Number.isFinite(k) || k <= 0) return
+            setEloK(k)
+              .then(() => setKEdit(''))
+              .catch(() => setError('No se pudo cambiar la K.'))
+          }}
+          disabled={!kEdit || Number(kEdit) === eloK}
+          className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-300 enabled:hover:border-slate-400 disabled:opacity-40"
+        >
+          Guardar
+        </button>
+        <button
+          onClick={async () => {
+            if (
+              !confirm(
+                '¿Poner a cero el ajuste de TODOS los jugadores? Su nota vuelve a ser solo la valoración del grupo (pensado para después de una revaloración). No se puede deshacer.',
+              )
+            )
+              return
+            const ahora = Date.now()
+            try {
+              for (const p of players) await updatePlayer(p.id, { ...p, ajusteDesde: ahora } as PlayerInput)
+            } catch {
+              setError('No se pudo poner a cero el ajuste de todos.')
+            }
+          }}
+          className="rounded border border-red-600 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-600/10"
+        >
+          Poner a cero el ajuste de todos
         </button>
       </div>
     </div>

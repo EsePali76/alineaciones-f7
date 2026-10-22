@@ -3,6 +3,7 @@ import type { Player } from '../domain/types'
 import { fotoVisible } from '../domain/types'
 import { POSITION_LABEL, FOOT_LABEL } from '../domain/constants'
 import { weightedRatings } from '../domain/scoring'
+import { AjusteFlecha } from './AjusteFlecha'
 import { animoLabel } from '../domain/animo'
 import { edadVisible } from '../domain/types'
 import { Avatar } from './Avatar'
@@ -21,7 +22,7 @@ interface PlayerListProps {
 
 /**
  * Valoración mostrada en la columna: la MISMA media ponderada que usa el balanceador
- * (`weightedRatings`), sin el modificador de ánimo. Las facetas
+ * (`weightedRatings`), SIN el ajuste por resultados (va en su propia columna). Las facetas
  * vacías toman el valor de la general; si solo hay general, sale esa nota tal cual.
  */
 function mediaValoracion(p: Player): number {
@@ -120,6 +121,9 @@ export function PlayerList({
                   Valoración{sortArrow('media')}
                 </button>
               </th>
+              <th className="px-3 py-2 font-medium" title="Por los resultados de sus partidos">
+                Ajuste
+              </th>
               <th className="px-3 py-2 font-medium">Ánimo</th>
               {isAdmin && <th className="px-3 py-2 font-medium"></th>}
             </tr>
@@ -165,6 +169,9 @@ export function PlayerList({
                   </td>
                   <td className="px-3 py-2 text-slate-400">{FOOT_LABEL[p.pierna]}</td>
                   <td className="px-3 py-2 text-slate-300">{media.toFixed(1)}</td>
+                  <td className="px-3 py-2">
+                    <AjusteFlecha valor={p.ajuste} />
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap text-slate-300">
                     <AnimoPill valor={p.animoCalculado} />
                   </td>

@@ -52,8 +52,6 @@ export interface BalanceOptions extends ScoreOptions {
 function scoreOptionsDe(opts: BalanceOptions): ScoreOptions {
   return {
     weights: opts.weights ?? DEFAULT_WEIGHTS,
-    metodo: opts.metodo,
-    puntos: opts.puntos,
   }
 }
 

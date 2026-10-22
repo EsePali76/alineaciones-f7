@@ -155,6 +155,16 @@ export interface Player {
    * `useEffectivePlayers`; NO se persiste (los jugadores "crudos" del store no lo llevan).
    */
   animoCalculado?: number
+  /**
+   * Instante (ms) en que el admin puso a cero su ajuste por resultados: los partidos
+   * anteriores ya no le cuentan. Sí se persiste. Ver `domain/ajuste.ts`.
+   */
+  ajusteDesde?: number
+  /**
+   * Ajuste por resultados DERIVADO (se suma a la valoración). Transitorio, como
+   * `animoCalculado`: lo rellena `useEffectivePlayers`.
+   */
+  ajuste?: number
 }
 
 /**
@@ -179,6 +189,8 @@ export interface ConfirmedLineup {
   placementB?: string[]
   /** Resultado del partido, si ya se ha registrado tras jugar. */
   resultado?: MatchResult
+  /** K vigente al registrar el resultado (ajuste por resultados; ver `domain/ajuste.ts`). */
+  eloK?: number
 }
 
 /** Un gol concreto del partido: a qué equipo, quién lo metió y quién lo asistió. */
