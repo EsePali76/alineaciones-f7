@@ -20,8 +20,10 @@ import { temporadaDe } from './season'
  *   Δ        = K × goles × (real − esperado)
  *
  * Decisiones de Santi (2026-10-22):
- *  - Cuenta desde `AJUSTE_DESDE`: los partidos anteriores no mueven nada (aplicarlo
- *    hacia atrás daría un salto de golpe).
+ *  - Cuenta desde `AJUSTE_DESDE`: los partidos anteriores no mueven nada. Primero
+ *    arrancaba el 2026-10-22; el 2026-10-23 el grupo decidió aplicarlo a toda la
+ *    temporada 26/27 con K 0,3 (los partidos ya jugados llevan esa K guardada, ver
+ *    `supabase/migration_ajuste_retroactivo.sql`).
  *  - K la configura el admin, y cada partido guarda la K vigente al registrar su
  *    resultado (`ConfirmedLineup.eloK`): cambiarla NO es retroactivo.
  *  - No se reinicia por temporada (las valoraciones no se reabren cada año, así que
@@ -32,14 +34,15 @@ import { temporadaDe } from './season'
  *    compañeros y su probabilidad de ganar sube).
  *
  * Calibrado con los 17 partidos que había: con K 0,5 los extremos se mueven ±1 punto
- * por temporada y la mayoría, ±0,5.
+ * por temporada y la mayoría, ±0,5. Con los 9 primeros de la 26/27, K 0,5 movía ya
+ * ±1 punto; con K 0,3 los extremos quedan en +0,6 / −0,8.
  */
 
 /** Primer día de partido que cuenta para el ajuste. */
-export const AJUSTE_DESDE = '2026-10-22'
+export const AJUSTE_DESDE = '2026-09-01'
 
 /** K inicial (hasta que el admin la cambie). */
-export const K_DEFECTO = 0.5
+export const K_DEFECTO = 0.3
 
 /** Diferencia de nivel medio (escala 0-10) que da un 10:1 de probabilidad. */
 const ESCALA_ELO = 2
