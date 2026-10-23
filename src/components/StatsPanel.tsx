@@ -43,7 +43,7 @@ export function StatsPanel() {
   const eloK = useRotationStore((s) => s.eloK)
   const [sub, setSub] = useState<Sub>('jugador')
   const [modo, setModo] = useState<Modo>('temporada')
-  const [jugSort, setJugSort] = useState<JugSortKey>('pctVictorias')
+  const [jugSort, setJugSort] = useState<JugSortKey>('valoracion')
   const [jugDir, setJugDir] = useState<SortDir>('desc')
 
   /** Cambia de columna (texto→asc, números→desc) o alterna dirección si ya está activa. */
