@@ -98,10 +98,12 @@ export function StatsPanel() {
     return modo === 'totales' ? a?.total ?? 0 : a?.porTemporada.get(temporadaSel) ?? 0
   }
 
-  // Valoración del grupo SIN el ajuste (la misma que la columna de Plantel).
+  // Valoración CON el ajuste acumulado ya sumado: la nota con la que se reparte hoy
+  // (aunque se mire una temporada pasada). Se enseña aquí para que la gente se pique
+  // por superar a los demás; en Plantel sigue saliendo la del grupo, sin ajuste.
   const valoracionDe = (id: string) => {
     const p = players.find((pl) => pl.id === id)
-    return p ? weightedRatings(p) : undefined
+    return p ? weightedRatings(p) + (ajustes.get(id)?.total ?? 0) : undefined
   }
 
   const nombre = (id: string) => nombreVisible(players.find((p) => p.id === id))
@@ -260,17 +262,17 @@ export function StatsPanel() {
                     V-E-D{jugArrow('victorias')}
                   </button>
                 </th>
-                <th className="px-2 py-2 text-center font-medium" title="Valoración del grupo, sin el ajuste">
-                  <button onClick={() => toggleJug('valoracion')} className="font-medium hover:text-slate-200">
-                    Valoración{jugArrow('valoracion')}
-                  </button>
-                </th>
                 <th
                   className="px-2 py-2 text-center font-medium"
                   title={modo === 'totales' ? 'Ajuste de su nota por resultados' : 'Lo que ha subido o bajado su nota esta temporada'}
                 >
                   <button onClick={() => toggleJug('ajuste')} className="font-medium hover:text-slate-200">
                     Ajuste{jugArrow('ajuste')}
+                  </button>
+                </th>
+                <th className="px-2 py-2 text-center font-medium" title="Valoración del grupo con el ajuste ya sumado">
+                  <button onClick={() => toggleJug('valoracion')} className="font-medium hover:text-slate-200">
+                    Valoración{jugArrow('valoracion')}
                   </button>
                 </th>
                 <th className="px-2 py-2 text-center font-medium" title="% de victorias">
@@ -317,11 +319,11 @@ export function StatsPanel() {
                   <td className="px-2 py-2 text-center text-slate-300">
                     {s.victorias}-{s.empates}-{s.derrotas}
                   </td>
-                  <td className="px-2 py-2 text-center text-slate-300">
-                    {valoracionDe(s.playerId)?.toFixed(2) ?? '—'}
-                  </td>
                   <td className="px-2 py-2 text-center">
                     <AjusteFlecha valor={ajusteDe(s.playerId)} />
+                  </td>
+                  <td className="px-2 py-2 text-center text-slate-300">
+                    {valoracionDe(s.playerId)?.toFixed(2) ?? '—'}
                   </td>
                   <td className="px-2 py-2 text-center text-slate-300">{s.pctVictorias}%</td>
                   <td className="px-2 py-2 whitespace-nowrap text-center">
