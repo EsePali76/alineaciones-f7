@@ -168,7 +168,7 @@ export function PlayerList({
                     </div>
                   </td>
                   <td className="px-3 py-2 text-slate-400">{FOOT_LABEL[p.pierna]}</td>
-                  <td className="px-3 py-2 text-slate-300">{media.toFixed(1)}</td>
+                  <td className="px-3 py-2 text-slate-300">{media.toFixed(2)}</td>
                   <td className="px-3 py-2">
                     <AjusteFlecha valor={p.ajuste} />
                   </td>

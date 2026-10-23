@@ -318,7 +318,7 @@ export function StatsPanel() {
                     {s.victorias}-{s.empates}-{s.derrotas}
                   </td>
                   <td className="px-2 py-2 text-center text-slate-300">
-                    {valoracionDe(s.playerId)?.toFixed(1) ?? '—'}
+                    {valoracionDe(s.playerId)?.toFixed(2) ?? '—'}
                   </td>
                   <td className="px-2 py-2 text-center">
                     <AjusteFlecha valor={ajusteDe(s.playerId)} />
