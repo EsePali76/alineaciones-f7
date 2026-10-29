@@ -15,15 +15,20 @@ import { temporadaDe } from './season'
  * siendo el favorito resta más. Todos los del equipo reciben el mismo Δ.
  *
  *   esperado = 1 / (1 + 10^(-(nivel_mío − nivel_rival) / ESCALA_ELO))
- *   real     = 1 victoria · 0,5 empate · 0 derrota
- *   goles    = 1 + FACTOR_GOLES × min(diferencia, MAX_DIF_GOLES)
- *   Δ        = K × goles × (real − esperado) + BONUS_PARTIDO
+ *   real     = RESULTADO_POR_DIFERENCIA según los goles de diferencia (0,5 empate;
+ *              el perdedor, 1 − lo del ganador)
+ *   Δ        = K × (real − esperado), con límite: ganar nunca resta, perder nunca suma
+ *   + BONUS_PARTIDO a todos
  *
  * Decisiones de Santi (2026-10-22):
  *  - Cuenta desde `AJUSTE_DESDE`: los partidos anteriores no mueven nada. Primero
  *    arrancaba el 2026-10-22; el 2026-10-23 el grupo decidió aplicarlo a toda la
  *    temporada 26/27 con K 0,35 (los partidos ya jugados llevan esa K guardada, ver
  *    `supabase/migration_ajuste_retroactivo.sql`).
+ *  - 2026-10-29: el resultado pasa a valer por tramos de goles en vez de 1/0,5/0 ×
+ *    factor de goles, para que una derrota ajustada en un partido igualado apenas
+ *    mueva y la goleada pese por tramos. La K equivalente pasa de 0,35 a 0,70, también
+ *    en los partidos ya jugados (`supabase/migration_ajuste_tramos.sql`).
  *  - K la configura el admin, y cada partido guarda la K vigente al registrar su
  *    resultado (`ConfirmedLineup.eloK`): cambiarla NO es retroactivo.
  *  - No se reinicia solo: lo pone a cero el admin (`Player.ajusteDesde`), en principio
@@ -34,14 +39,16 @@ import { temporadaDe } from './season'
  *
  * Calibrado con los 17 partidos que había: con K 0,5 los extremos se mueven ±1 punto
  * por temporada y la mayoría, ±0,5. Con los 9 primeros de la 26/27, K 0,5 movía ya
- * ±1 punto; con K 0,35 los extremos quedan en +0,7 / −1,0.
+ * ±1 punto; con K 0,35 los extremos quedan en +0,7 / −1,0 (fórmula anterior).
+ * Con los tramos y K 0,70, en un 55/45 ganar por 1 da ±0,04 al favorito y ±0,11 al
+ * débil; por 3, ±0,14 / ±0,21; por 5 o más, ±0,25 / ±0,32.
  */
 
 /** Primer día de partido que cuenta para el ajuste. */
 export const AJUSTE_DESDE = '2026-09-01'
 
 /** K inicial (hasta que el admin la cambie). */
-export const K_DEFECTO = 0.3
+export const K_DEFECTO = 0.7
 
 /**
  * Recompensa fija por partido jugado, gane o pierda (decisión de Santi, 2026-10-29).
@@ -62,9 +69,19 @@ export const BASE_COMUN = 5
 /** Diferencia de nivel medio (escala 0-10) que da un 10:1 de probabilidad. */
 const ESCALA_ELO = 2
 
-/** Cada gol de diferencia multiplica el Δ por +10 %, hasta 5 goles (×1,5). */
-const FACTOR_GOLES = 0.1
-const MAX_DIF_GOLES = 5
+/**
+ * Lo que vale el resultado para el GANADOR según la diferencia de goles: índice 0 =
+ * por 1 gol … índice 4 = por 5 o más. El perdedor se lleva 1 − eso; el empate, 0,5.
+ */
+const RESULTADO_POR_DIFERENCIA = [0.6, 0.68, 0.75, 0.82, 0.9]
+
+/** Valor del resultado para el equipo A (0..1). */
+function resultadoA(golesA: number, golesB: number): number {
+  const dif = golesA - golesB
+  if (dif === 0) return 0.5
+  const ganador = RESULTADO_POR_DIFERENCIA[Math.min(Math.abs(dif), RESULTADO_POR_DIFERENCIA.length) - 1]
+  return dif > 0 ? ganador : 1 - ganador
+}
 
 const desdeMs = parseISO(AJUSTE_DESDE).getTime()
 
@@ -130,9 +147,11 @@ export function calcularAjustes(
   for (const l of jugados) {
     const { golesA, golesB } = l.resultado!
     const esperadoA = 1 / (1 + 10 ** (-(media(l.teamA, l.fecha) - media(l.teamB, l.fecha)) / ESCALA_ELO))
-    const realA = golesA > golesB ? 1 : golesA < golesB ? 0 : 0.5
-    const goles = 1 + FACTOR_GOLES * Math.min(Math.abs(golesA - golesB), MAX_DIF_GOLES)
-    const deltaA = (l.eloK ?? kActual) * goles * (realA - esperadoA)
+    const bruto = (l.eloK ?? kActual) * (resultadoA(golesA, golesB) - esperadoA)
+    // Límite: el muy favorito que gana por la mínima no resta, ni el muy débil que
+    // pierde por la mínima suma (se queda en 0; el bonus sí lo cobran).
+    const deltaA =
+      golesA > golesB ? Math.max(0, bruto) : golesA < golesB ? Math.min(0, bruto) : bruto
     const temporada = temporadaDe(l.fecha)
 
     const aplicar = (id: string, delta: number) => {
