@@ -48,7 +48,7 @@ function avisoError(e: unknown) {
   alert('No se pudo guardar en la nube. ¿Has entrado como admin? Se han recargado los datos.')
 }
 
-/** Aplica una actualización al lineup `id` y lo sincroniza con Supabase (con reversión). */
+/** Aplica una actualización al lineup `id` (ya existente) y lo sincroniza con Supabase (con reversión). */
 async function actualizar(
   get: () => LineupsState,
   set: (partial: Partial<LineupsState>) => void,
@@ -60,7 +60,7 @@ async function actualizar(
   const lineup = actualizado.find((l) => l.id === id)
   set({ lineups: actualizado })
   try {
-    if (lineup) await api.upsertLineup(lineup)
+    if (lineup) await api.updateLineup(lineup)
   } catch (e) {
     set({ lineups: prev })
     avisoError(e)

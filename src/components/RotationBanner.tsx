@@ -31,7 +31,7 @@ import type { PlayerInput } from '../store/playersStore'
  *     antes del partido, a las 12:00).
  */
 export function RotationBanner() {
-  const { current, next, isMyTurn, congelado } = useTurno()
+  const { current, next, isMyTurn, congelado, currentColaId } = useTurno()
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const isLinked = useAuthStore((s) => s.isLinked)
   const myPlayerId = useAuthStore((s) => s.profile?.playerId ?? null)
@@ -89,7 +89,7 @@ export function RotationBanner() {
     try {
       await updatePlayer(yo.id, { ...yo, excluidoRotacion: value } as PlayerInput)
       // Si me autoexcluyo estando de turno, paso para que avance al siguiente.
-      if (value && isMyTurn) await pasarTurno()
+      if (value && isMyTurn) await pasarTurno(yo.id)
     } catch {
       // El store ya avisa del error.
     }
@@ -244,7 +244,8 @@ export function RotationBanner() {
           {isMyTurn && !congelado && (
             <button
               onClick={() => {
-                if (confirm('¿No puedes hacerla esta semana? Pasa el turno al siguiente.')) pasarTurno()
+                if (confirm('¿No puedes hacerla esta semana? Pasa el turno al siguiente.'))
+                  pasarTurno(currentColaId)
               }}
               className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
             >
@@ -259,7 +260,7 @@ export function RotationBanner() {
                     `¿Avanzar el turno? Pasará de ${current?.nombre ?? '—'} al siguiente${next ? ` (${next.nombre})` : ''}.`,
                   )
                 )
-                  pasarTurno()
+                  pasarTurno(currentColaId)
               }}
               className="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-500"
               title="Pasa al siguiente (p.ej. si el del turno no responde)"

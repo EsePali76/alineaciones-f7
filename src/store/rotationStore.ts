@@ -66,8 +66,11 @@ interface RotationState {
   fijarDiasSemana: (dows: number[]) => Promise<void>
   /** Cambia la K del ajuste por resultados (admin). Solo afecta a los resultados que se registren después. */
   setEloK: (k: number) => Promise<void>
-  /** Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa. */
-  pasarTurno: () => Promise<void>
+  /**
+   * Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa.
+   * `turnoId` = el de turno según `useTurno` (con el filtro de valoraciones aplicado).
+   */
+  pasarTurno: (turnoId?: string | null) => Promise<void>
   /** Siembra/reinicia la cola con los elegibles actuales (admin). */
   reiniciar: () => Promise<void>
   /** Tras confirmar una alineación: el autor va al final y empieza ciclo nuevo. */
@@ -182,8 +185,8 @@ export const useRotationStore = create<RotationState>((set, get) => ({
     }
   },
 
-  pasarTurno: async () => {
-    const next = advancePass(get().data, eligibleOrdered())
+  pasarTurno: async (turnoId) => {
+    const next = advancePass(get().data, eligibleOrdered(), turnoId)
     await persist(set, next)
   },
 

@@ -113,6 +113,22 @@ export async function upsertLineup(lineup: ConfirmedLineup): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Actualiza una alineación EXISTENTE con UPDATE real (no upsert). Como en
+ * `updatePlayer`: el upsert también pasa por la política de INSERT, y el autor
+ * (madeBy) que re-edita la suya solo tiene permiso de UPDATE. Si RLS no deja
+ * tocar la fila, el UPDATE no da error pero no afecta a nada → se trata como fallo.
+ */
+export async function updateLineup(lineup: ConfirmedLineup): Promise<void> {
+  const { data, error } = await supabase
+    .from('lineups')
+    .update({ data: lineup, updated_at: new Date().toISOString() })
+    .eq('id', lineup.id)
+    .select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error(`Sin permiso para actualizar la alineación ${lineup.id}`)
+}
+
 export async function deleteLineup(id: string): Promise<void> {
   const { error } = await supabase.from('lineups').delete().eq('id', id)
   if (error) throw error

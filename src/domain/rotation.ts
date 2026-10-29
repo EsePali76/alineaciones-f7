@@ -103,11 +103,20 @@ export function nextCurrent(data: RotationData, eligible: Set<string>): string |
   return nuevoOrden[0] ?? null
 }
 
-/** Pasar turno (o avance del admin): salta al actual y pasa al siguiente, conservando su sitio. */
-export function advancePass(data: RotationData, eligibleOrdered: string[]): RotationData {
+/**
+ * Pasar turno (o avance del admin): salta al actual y pasa al siguiente, conservando su sitio.
+ * `turnoId` = a quién se salta; hay que pasarlo cuando el turno visible sale del filtro
+ * de valoraciones (`useTurno().currentColaId`), que aquí no se aplica: si no, se
+ * saltaría al guardado en vez de al que la app muestra de turno.
+ */
+export function advancePass(
+  data: RotationData,
+  eligibleOrdered: string[],
+  turnoId?: string | null,
+): RotationData {
   const order = reconcileOrder(data.orderIds, eligibleOrdered)
   const eligible = new Set(eligibleOrdered)
-  const current = effectiveCurrent({ ...data, orderIds: order }, eligible)
+  const current = turnoId ?? effectiveCurrent({ ...data, orderIds: order }, eligible)
 
   const skipped = new Set(data.skippedIds)
   if (current) skipped.add(current)
