@@ -17,7 +17,7 @@ import { temporadaDe } from './season'
  *   esperado = 1 / (1 + 10^(-(nivel_mío − nivel_rival) / ESCALA_ELO))
  *   real     = 1 victoria · 0,5 empate · 0 derrota
  *   goles    = 1 + FACTOR_GOLES × min(diferencia, MAX_DIF_GOLES)
- *   Δ        = K × goles × (real − esperado)
+ *   Δ        = K × goles × (real − esperado) + BONUS_PARTIDO
  *
  * Decisiones de Santi (2026-10-22):
  *  - Cuenta desde `AJUSTE_DESDE`: los partidos anteriores no mueven nada. Primero
@@ -26,10 +26,9 @@ import { temporadaDe } from './season'
  *    `supabase/migration_ajuste_retroactivo.sql`).
  *  - K la configura el admin, y cada partido guarda la K vigente al registrar su
  *    resultado (`ConfirmedLineup.eloK`): cambiarla NO es retroactivo.
- *  - No se reinicia por temporada (las valoraciones no se reabren cada año, así que
- *    el ajuste es lo que hace evolucionar la nota). Lo que sí puede hacer el admin es
- *    ponerlo a cero tras una revaloración (`Player.ajusteDesde`), para no contar dos
- *    veces una racha que el grupo ya ha tenido en cuenta al votar.
+ *  - No se reinicia solo: lo pone a cero el admin (`Player.ajusteDesde`), en principio
+ *    al empezar cada temporada (2026-10-29) o tras una revaloración. Lo de antes deja
+ *    de sumar a la nota, pero sigue en `porTemporada` para Estadísticas.
  *  - Sin tope: el ELO se frena solo (al que baja, el equilibrador le pone mejores
  *    compañeros y su probabilidad de ganar sube).
  *
@@ -43,6 +42,14 @@ export const AJUSTE_DESDE = '2026-09-01'
 
 /** K inicial (hasta que el admin la cambie). */
 export const K_DEFECTO = 0.3
+
+/**
+ * Recompensa fija por partido jugado, gane o pierda (decisión de Santi, 2026-10-29).
+ * Sutil a propósito: una derrota media resta ~0,20, así que hacen falta ~10 partidos
+ * para compensarla. Va sumada dentro del ajuste, sin desglosar, y se va con él al
+ * ponerlo a cero al empezar temporada. Cuenta en todos los partidos del ajuste.
+ */
+export const BONUS_PARTIDO = 0.02
 
 /** Diferencia de nivel medio (escala 0-10) que da un 10:1 de probabilidad. */
 const ESCALA_ELO = 2
@@ -67,9 +74,12 @@ export function kAlRegistrar(lineup: ConfirmedLineup, kActual: number): number |
 }
 
 export interface AjusteJugador {
-  /** Ajuste acumulado (lo que se suma a la valoración). */
+  /** Ajuste acumulado desde la última puesta a cero (lo que se suma a la valoración). */
   total: number
-  /** Lo ganado o perdido en cada temporada ('25/26' → Δ), para Estadísticas. */
+  /**
+   * Lo ganado o perdido en cada temporada ('25/26' → Δ), para Estadísticas. Ignora
+   * la puesta a cero: es el histórico de cómo acabó cada temporada.
+   */
   porTemporada: Map<string, number>
 }
 
@@ -85,12 +95,21 @@ export function calcularAjustes(
 ): Map<string, AjusteJugador> {
   const porId = new Map(players.map((p) => [p.id, p]))
   const res = new Map<string, AjusteJugador>()
-  const total = (id: string) => res.get(id)?.total ?? 0
-  const nivel = (id: string) => {
-    const p = porId.get(id)
-    return (p ? weightedRatings(p) : 5) + total(id)
+  // Acumulado de los partidos ANTERIORES a la puesta a cero: ya no suma a la nota,
+  // pero da el nivel de esos partidos, para que el histórico salga igual que antes.
+  const previo = new Map<string, number>()
+  const anteriorAlCero = (id: string, fecha: number) => {
+    const desde = porId.get(id)?.ajusteDesde
+    return desde != null && fecha < desde
   }
-  const media = (ids: string[]) => ids.reduce((s, id) => s + nivel(id), 0) / ids.length
+  const acumulado = (id: string, fecha: number) =>
+    anteriorAlCero(id, fecha) ? previo.get(id) ?? 0 : res.get(id)?.total ?? 0
+  const nivel = (id: string, fecha: number) => {
+    const p = porId.get(id)
+    return (p ? weightedRatings(p) : 5) + acumulado(id, fecha)
+  }
+  const media = (ids: string[], fecha: number) =>
+    ids.reduce((s, id) => s + nivel(id, fecha), 0) / ids.length
 
   const jugados = lineups
     .filter((l) => l.resultado && cuentaParaAjuste(l) && l.teamA.length && l.teamB.length)
@@ -98,19 +117,20 @@ export function calcularAjustes(
 
   for (const l of jugados) {
     const { golesA, golesB } = l.resultado!
-    const esperadoA = 1 / (1 + 10 ** (-(media(l.teamA) - media(l.teamB)) / ESCALA_ELO))
+    const esperadoA = 1 / (1 + 10 ** (-(media(l.teamA, l.fecha) - media(l.teamB, l.fecha)) / ESCALA_ELO))
     const realA = golesA > golesB ? 1 : golesA < golesB ? 0 : 0.5
     const goles = 1 + FACTOR_GOLES * Math.min(Math.abs(golesA - golesB), MAX_DIF_GOLES)
     const deltaA = (l.eloK ?? kActual) * goles * (realA - esperadoA)
     const temporada = temporadaDe(l.fecha)
 
     const aplicar = (id: string, delta: number) => {
-      // Puesto a cero por el admin después de este partido → no cuenta para él.
-      const desde = porId.get(id)?.ajusteDesde
-      if (desde != null && l.fecha < desde) return
       const acc = res.get(id) ?? { total: 0, porTemporada: new Map<string, number>() }
-      acc.total += delta
-      acc.porTemporada.set(temporada, (acc.porTemporada.get(temporada) ?? 0) + delta)
+      const conBonus = delta + BONUS_PARTIDO
+      // El histórico por temporada cuenta siempre, para ver cómo acabó cada una.
+      acc.porTemporada.set(temporada, (acc.porTemporada.get(temporada) ?? 0) + conBonus)
+      // Puesto a cero por el admin después de este partido → no suma a su nota.
+      if (anteriorAlCero(id, l.fecha)) previo.set(id, (previo.get(id) ?? 0) + conBonus)
+      else acc.total += conBonus
       res.set(id, acc)
     }
     for (const id of l.teamA) aplicar(id, deltaA)

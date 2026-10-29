@@ -90,7 +90,8 @@ export function StatsPanel() {
   const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr), [statsArr])
 
   // Ajuste por resultados: en «Totales», el acumulado (el que lleva la nota); en una
-  // temporada, solo lo ganado o perdido en ella. El ajuste no se reinicia por
+  // temporada, solo lo ganado o perdido en ella (aunque el admin lo haya puesto a cero
+  // después: queda como histórico). La nota no se reinicia sola por
   // temporada, pero así cada temporada tiene su propia clasificación.
   const ajustes = useMemo(() => calcularAjustes(lineups, players, eloK), [lineups, players, eloK])
   const ajusteDe = (id: string) => {

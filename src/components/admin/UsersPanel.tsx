@@ -355,7 +355,7 @@ export function UsersPanel() {
           onClick={async () => {
             if (
               !confirm(
-                '¿Poner a cero el ajuste de TODOS los jugadores? Su nota vuelve a ser solo la valoración del grupo (pensado para después de una revaloración). No se puede deshacer.',
+                '¿Poner a cero el ajuste de TODOS los jugadores? Su nota vuelve a ser solo la valoración del grupo (pensado para el inicio de temporada o tras una revaloración). Lo ganado hasta ahora sigue en Estadísticas, en su temporada. No se puede deshacer.',
               )
             )
               return
