@@ -71,6 +71,26 @@ export async function setEloK(k: number): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Desde cuándo (ms) todos parten de 5 para el reparto; null = desactivado. Tolera
+ * el fallo igual que `fetchEloK`: sin la columna, la opción queda desactivada.
+ */
+export async function fetchBaseCincoDesde(): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('rotation')
+    .select('base_cinco_desde')
+    .eq('id', 1)
+    .maybeSingle()
+  const v = (data as { base_cinco_desde?: number | string | null } | null)?.base_cinco_desde
+  return error || v == null || !Number.isFinite(Number(v)) ? null : Number(v)
+}
+
+/** Activa (con el instante) o desactiva (null) «todos parten de 5» (solo admin, vía RPC). */
+export async function setBaseCincoDesde(desde: number | null): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_base_cinco_desde', { p_desde: desde })
+  if (error) throw error
+}
+
 /** Fija (o limpia con null → automática) el override de fecha del próximo partido (admin). */
 export async function saveMatchDate(matchDate: string | null): Promise<void> {
   const { error } = await supabase

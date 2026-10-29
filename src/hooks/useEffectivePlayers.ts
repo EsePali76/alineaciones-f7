@@ -4,7 +4,7 @@ import { useRatingsStore } from '../store/ratingsStore'
 import { useLineupsStore } from '../store/lineupsStore'
 import { useRotationStore } from '../store/rotationStore'
 import { computeAnimo } from '../domain/animo'
-import { calcularAjustes } from '../domain/ajuste'
+import { BASE_COMUN, calcularAjustes } from '../domain/ajuste'
 import type { Player } from '../domain/types'
 
 /**
@@ -21,6 +21,7 @@ export function useEffectivePlayers(): Player[] {
   const averages = useRatingsStore((s) => s.averages)
   const lineups = useLineupsStore((s) => s.lineups)
   const eloK = useRotationStore((s) => s.eloK)
+  const baseCincoDesde = useRotationStore((s) => s.baseCincoDesde)
   return useMemo(() => {
     const conVotos = players.map((p) => {
       const avg = averages.get(p.id)
@@ -29,7 +30,9 @@ export function useEffectivePlayers(): Player[] {
       return { ...p, ratings, animoCalculado: computeAnimo(p.id, lineups) }
     })
     // El ajuste necesita las valoraciones ya resueltas (nivel de cada equipo).
-    const ajustes = calcularAjustes(lineups, conVotos, eloK)
-    return conVotos.map((p) => ({ ...p, ajuste: ajustes.get(p.id)?.total ?? 0 }))
-  }, [players, averages, lineups, eloK])
+    const ajustes = calcularAjustes(lineups, conVotos, eloK, baseCincoDesde)
+    // «Todos parten de 5»: el reparto usa 5 + ajuste; `ratings` sigue siendo la del grupo.
+    const baseReparto = baseCincoDesde != null ? BASE_COMUN : undefined
+    return conVotos.map((p) => ({ ...p, ajuste: ajustes.get(p.id)?.total ?? 0, baseReparto }))
+  }, [players, averages, lineups, eloK, baseCincoDesde])
 }

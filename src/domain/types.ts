@@ -165,6 +165,11 @@ export interface Player {
    * `animoCalculado`: lo rellena `useEffectivePlayers`.
    */
   ajuste?: number
+  /**
+   * Nota base para el reparto cuando el admin activa «todos parten de 5» (`BASE_COMUN`);
+   * sin ella, la base es la valoración del grupo. Transitorio, como `ajuste`.
+   */
+  baseReparto?: number
 }
 
 /**

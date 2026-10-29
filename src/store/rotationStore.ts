@@ -56,6 +56,8 @@ interface RotationState {
   matchWeekdays: number[]
   /** K vigente del ajuste por resultados (la configura el admin en «Usuarios»). */
   eloK: number
+  /** Desde cuándo (ms) todos parten de 5 para el reparto; null = valoración del grupo. */
+  baseCincoDesde: number | null
   loaded: boolean
   load: () => Promise<void>
   /** "Este partido no se juega": empuja la fecha a la jornada siguiente (admin). NO toca la cola. */
@@ -66,6 +68,8 @@ interface RotationState {
   fijarDiasSemana: (dows: number[]) => Promise<void>
   /** Cambia la K del ajuste por resultados (admin). Solo afecta a los resultados que se registren después. */
   setEloK: (k: number) => Promise<void>
+  /** Activa (true → desde ahora) o desactiva «todos parten de 5» (admin). */
+  setBaseCinco: (on: boolean) => Promise<void>
   /**
    * Pasa turno (lo llama el del turno) o avanza (admin). Conserva el sitio del que pasa.
    * `turnoId` = el de turno según `useTurno` (con el filtro de valoraciones aplicado).
@@ -110,14 +114,17 @@ export const useRotationStore = create<RotationState>((set, get) => ({
   matchDate: null,
   matchWeekdays: [...DIAS_PARTIDO_DEFECTO],
   eloK: K_DEFECTO,
+  baseCincoDesde: null,
   loaded: false,
 
   load: async () => {
     const { rotation, ratingsOpen, ratingsDeadline, requireRatings, matchDate, matchWeekdays } =
       await api.fetchRotation()
     const eloK = await api.fetchEloK()
+    const baseCincoDesde = await api.fetchBaseCincoDesde()
     set({
       eloK,
+      baseCincoDesde,
       data: rotation,
       ratingsOpen,
       ratingsDeadline,
@@ -181,6 +188,18 @@ export const useRotationStore = create<RotationState>((set, get) => ({
       await api.setEloK(k)
     } catch (e) {
       set({ eloK: prev })
+      throw e
+    }
+  },
+
+  setBaseCinco: async (on) => {
+    const prev = get().baseCincoDesde
+    const desde = on ? Date.now() : null
+    set({ baseCincoDesde: desde })
+    try {
+      await api.setBaseCincoDesde(desde)
+    } catch (e) {
+      set({ baseCincoDesde: prev })
       throw e
     }
   },

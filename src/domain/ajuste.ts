@@ -51,6 +51,14 @@ export const K_DEFECTO = 0.3
  */
 export const BONUS_PARTIDO = 0.02
 
+/**
+ * Nota de partida igual para todos con la opción «todos parten de 5» (la activa el
+ * admin; decisión de Santi, 2026-10-29). Desde que se activa, la base del reparto y
+ * del nivel de cada partido es esta en vez de la valoración del grupo, que se sigue
+ * guardando y viendo para comparar. Los partidos anteriores no cambian.
+ */
+export const BASE_COMUN = 5
+
 /** Diferencia de nivel medio (escala 0-10) que da un 10:1 de probabilidad. */
 const ESCALA_ELO = 2
 
@@ -86,12 +94,14 @@ export interface AjusteJugador {
 /**
  * Ajuste de cada jugador, recorriendo los partidos en orden. El nivel de cada
  * equipo usa la valoración ACTUAL de cada jugador más su ajuste acumulado hasta ese
- * partido (las valoraciones de entonces no se guardan).
+ * partido (las valoraciones de entonces no se guardan). En los partidos desde
+ * `baseCincoDesde` (ms), la valoración se sustituye por `BASE_COMUN`.
  */
 export function calcularAjustes(
   lineups: ConfirmedLineup[],
   players: Player[],
   kActual: number,
+  baseCincoDesde: number | null = null,
 ): Map<string, AjusteJugador> {
   const porId = new Map(players.map((p) => [p.id, p]))
   const res = new Map<string, AjusteJugador>()
@@ -106,7 +116,9 @@ export function calcularAjustes(
     anteriorAlCero(id, fecha) ? previo.get(id) ?? 0 : res.get(id)?.total ?? 0
   const nivel = (id: string, fecha: number) => {
     const p = porId.get(id)
-    return (p ? weightedRatings(p) : 5) + acumulado(id, fecha)
+    const base =
+      baseCincoDesde != null && fecha >= baseCincoDesde ? BASE_COMUN : p ? weightedRatings(p) : 5
+    return base + acumulado(id, fecha)
   }
   const media = (ids: string[], fecha: number) =>
     ids.reduce((s, id) => s + nivel(id, fecha), 0) / ids.length

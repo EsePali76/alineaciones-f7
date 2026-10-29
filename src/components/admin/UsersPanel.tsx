@@ -28,6 +28,8 @@ export function UsersPanel() {
   const setRequireRatings = useRotationStore((s) => s.setRequireRatings)
   const eloK = useRotationStore((s) => s.eloK)
   const setEloK = useRotationStore((s) => s.setEloK)
+  const baseCincoDesde = useRotationStore((s) => s.baseCincoDesde)
+  const setBaseCinco = useRotationStore((s) => s.setBaseCinco)
   const [kEdit, setKEdit] = useState('')
   const progress = useRatingsStore((s) => s.progress)
 
@@ -369,6 +371,40 @@ export function UsersPanel() {
           className="rounded border border-red-600 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-600/10"
         >
           Poner a cero el ajuste de todos
+        </button>
+      </div>
+
+      {/* «Todos parten de 5» (ver BASE_COMUN en domain/ajuste.ts). */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-slate-200">Todos parten de 5</span>
+          <span className="text-xs text-slate-500">
+            {baseCincoDesde != null
+              ? `Activo desde el ${new Date(baseCincoDesde).toLocaleDateString('es-ES')}: los equipos se reparten con 5 + ajuste. La valoración de los usuarios se sigue viendo para comparar.`
+              : 'Apagado, los equipos se reparten con la valoración de los usuarios + ajuste.'}
+          </span>
+        </div>
+        <button
+          onClick={() => {
+            const on = baseCincoDesde == null
+            if (
+              !confirm(
+                on
+                  ? '¿Activar «todos parten de 5»? Desde ahora los equipos se reparten con 5 + ajuste para todos. Los partidos ya jugados no cambian. Lo normal es activarlo justo después de poner a cero el ajuste al empezar temporada.'
+                  : '¿Desactivar «todos parten de 5»? Se vuelve a repartir con la valoración de los usuarios, y el ajuste de los partidos jugados con la opción activa se recalcula con ella.',
+              )
+            )
+              return
+            setBaseCinco(on).catch(() => setError('No se pudo cambiar la opción.'))
+          }}
+          className={
+            'ml-auto rounded px-3 py-1.5 text-sm font-medium transition-colors ' +
+            (baseCincoDesde != null
+              ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+              : 'border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400')
+          }
+        >
+          {baseCincoDesde != null ? '● Activado' : '○ Desactivado'}
         </button>
       </div>
     </div>

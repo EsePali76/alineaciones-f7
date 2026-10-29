@@ -53,7 +53,8 @@ export function weightedRatings(player: Player, weights: ScoreWeights = DEFAULT_
 /**
  * Puntaje de un jugador en escala 0-10, para el reparto: la valoración del grupo
  * (`weightedRatings`) MÁS el ajuste por resultados (`domain/ajuste.ts`), que adjunta
- * `useEffectivePlayers`.
+ * `useEffectivePlayers`. Con «todos parten de 5» activo, la base es `baseReparto` (5)
+ * en vez de la valoración del grupo.
  *
  * Antes había tres métodos (valoraciones / resultados / mixto) y un modificador de
  * ánimo de ±0,5. Se quitaron el 2026-10-22: el ajuste ya mide los resultados, y con
@@ -64,7 +65,10 @@ export function weightedRatings(player: Player, weights: ScoreWeights = DEFAULT_
  * así que sumarla otra vez sería contarla dos veces. Se guarda solo como dato.
  */
 export function playerScore(player: Player, opts: ScoreOptions = {}): number {
-  return weightedRatings(player, opts.weights ?? DEFAULT_WEIGHTS) + (player.ajuste ?? 0)
+  return (
+    (player.baseReparto ?? weightedRatings(player, opts.weights ?? DEFAULT_WEIGHTS)) +
+    (player.ajuste ?? 0)
+  )
 }
 
 /** Líneas de campo a grandes rasgos, para equilibrar el reparto por zonas. */

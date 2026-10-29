@@ -29,6 +29,7 @@ type JugSortKey =
   | 'partidos'
   | 'victorias'
   | 'valoracion'
+  | 'valUsuarios'
   | 'ajuste'
   | 'pctVictorias'
   | 'racha'
@@ -41,6 +42,8 @@ export function StatsPanel() {
   const lineups = useLineupsStore((s) => s.lineups)
   const players = useEffectivePlayers()
   const eloK = useRotationStore((s) => s.eloK)
+  const baseCincoDesde = useRotationStore((s) => s.baseCincoDesde)
+  const baseCinco = baseCincoDesde != null
   const [sub, setSub] = useState<Sub>('jugador')
   const [modo, setModo] = useState<Modo>('temporada')
   const [jugSort, setJugSort] = useState<JugSortKey>('valoracion')
@@ -93,7 +96,10 @@ export function StatsPanel() {
   // temporada, solo lo ganado o perdido en ella (aunque el admin lo haya puesto a cero
   // después: queda como histórico). La nota no se reinicia sola por
   // temporada, pero así cada temporada tiene su propia clasificación.
-  const ajustes = useMemo(() => calcularAjustes(lineups, players, eloK), [lineups, players, eloK])
+  const ajustes = useMemo(
+    () => calcularAjustes(lineups, players, eloK, baseCincoDesde),
+    [lineups, players, eloK, baseCincoDesde],
+  )
   const ajusteDe = (id: string) => {
     const a = ajustes.get(id)
     return modo === 'totales' ? a?.total ?? 0 : a?.porTemporada.get(temporadaSel) ?? 0
@@ -102,9 +108,15 @@ export function StatsPanel() {
   // Valoración CON el ajuste acumulado ya sumado: la nota con la que se reparte hoy
   // (aunque se mire una temporada pasada). Se enseña aquí para que la gente se pique
   // por superar a los demás; en Plantel sigue saliendo la del grupo, sin ajuste.
+  // Con «todos parten de 5», la base es 5 y al lado sale la de los usuarios, para
+  // comparar a final de temporada lo que dan los resultados con lo que vota el grupo.
   const valoracionDe = (id: string) => {
     const p = players.find((pl) => pl.id === id)
-    return p ? weightedRatings(p) + (ajustes.get(id)?.total ?? 0) : undefined
+    return p ? (p.baseReparto ?? weightedRatings(p)) + (ajustes.get(id)?.total ?? 0) : undefined
+  }
+  const valoracionUsuariosDe = (id: string) => {
+    const p = players.find((pl) => pl.id === id)
+    return p ? weightedRatings(p) : undefined
   }
 
   const nombre = (id: string) => nombreVisible(players.find((p) => p.id === id))
@@ -122,6 +134,8 @@ export function StatsPanel() {
           return s.victorias
         case 'valoracion':
           return valoracionDe(s.playerId) ?? 0
+        case 'valUsuarios':
+          return valoracionUsuariosDe(s.playerId) ?? 0
         case 'ajuste':
           return ajusteDe(s.playerId)
         case 'pctVictorias':
@@ -150,7 +164,7 @@ export function StatsPanel() {
     })
     // `nombre` depende de `players`; se incluye vía statsArr/jugSort.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statsArr, jugSort, jugDir, modo, ajustes, temporadaSel, players])
+  }, [statsArr, jugSort, jugDir, modo, ajustes, temporadaSel, players, baseCinco])
 
   return (
     <div className="flex flex-col gap-4">
@@ -271,11 +285,21 @@ export function StatsPanel() {
                     Ajuste{jugArrow('ajuste')}
                   </button>
                 </th>
-                <th className="px-2 py-2 text-center font-medium" title="Valoración del grupo con el ajuste ya sumado">
+                <th
+                  className="px-2 py-2 text-center font-medium"
+                  title={baseCinco ? '5 + ajuste: la nota con la que se reparte' : 'Valoración del grupo con el ajuste ya sumado'}
+                >
                   <button onClick={() => toggleJug('valoracion')} className="font-medium hover:text-slate-200">
                     Valoración{jugArrow('valoracion')}
                   </button>
                 </th>
+                {baseCinco && (
+                  <th className="px-2 py-2 text-center font-medium" title="Valoración que le da el grupo, sin ajuste (para comparar)">
+                    <button onClick={() => toggleJug('valUsuarios')} className="font-medium hover:text-slate-200">
+                      Val. usuarios{jugArrow('valUsuarios')}
+                    </button>
+                  </th>
+                )}
                 <th className="px-2 py-2 text-center font-medium" title="% de victorias">
                   <button onClick={() => toggleJug('pctVictorias')} className="font-medium hover:text-slate-200">
                     %V{jugArrow('pctVictorias')}
@@ -326,6 +350,11 @@ export function StatsPanel() {
                   <td className="px-2 py-2 text-center text-slate-300">
                     {valoracionDe(s.playerId)?.toFixed(2) ?? '—'}
                   </td>
+                  {baseCinco && (
+                    <td className="px-2 py-2 text-center text-slate-400">
+                      {valoracionUsuariosDe(s.playerId)?.toFixed(2) ?? '—'}
+                    </td>
+                  )}
                   <td className="px-2 py-2 text-center text-slate-300">{s.pctVictorias}%</td>
                   <td className="px-2 py-2 whitespace-nowrap text-center">
                     {modo === 'totales' ? mejoresRachas(s.mejorRachaV, s.peorRachaD) : rachaTexto(s.racha)}
