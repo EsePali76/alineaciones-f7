@@ -1,6 +1,7 @@
 import type { Player } from './types'
 import { nombreVisible } from './types'
 import type { TeamBalance } from './balancer'
+import { probabilidadEquipos } from './ajuste'
 
 /** Etiqueta corta de un jugador: "Nombre (POS)", con asterisco si es invitado. */
 function playerLine(p: Player): string {
@@ -11,7 +12,7 @@ function playerLine(p: Player): string {
 /** Genera el texto listo para pegar en WhatsApp con los dos equipos. */
 export function formatForWhatsApp(balance: TeamBalance, fecha = new Date()): string {
   const f = fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  const pctA = Math.round(balance.balancePctA)
+  const pctA = Math.round(probabilidadEquipos(balance.teamA, balance.teamB) * 100)
   const pctB = 100 - pctA
 
   const sortByName = (a: Player, b: Player) => nombreVisible(a).localeCompare(nombreVisible(b))
@@ -27,6 +28,6 @@ export function formatForWhatsApp(balance: TeamBalance, fecha = new Date()): str
     `🔴 EQUIPO B (nivel ${balance.scoreB.toFixed(1)})`,
     lineasB,
     '━━━━━━━━━━━━━━',
-    `⚖️ Equilibrio: ${pctA}% / ${pctB}%`,
+    `⚖️ Prob. victoria: ⚪ ${pctA}% / 🔴 ${pctB}%`,
   ].join('\n')
 }

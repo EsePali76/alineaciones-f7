@@ -5,13 +5,14 @@ import { usePlayersStore } from '../store/playersStore'
 import { useRotationStore } from '../store/rotationStore'
 import { useAuthStore } from '../store/authStore'
 import { useTurno } from '../hooks/useTurno'
-import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
+import { useEffectivePlayers, useSimulacionAjustes } from '../hooks/useEffectivePlayers'
 import { mvpEfectivo } from '../domain/animo'
 import { goleadoresDe, asistenciasDe } from '../domain/result'
 import { temporadaDe } from '../domain/season'
 import { evaluatePartition } from '../domain/balancer'
 import { formacionPorNombre } from '../domain/formation'
 import { FieldView } from './FieldView'
+import { ProbabilidadBar } from './ProbabilidadBar'
 import type { ConfirmedLineup, GoalEvent, MatchResult, Player } from '../domain/types'
 import { nombreVisible } from '../domain/types'
 
@@ -19,6 +20,8 @@ export function HistoryList() {
   const lineups = useLineupsStore((s) => s.lineups)
   const players = usePlayersStore((s) => s.players)
   const isAdmin = useAuthStore((s) => s.isAdmin)
+  // Una sola simulación para toda la lista (la probabilidad de cada partido).
+  const sim = useSimulacionAjustes()
 
   const nombrePorId = useMemo(() => {
     const m = new Map<string, string>()
@@ -94,7 +97,13 @@ export function HistoryList() {
             </button>
             {open &&
               partidos.map((lu) => (
-                <MatchCard key={lu.id} lineup={lu} isAdmin={isAdmin} nombre={nombre} />
+                <MatchCard
+                  key={lu.id}
+                  lineup={lu}
+                  isAdmin={isAdmin}
+                  nombre={nombre}
+                  probA={sim.partidos.get(lu.id)?.probA}
+                />
               ))}
           </div>
         )
@@ -103,19 +112,27 @@ export function HistoryList() {
   )
 }
 
-/** Tarjeta de un partido: colapsada muestra fecha + marcador + MVP; desplegada, todo. */
-function MatchCard({
+/**
+ * Tarjeta de un partido: colapsada muestra fecha + marcador + MVP; desplegada, todo.
+ * También la usa la ficha del jugador (desplegada y sin controles de admin).
+ */
+export function MatchCard({
   lineup,
   isAdmin,
   nombre,
+  probA,
+  abiertaInicial = false,
 }: {
   lineup: ConfirmedLineup
   isAdmin: boolean
   nombre: (id: string) => string
+  /** Probabilidad de victoria de ⚪ según el nivel de ese momento (ver `simularAjustes`). */
+  probA?: number
+  abiertaInicial?: boolean
 }) {
   const removeLineup = useLineupsStore((s) => s.removeLineup)
   const setFecha = useLineupsStore((s) => s.setFecha)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(abiertaInicial)
   const r = lineup.resultado
   const mvpId = r ? mvpEfectivo(lineup) : null
   const ganaA = !!r && r.golesA > r.golesB
@@ -149,6 +166,7 @@ function MatchCard({
         ) : (
           <span className="text-sm text-slate-500">Sin resultado</span>
         )}
+        {probA != null && <ProbabilidadBar probA={probA} compacta />}
         {mvpId && (
           <span className="text-sm text-amber-400">
             🏆 MVP: <span className="font-semibold text-emerald-400">{nombre(mvpId)}</span>

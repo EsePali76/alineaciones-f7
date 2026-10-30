@@ -13,6 +13,8 @@ import { playerScore, type ScoreOptions } from '../domain/scoring'
 import { formacionesDe, formacionPorNombre, balancePorterias, type Formacion } from '../domain/formation'
 import { parseISO, partidoPasado, toISO } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
+import { ProbabilidadBar } from './ProbabilidadBar'
+import { probabilidadEquipos } from '../domain/ajuste'
 import { Avatar } from './Avatar'
 import { QuickGuestForm } from './QuickGuestForm'
 import { usePlayersStore, type PlayerInput } from '../store/playersStore'
@@ -735,8 +737,7 @@ function BalanceResult({
   /** Criterio con el que se puntúa (para ordenar cada equipo igual que se repartió). */
   scoreOpts: ScoreOptions
 }) {
-  const pctA = Math.round(balance.balancePctA)
-  const pctB = 100 - pctA
+  const probA = probabilidadEquipos(balance.teamA, balance.teamB)
   const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const fieldRef = useRef<HTMLDivElement>(null)
@@ -883,18 +884,9 @@ function BalanceResult({
         </div>
       )}
 
-      {/* Barra de equilibrio */}
-      <div>
-        <div className="flex h-3 overflow-hidden rounded-full">
-          <div className="bg-white" style={{ width: `${pctA}%` }} />
-          <div className="bg-red-500" style={{ width: `${pctB}%` }} />
-        </div>
-        {/* Solo el reparto en %. La diferencia de nivel en crudo es un número del
-            algoritmo: sigue estando en el desglose de admin, no en la vista de todos. */}
-        <p className="mt-1 text-center text-sm text-slate-400">
-          Equilibrio {pctA}% / {pctB}%
-        </p>
-      </div>
+      {/* Probabilidad de victoria (la del ajuste). El antiguo «Equilibrio» (reparto del
+          nivel total) queda solo en el desglose de admin. */}
+      <ProbabilidadBar probA={probA} />
 
       {/* Pista de uso (fuera de fieldRef para que NO salga en la imagen exportada) */}
       <p className="rounded-md border border-sky-500/50 bg-sky-900/30 px-3 py-2 text-center text-sm font-medium text-sky-200">
@@ -934,6 +926,10 @@ function BalanceResult({
         <summary className="cursor-pointer select-none">Detalle del equilibrado</summary>
         <ul className="mt-2 list-inside list-disc space-y-1">
           <li>Diferencia de nivel total: {balance.breakdown.score.toFixed(2)} puntos</li>
+          <li>
+            Reparto del nivel total (antiguo «Equilibrio»): {Math.round(balance.balancePctA)}% /{' '}
+            {100 - Math.round(balance.balancePctA)}%
+          </li>
           <li>Desequilibrio por líneas (DEF/MED/ATA): {balance.breakdown.posicion}</li>
           <li>Diferencia de zurdos: {balance.breakdown.pierna}</li>
           <li>Repetición de parejas (historial): {balance.breakdown.repeticion.toFixed(2)}</li>
@@ -972,7 +968,7 @@ function TeamColumn({
       <div className="mb-2 flex items-center justify-between">
         <h3 className="font-semibold">{title}</h3>
         <span className="text-sm text-slate-400">
-          nivel {score.toFixed(1)} · {team.length} jug.
+          nivel medio {team.length ? (score / team.length).toFixed(2) : '—'} · {team.length} jug.
         </span>
       </div>
       <ul className="flex flex-col gap-1 text-sm">

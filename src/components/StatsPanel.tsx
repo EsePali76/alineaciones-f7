@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useLineupsStore } from '../store/lineupsStore'
-import { useEffectivePlayers } from '../hooks/useEffectivePlayers'
+import { useEffectivePlayers, useSimulacionAjustes } from '../hooks/useEffectivePlayers'
 import { useRotationStore } from '../store/rotationStore'
-import { calcularAjustes } from '../domain/ajuste'
 import { weightedRatings } from '../domain/scoring'
 import { AjusteFlecha } from './AjusteFlecha'
+import { FichaJugador } from './FichaJugador'
+import { TablaAjuste } from './TablaAjuste'
 import {
   statsPorEquipo,
   statsPorJugador,
@@ -41,13 +42,16 @@ type SortDir = 'asc' | 'desc'
 export function StatsPanel() {
   const lineups = useLineupsStore((s) => s.lineups)
   const players = useEffectivePlayers()
-  const eloK = useRotationStore((s) => s.eloK)
   const baseCincoDesde = useRotationStore((s) => s.baseCincoDesde)
   const baseCinco = baseCincoDesde != null
   const [sub, setSub] = useState<Sub>('jugador')
   const [modo, setModo] = useState<Modo>('temporada')
   const [jugSort, setJugSort] = useState<JugSortKey>('valoracion')
   const [jugDir, setJugDir] = useState<SortDir>('desc')
+  /** Jugador cuya ficha está abierta (se abre pinchando en su nombre). */
+  const [ficha, setFicha] = useState<string | null>(null)
+  /** Tabla «¿Cómo se calcula el ajuste?» desplegada. */
+  const [verTabla, setVerTabla] = useState(false)
 
   /** Cambia de columna (texto→asc, números→desc) o alterna dirección si ya está activa. */
   const toggleJug = (key: JugSortKey) => {
@@ -92,20 +96,14 @@ export function StatsPanel() {
   const masGoleadores = useMemo(() => equiposMasGoleadores(statsArr), [statsArr])
   const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr), [statsArr])
 
-  // Ajuste por resultados: en «Totales», el acumulado (el que lleva la nota); en una
-  // temporada, solo lo ganado o perdido en ella (aunque el admin lo haya puesto a cero
-  // después: queda como histórico). La nota no se reinicia sola por
-  // temporada, pero así cada temporada tiene su propia clasificación.
-  const ajustes = useMemo(
-    () => calcularAjustes(lineups, players, eloK, baseCincoDesde),
-    [lineups, players, eloK, baseCincoDesde],
-  )
-  const ajusteDe = (id: string) => {
-    const a = ajustes.get(id)
-    return modo === 'totales' ? a?.total ?? 0 : a?.porTemporada.get(temporadaSel) ?? 0
-  }
+  // Ajuste por resultados: solo por temporada, lo ganado o perdido en ella (aunque el
+  // admin lo haya puesto a cero después: queda como histórico). En «Totales» no se
+  // enseña (decisión de Santi, 2026-10-30): se pone a cero cada temporada y sumar o
+  // promediar temporadas con valoraciones distintas no significa nada.
+  const ajustes = useSimulacionAjustes().jugadores
+  const ajusteDe = (id: string) => ajustes.get(id)?.porTemporada.get(temporadaSel) ?? 0
 
-  // Valoración CON el ajuste acumulado ya sumado: la nota con la que se reparte hoy
+  // Nivel = valoración CON el ajuste acumulado ya sumado: la nota con la que se reparte hoy
   // (aunque se mire una temporada pasada). Se enseña aquí para que la gente se pique
   // por superar a los demás; en Plantel sigue saliendo la del grupo, sin ajuste.
   // Con «todos parten de 5», la base es 5 y al lado sale la de los usuarios, para
@@ -173,7 +171,14 @@ export function StatsPanel() {
         <SubTab active={modo === 'temporada'} onClick={() => setModo('temporada')}>
           Por temporada
         </SubTab>
-        <SubTab active={modo === 'totales'} onClick={() => setModo('totales')}>
+        <SubTab
+          active={modo === 'totales'}
+          onClick={() => {
+            setModo('totales')
+            // La columna Ajuste no existe en Totales: si se ordenaba por ella, al Nivel.
+            if (jugSort === 'ajuste') setJugSort('valoracion')
+          }}
+        >
           Totales
         </SubTab>
       </div>
@@ -258,6 +263,24 @@ export function StatsPanel() {
           )}
 
           {sub === 'jugador' && (
+        <>
+        <div className="-mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-slate-400">👆 Toca un jugador para ver su ficha.</p>
+          {/* Solo por temporada: el ajuste se pone a cero cada temporada. */}
+          {modo === 'temporada' && (
+            <button
+              onClick={() => setVerTabla((v) => !v)}
+              className="ml-auto rounded border border-sky-600 px-3 py-1 text-xs font-medium text-sky-300 hover:bg-sky-600/10"
+            >
+              {verTabla ? '✕ Cerrar' : '¿Cómo se calcula el ajuste?'}
+            </button>
+          )}
+        </div>
+        {modo === 'temporada' && verTabla && (
+          <div className="mt-2">
+            <TablaAjuste />
+          </div>
+        )}
         <div className="overflow-x-auto rounded-lg border border-slate-700">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -277,26 +300,30 @@ export function StatsPanel() {
                     V-E-D{jugArrow('victorias')}
                   </button>
                 </th>
+                {/* En Totales no hay Ajuste: se pone a cero cada temporada y una suma o media
+                    de temporadas con valoraciones distintas no significa nada. */}
+                {modo === 'temporada' && (
+                  <th
+                    className="px-2 py-2 text-center font-medium"
+                    title="Lo que ha subido o bajado su nivel esta temporada"
+                  >
+                    <button onClick={() => toggleJug('ajuste')} className="font-medium hover:text-slate-200">
+                      Ajuste{jugArrow('ajuste')}
+                    </button>
+                  </th>
+                )}
                 <th
                   className="px-2 py-2 text-center font-medium"
-                  title={modo === 'totales' ? 'Ajuste de su nota por resultados' : 'Lo que ha subido o bajado su nota esta temporada'}
-                >
-                  <button onClick={() => toggleJug('ajuste')} className="font-medium hover:text-slate-200">
-                    Ajuste{jugArrow('ajuste')}
-                  </button>
-                </th>
-                <th
-                  className="px-2 py-2 text-center font-medium"
-                  title={baseCinco ? '5 + ajuste: la nota con la que se reparte' : 'Valoración del grupo con el ajuste ya sumado'}
+                  title={baseCinco ? '5 + ajuste: con lo que se reparte hoy' : 'Valoración + ajuste: con lo que se reparte hoy'}
                 >
                   <button onClick={() => toggleJug('valoracion')} className="font-medium hover:text-slate-200">
-                    Valoración{jugArrow('valoracion')}
+                    Nivel{jugArrow('valoracion')}
                   </button>
                 </th>
                 {baseCinco && (
                   <th className="px-2 py-2 text-center font-medium" title="Valoración que le da el grupo, sin ajuste (para comparar)">
                     <button onClick={() => toggleJug('valUsuarios')} className="font-medium hover:text-slate-200">
-                      Val. usuarios{jugArrow('valUsuarios')}
+                      Valoración{jugArrow('valUsuarios')}
                     </button>
                   </th>
                 )}
@@ -335,18 +362,27 @@ export function StatsPanel() {
               {filas.map((s) => (
                 <tr key={s.playerId} className="border-t border-slate-700/60">
                   <td className="px-3 py-2 font-medium">
-                    <span className="flex items-center gap-2">
+                    <button
+                      onClick={() => setFicha(s.playerId)}
+                      className="group flex items-center gap-2 text-left"
+                      title="Ver su ficha: partidos, probabilidad y ajuste de cada uno"
+                    >
                       <Avatar src={foto(s.playerId)} alt={nombre(s.playerId)} className="h-6 w-6" />
-                      {nombre(s.playerId)}
-                    </span>
+                      <span className="underline decoration-slate-500 decoration-dotted underline-offset-4 group-hover:text-sky-300 group-hover:decoration-sky-300">
+                        {nombre(s.playerId)}
+                      </span>
+                      <span className="text-sky-400/70 group-hover:text-sky-300">›</span>
+                    </button>
                   </td>
                   <td className="px-2 py-2 text-center text-slate-300">{s.partidos}</td>
                   <td className="px-2 py-2 text-center text-slate-300">
                     {s.victorias}-{s.empates}-{s.derrotas}
                   </td>
-                  <td className="px-2 py-2 text-center">
-                    <AjusteFlecha valor={ajusteDe(s.playerId)} />
-                  </td>
+                  {modo === 'temporada' && (
+                    <td className="px-2 py-2 text-center">
+                      <AjusteFlecha valor={ajusteDe(s.playerId)} />
+                    </td>
+                  )}
                   <td className="px-2 py-2 text-center text-slate-300">
                     {valoracionDe(s.playerId)?.toFixed(2) ?? '—'}
                   </td>
@@ -370,8 +406,17 @@ export function StatsPanel() {
             </tbody>
           </table>
         </div>
+        </>
           )}
         </>
+      )}
+
+      {ficha && (
+        <FichaJugador
+          playerId={ficha}
+          temporadaInicial={modo === 'temporada' ? temporadaSel : undefined}
+          onClose={() => setFicha(null)}
+        />
       )}
     </div>
   )

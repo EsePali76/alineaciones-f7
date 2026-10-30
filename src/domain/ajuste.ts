@@ -1,5 +1,5 @@
 import type { ConfirmedLineup, Player } from './types'
-import { weightedRatings } from './scoring'
+import { playerScore, weightedRatings } from './scoring'
 import { parseISO } from './matchday'
 import { temporadaDe } from './season'
 
@@ -34,8 +34,9 @@ import { temporadaDe } from './season'
  *  - No se reinicia solo: lo pone a cero el admin (`Player.ajusteDesde`), en principio
  *    al empezar cada temporada (2026-10-29) o tras una revaloración. Lo de antes deja
  *    de sumar a la nota, pero sigue en `porTemporada` para Estadísticas.
- *  - Sin tope: el ELO se frena solo (al que baja, el equilibrador le pone mejores
- *    compañeros y su probabilidad de ganar sube).
+ *  - Al principio, sin tope (el ELO se frena solo: al que baja, el equilibrador le
+ *    pone mejores compañeros). Desde 2026-10-30, tope de ±2 y nota entre 4 y 10, como
+ *    red de seguridad (ver `AJUSTE_MAX`).
  *
  * Calibrado con los 17 partidos que había: con K 0,5 los extremos se mueven ±1 punto
  * por temporada y la mayoría, ±0,5. Con los 9 primeros de la 26/27, K 0,5 movía ya
@@ -66,8 +67,40 @@ export const BONUS_PARTIDO = 0.02
  */
 export const BASE_COMUN = 5
 
-/** Diferencia de nivel medio (escala 0-10) que da un 10:1 de probabilidad. */
+/**
+ * Límites (decisión de Santi, 2026-10-30): el ajuste no pasa de ±AJUSTE_MAX desde la
+ * última puesta a cero (en principio, la temporada) y la nota (base + ajuste) no sale
+ * de [NOTA_MIN, NOTA_MAX]. Al llegar al tope el ajuste deja de acumular en esa
+ * dirección (sin «puntos invisibles» que remontar) y se vuelve a mover en cuanto el
+ * resultado va en la otra. ±2 es lo que darían los extremos extrapolando la 26/27.
+ */
+export const AJUSTE_MAX = 2
+export const NOTA_MIN = 4
+export const NOTA_MAX = 10
+
+/**
+ * Diferencia de nivel medio (escala 0-10) que da un 10:1 de probabilidad. Se
+ * compararon 2, 3, 4 y 5 con los 10 primeros partidos de la 26/27 (2026-10-30): los
+ * cuatro aciertan casi igual; se queda en 2 toda la temporada para no recalcular.
+ */
 const ESCALA_ELO = 2
+
+/** Probabilidad (0..1) de que gane el equipo de nivel medio `mediaA` contra `mediaB`. */
+export function probabilidadVictoria(mediaA: number, mediaB: number): number {
+  return 1 / (1 + 10 ** (-(mediaA - mediaB) / ESCALA_ELO))
+}
+
+/** Diferencia de nivel medio que corresponde a una probabilidad de victoria (inversa). */
+export function diferenciaParaProbabilidad(prob: number): number {
+  return ESCALA_ELO * Math.log10(prob / (1 - prob))
+}
+
+/** Probabilidad de victoria de cada equipo (0..1) a partir de sus jugadores. */
+export function probabilidadEquipos(teamA: Player[], teamB: Player[]): number {
+  if (!teamA.length || !teamB.length) return 0.5
+  const media = (t: Player[]) => t.reduce((s, p) => s + playerScore(p), 0) / t.length
+  return probabilidadVictoria(media(teamA), media(teamB))
+}
 
 /**
  * Lo que vale el resultado para el GANADOR según la diferencia de goles: índice 0 =
@@ -108,20 +141,57 @@ export interface AjusteJugador {
   porTemporada: Map<string, number>
 }
 
-/**
- * Ajuste de cada jugador, recorriendo los partidos en orden. El nivel de cada
- * equipo usa la valoración ACTUAL de cada jugador más su ajuste acumulado hasta ese
- * partido (las valoraciones de entonces no se guardan). En los partidos desde
- * `baseCincoDesde` (ms), la valoración se sustituye por `BASE_COMUN`.
- */
+/** Lo que pasó en un partido según el ajuste (para la ficha del jugador y el historial). */
+export interface PartidoAjuste {
+  /** Nivel medio de cada equipo justo antes del partido (base + ajuste acumulado). */
+  mediaA: number
+  mediaB: number
+  /** Probabilidad de victoria del equipo A (0..1). La del B es 1 − esta. */
+  probA: number
+  /** Solo en partidos con resultado que cuentan para el ajuste: */
+  /** Δ de cada jugador, con el bonus y los límites ya aplicados. */
+  delta?: Map<string, number>
+  /** Nota de cada jugador justo después del partido (base + ajuste acumulado). */
+  notaDespues?: Map<string, number>
+}
+
+export interface SimulacionAjustes {
+  jugadores: Map<string, AjusteJugador>
+  /** Por id de alineación: todas las que tienen los dos equipos, con o sin resultado. */
+  partidos: Map<string, PartidoAjuste>
+}
+
+/** Ajuste de cada jugador (ver `simularAjustes`). */
 export function calcularAjustes(
   lineups: ConfirmedLineup[],
   players: Player[],
   kActual: number,
   baseCincoDesde: number | null = null,
 ): Map<string, AjusteJugador> {
+  return simularAjustes(lineups, players, kActual, baseCincoDesde).jugadores
+}
+
+/**
+ * Recorre los partidos en orden y calcula el ajuste de cada jugador y el detalle de
+ * cada partido. El nivel de cada equipo usa la valoración ACTUAL de cada jugador
+ * más su ajuste acumulado hasta ese partido (las valoraciones de entonces no se
+ * guardan; decisión de Santi, 2026-10-30: las valoraciones solo se reabren en agosto,
+ * entre temporadas, así que dentro de una temporada la actual es la de todos sus
+ * partidos). En los partidos desde `baseCincoDesde` (ms), la valoración se sustituye
+ * por `BASE_COMUN`.
+ *
+ * Las alineaciones sin resultado (o anteriores a `AJUSTE_DESDE`) también salen en
+ * `partidos`, con la probabilidad según el nivel de ese momento, pero no mueven nada.
+ */
+export function simularAjustes(
+  lineups: ConfirmedLineup[],
+  players: Player[],
+  kActual: number,
+  baseCincoDesde: number | null = null,
+): SimulacionAjustes {
   const porId = new Map(players.map((p) => [p.id, p]))
   const res = new Map<string, AjusteJugador>()
+  const partidos = new Map<string, PartidoAjuste>()
   // Acumulado de los partidos ANTERIORES a la puesta a cero: ya no suma a la nota,
   // pero da el nivel de esos partidos, para que el histórico salga igual que antes.
   const previo = new Map<string, number>()
@@ -131,41 +201,104 @@ export function calcularAjustes(
   }
   const acumulado = (id: string, fecha: number) =>
     anteriorAlCero(id, fecha) ? previo.get(id) ?? 0 : res.get(id)?.total ?? 0
-  const nivel = (id: string, fecha: number) => {
+  const base = (id: string, fecha: number) => {
     const p = porId.get(id)
-    const base =
-      baseCincoDesde != null && fecha >= baseCincoDesde ? BASE_COMUN : p ? weightedRatings(p) : 5
-    return base + acumulado(id, fecha)
+    return baseCincoDesde != null && fecha >= baseCincoDesde ? BASE_COMUN : p ? weightedRatings(p) : 5
   }
+  const nivel = (id: string, fecha: number) => base(id, fecha) + acumulado(id, fecha)
   const media = (ids: string[], fecha: number) =>
     ids.reduce((s, id) => s + nivel(id, fecha), 0) / ids.length
 
-  const jugados = lineups
-    .filter((l) => l.resultado && cuentaParaAjuste(l) && l.teamA.length && l.teamB.length)
+  const ordenados = lineups
+    .filter((l) => l.teamA.length && l.teamB.length)
     .sort((a, b) => a.fecha - b.fecha)
 
-  for (const l of jugados) {
-    const { golesA, golesB } = l.resultado!
-    const esperadoA = 1 / (1 + 10 ** (-(media(l.teamA, l.fecha) - media(l.teamB, l.fecha)) / ESCALA_ELO))
+  for (const l of ordenados) {
+    const mediaA = media(l.teamA, l.fecha)
+    const mediaB = media(l.teamB, l.fecha)
+    const esperadoA = probabilidadVictoria(mediaA, mediaB)
+    const partido: PartidoAjuste = { mediaA, mediaB, probA: esperadoA }
+    partidos.set(l.id, partido)
+    if (!l.resultado || !cuentaParaAjuste(l)) continue
+
+    const { golesA, golesB } = l.resultado
     const bruto = (l.eloK ?? kActual) * (resultadoA(golesA, golesB) - esperadoA)
     // Límite: el muy favorito que gana por la mínima no resta, ni el muy débil que
     // pierde por la mínima suma (se queda en 0; el bonus sí lo cobran).
     const deltaA =
       golesA > golesB ? Math.max(0, bruto) : golesA < golesB ? Math.min(0, bruto) : bruto
     const temporada = temporadaDe(l.fecha)
+    partido.delta = new Map()
+    partido.notaDespues = new Map()
 
     const aplicar = (id: string, delta: number) => {
       const acc = res.get(id) ?? { total: 0, porTemporada: new Map<string, number>() }
-      const conBonus = delta + BONUS_PARTIDO
+      const antes = anteriorAlCero(id, l.fecha)
+      const actual = antes ? previo.get(id) ?? 0 : acc.total
+      // Topes: ±AJUSTE_MAX y la nota dentro de [NOTA_MIN, NOTA_MAX]. Solo frenan en la
+      // dirección del movimiento: si alguien ya estuviera fuera (p. ej. porque cambió
+      // su valoración), no se le hace saltar al tope de golpe.
+      const b = base(id, l.fecha)
+      const hi = Math.min(AJUSTE_MAX, NOTA_MAX - b)
+      const lo = Math.max(-AJUSTE_MAX, NOTA_MIN - b)
+      const sinTope = actual + delta + BONUS_PARTIDO
+      const nuevo =
+        sinTope > actual
+          ? Math.max(actual, Math.min(sinTope, hi))
+          : Math.min(actual, Math.max(sinTope, lo))
+      const efectivo = nuevo - actual
       // El histórico por temporada cuenta siempre, para ver cómo acabó cada una.
-      acc.porTemporada.set(temporada, (acc.porTemporada.get(temporada) ?? 0) + conBonus)
+      acc.porTemporada.set(temporada, (acc.porTemporada.get(temporada) ?? 0) + efectivo)
       // Puesto a cero por el admin después de este partido → no suma a su nota.
-      if (anteriorAlCero(id, l.fecha)) previo.set(id, (previo.get(id) ?? 0) + conBonus)
-      else acc.total += conBonus
+      if (antes) previo.set(id, nuevo)
+      else acc.total = nuevo
       res.set(id, acc)
+      partido.delta!.set(id, efectivo)
+      partido.notaDespues!.set(id, b + nuevo)
     }
     for (const id of l.teamA) aplicar(id, deltaA)
     for (const id of l.teamB) aplicar(id, -deltaA)
   }
-  return res
+  return { jugadores: res, partidos }
+}
+
+/** Una fila de la tabla «¿Cómo se calcula el ajuste?». */
+export interface FilaTablaAjuste {
+  /** Texto del resultado desde el punto de vista del favorito. */
+  resultado: string
+  favorito: number
+  debil: number
+}
+
+/**
+ * Lo que gana o pierde el favorito y el débil, según el resultado, cuando el
+ * favorito tiene `probFav` (0,5..1) de ganar. Misma cuenta que `simularAjustes`
+ * (K, tramos de goles, límite de ganar/perder y bonus); sin los topes de ±2 y de la
+ * nota, que dependen de cada jugador.
+ */
+export function tablaAjuste(probFav: number, k: number): FilaTablaAjuste[] {
+  const delta = (real: number, esperado: number, gana: boolean | null) => {
+    const bruto = k * (real - esperado)
+    const limitado = gana === true ? Math.max(0, bruto) : gana === false ? Math.min(0, bruto) : bruto
+    return limitado + BONUS_PARTIDO
+  }
+  const porGoles = (n: number) => (n >= RESULTADO_POR_DIFERENCIA.length ? `${n} o más` : `${n}`)
+  const filas: FilaTablaAjuste[] = []
+  // El favorito gana por 1..5+, empate, el favorito pierde por 1..5+.
+  RESULTADO_POR_DIFERENCIA.forEach((w, i) =>
+    filas.push({
+      resultado: `Favorito gana por ${porGoles(i + 1)}`,
+      favorito: delta(w, probFav, true),
+      debil: delta(1 - w, 1 - probFav, false),
+    }),
+  )
+  filas.push({ resultado: 'Empate', favorito: delta(0.5, probFav, null), debil: delta(0.5, 1 - probFav, null) })
+  RESULTADO_POR_DIFERENCIA.forEach((w, i) =>
+    filas.push({
+      resultado: `Débil gana por ${porGoles(i + 1)}`,
+      favorito: delta(1 - w, probFav, false),
+      debil: delta(w, 1 - probFav, true),
+    }),
+  )
+  return filas
 }

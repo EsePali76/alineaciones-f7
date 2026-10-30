@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore'
 import { evaluatePartition } from '../domain/balancer'
 import { formacionPorNombre } from '../domain/formation'
 import { FieldView } from './FieldView'
+import { ProbabilidadBar } from './ProbabilidadBar'
+import { probabilidadEquipos } from '../domain/ajuste'
 import type { ConfirmedLineup, Player } from '../domain/types'
 import { nombreVisible } from '../domain/types'
 
@@ -60,6 +62,8 @@ export function ConfirmedLineupView({ lineup }: { lineup: ConfirmedLineup }) {
           )}
         </p>
       </div>
+
+      <ProbabilidadBar probA={probabilidadEquipos(teamA, teamB)} />
 
       {/* Campo (solo lectura) */}
       <FieldView
