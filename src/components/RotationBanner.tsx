@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTurno } from '../hooks/useTurno'
 import { useConvocatoria } from '../hooks/useConvocatoria'
 import { useAuthStore } from '../store/authStore'
@@ -110,6 +110,24 @@ export function RotationBanner() {
       await borrarse(myPlayerId)
     } catch {
       alert('No se pudo borrar tu apunte. Reintenta en un momento.')
+    }
+  }
+
+  // Admin/superuser: responde por un jugador que avisó fuera de la app (p.ej. WhatsApp).
+  const responderPor = async (playerId: string, status: SignupStatus) => {
+    try {
+      await apuntarse(playerId, status, fecha)
+    } catch {
+      alert('No se pudo guardar el apunte. Reintenta en un momento.')
+    }
+  }
+
+  // Admin/superuser: deshace el apunte y lo devuelve a "Sin contestar".
+  const quitarRespuesta = async (playerId: string) => {
+    try {
+      await borrarse(playerId)
+    } catch {
+      alert('No se pudo deshacer el apunte. Reintenta en un momento.')
     }
   }
 
@@ -400,10 +418,28 @@ export function RotationBanner() {
             {/* flex-wrap y no grid: en rejilla la fila de Convocados (13) estiraba la
                 altura y dejaba muy separadas las listas cortas de debajo. */}
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-10">
-              <ListaConvocatoria titulo="Convocados" color="text-emerald-400" ids={titulares.map((s) => s.player_id)} nombreDe={nombreDe} />
+              <ListaConvocatoria
+                titulo="Convocados"
+                color="text-emerald-400"
+                ids={titulares.map((s) => s.player_id)}
+                nombreDe={nombreDe}
+                acciones={isAdmin ? (id) => <BotonesAdmin id={id} baja deshacer onResponder={responderPor} onDeshacer={quitarRespuesta} /> : undefined}
+              />
               <ListaConvocatoria titulo="Reservas" color="text-amber-400" ids={reservas.map((s) => s.player_id)} nombreDe={nombreDe} />
-              <ListaConvocatoria titulo="Bajas" color="text-red-400" ids={noVienen.map((s) => s.player_id)} nombreDe={nombreDe} />
-              <ListaConvocatoria titulo="Sin contestar" color="text-slate-400" ids={sinContestar} nombreDe={nombreDe} />
+              <ListaConvocatoria
+                titulo="Bajas"
+                color="text-red-400"
+                ids={noVienen.map((s) => s.player_id)}
+                nombreDe={nombreDe}
+                acciones={isAdmin ? (id) => <BotonesAdmin id={id} convocar deshacer onResponder={responderPor} onDeshacer={quitarRespuesta} /> : undefined}
+              />
+              <ListaConvocatoria
+                titulo="Sin contestar"
+                color="text-slate-400"
+                ids={sinContestar}
+                nombreDe={nombreDe}
+                acciones={isAdmin ? (id) => <BotonesAdmin id={id} convocar baja onResponder={responderPor} /> : undefined}
+              />
             </div>
           </div>
         )}
@@ -450,11 +486,14 @@ function ListaConvocatoria({
   color,
   ids,
   nombreDe,
+  acciones,
 }: {
   titulo: string
   color: string
   ids: string[]
   nombreDe: (id: string) => string
+  /** Botones opcionales al lado de cada nombre (p.ej. admin respondiendo por otro). */
+  acciones?: (id: string) => ReactNode
 }) {
   if (ids.length === 0) return null
   return (
@@ -462,14 +501,67 @@ function ListaConvocatoria({
       <span className={`text-xs font-semibold uppercase tracking-wide ${color}`}>
         {titulo} ({ids.length})
       </span>
-      <ol className="mt-1 flex flex-col gap-0.5 text-sm text-slate-200">
+      <ol className={`mt-1 flex flex-col text-sm text-slate-200 ${acciones ? 'gap-1.5' : 'gap-0.5'}`}>
         {ids.map((id, i) => (
           <li key={id} className="flex items-center gap-2">
             <span className="w-5 shrink-0 text-right text-slate-500">{i + 1}.</span>
-            <span className="truncate">{nombreDe(id)}</span>
+            <span className={`truncate ${acciones ? 'flex-1' : ''}`}>{nombreDe(id)}</span>
+            {acciones && <span className="ml-1 flex shrink-0 gap-1.5">{acciones(id)}</span>}
           </li>
         ))}
       </ol>
     </div>
+  )
+}
+
+/**
+ * Botones del admin/superuser para responder por un jugador (p.ej. avisó por WhatsApp):
+ * ✓ lo convoca y ✕ lo da de baja. En cada lista solo sale el que tiene sentido
+ * (en Convocados, ✕; en Bajas, ✓; en Sin contestar, los dos). ↺ deshace el apunte y
+ * lo devuelve a "Sin contestar" (por si el admin se equivocó al pulsar).
+ */
+function BotonesAdmin({
+  id,
+  convocar = false,
+  baja = false,
+  deshacer = false,
+  onResponder,
+  onDeshacer,
+}: {
+  id: string
+  convocar?: boolean
+  baja?: boolean
+  deshacer?: boolean
+  onResponder: (playerId: string, status: SignupStatus) => void
+  onDeshacer?: (playerId: string) => void
+}) {
+  const base = 'flex h-6 w-6 items-center justify-center rounded border text-xs transition-colors'
+  return (
+    <>
+      {convocar && (
+        <button
+          onClick={() => onResponder(id, 'in')}
+          className={`${base} border-emerald-600/70 text-emerald-300 hover:bg-emerald-600/20`}
+        >
+          ✓
+        </button>
+      )}
+      {baja && (
+        <button
+          onClick={() => onResponder(id, 'out')}
+          className={`${base} border-red-600/70 text-red-300 hover:bg-red-600/20`}
+        >
+          ✕
+        </button>
+      )}
+      {deshacer && onDeshacer && (
+        <button
+          onClick={() => onDeshacer(id)}
+          className={`${base} border-slate-500/70 text-slate-300 hover:bg-slate-500/20`}
+        >
+          ↺
+        </button>
+      )}
+    </>
   )
 }
