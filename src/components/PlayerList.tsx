@@ -29,7 +29,7 @@ function mediaValoracion(p: Player): number {
   return weightedRatings(p)
 }
 
-type SortKey = 'nombre' | 'edad' | 'media'
+type SortKey = 'nombre' | 'edad' | 'media' | 'ajuste'
 type SortDir = 'asc' | 'desc'
 
 export function PlayerList({
@@ -69,6 +69,8 @@ export function PlayerList({
     let cmp: number
     if (sortKey === 'media') {
       cmp = mediaValoracion(a) - mediaValoracion(b)
+    } else if (sortKey === 'ajuste') {
+      cmp = (a.ajuste ?? 0) - (b.ajuste ?? 0)
     } else if (sortKey === 'edad') {
       // Sin edad siempre al final, independientemente de la dirección.
       // Se ordena por la edad MOSTRADA: cada jugador puede llevar un número
@@ -122,7 +124,12 @@ export function PlayerList({
                 </button>
               </th>
               <th className="px-3 py-2 font-medium" title="Por los resultados de sus partidos">
-                Ajuste
+                <button
+                  onClick={() => toggleSort('ajuste')}
+                  className="font-medium hover:text-slate-200"
+                >
+                  Ajuste{sortArrow('ajuste')}
+                </button>
               </th>
               <th className="px-3 py-2 font-medium">Ánimo</th>
               {isAdmin && <th className="px-3 py-2 font-medium"></th>}
