@@ -1,6 +1,7 @@
 import type { Player, ConfirmedLineup } from './types'
 import {
   playerScore,
+  weightedRatings,
   lineaPrincipal,
   esZurdo,
   DEFAULT_WEIGHTS,
@@ -16,6 +17,8 @@ import {
 export interface CostWeights {
   /** Diferencia de nivel total entre equipos (en puntos de score). */
   score: number
+  /** Diferencia de VALORACIÓN del grupo pura (sin ajuste ni base común) entre equipos. */
+  valoracion: number
   /** Desequilibrio en el reparto por líneas (DEF/MED/ATA). */
   posicion: number
   /** Desequilibrio en el nº de zurdos. */
@@ -26,6 +29,11 @@ export interface CostWeights {
 
 export const DEFAULT_COST_WEIGHTS: CostWeights = {
   score: 1.0,
+  // Decisión de Santi (2026-11-13): el reparto debe quedar parejo TAMBIÉN en la
+  // valoración pura, no solo en el nivel (valoración + ajuste). Si no, el ajuste puede
+  // compensar a los mejor valorados juntándolos en un equipo (pasó el 2026-11-12: 51/49
+  // en nivel con 0,33 de media de valoración de diferencia). Mismo peso que el nivel.
+  valoracion: 1.0,
   posicion: 0.4,
   pierna: 0.15,
   // "Equilibrado": secundario al equilibrio, pero suficiente para desempatar
@@ -57,6 +65,7 @@ function scoreOptionsDe(opts: BalanceOptions): ScoreOptions {
 
 export interface CostBreakdown {
   score: number
+  valoracion: number
   posicion: number
   pierna: number
   repeticion: number
@@ -158,8 +167,12 @@ function partitionCost(
   const zurdosB = teamB.filter(esZurdo).length
   const difPierna = Math.abs(zurdosA - zurdosB)
 
+  const valoracionDe = (team: Player[]) =>
+    team.reduce((sum, p) => sum + weightedRatings(p, scoreOpts.weights ?? DEFAULT_WEIGHTS), 0)
+
   const breakdown: CostBreakdown = {
     score: Math.abs(scoreA - scoreB),
+    valoracion: Math.abs(valoracionDe(teamA) - valoracionDe(teamB)),
     posicion: difPosicion,
     pierna: difPierna,
     repeticion: repetitionCost(teamA, teamB, pairW),
@@ -167,6 +180,7 @@ function partitionCost(
 
   const cost =
     costW.score * breakdown.score +
+    costW.valoracion * breakdown.valoracion +
     costW.posicion * breakdown.posicion +
     costW.pierna * breakdown.pierna +
     costW.repeticion * breakdown.repeticion

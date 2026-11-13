@@ -927,6 +927,9 @@ function BalanceResult({
         <ul className="mt-2 list-inside list-disc space-y-1">
           <li>Diferencia de nivel total: {balance.breakdown.score.toFixed(2)} puntos</li>
           <li>
+            Diferencia de valoración total (sin ajuste): {balance.breakdown.valoracion.toFixed(2)} puntos
+          </li>
+          <li>
             Reparto del nivel total (antiguo «Equilibrio»): {Math.round(balance.balancePctA)}% /{' '}
             {100 - Math.round(balance.balancePctA)}%
           </li>
