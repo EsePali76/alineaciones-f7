@@ -262,6 +262,39 @@ export function simularAjustes(
   return { jugadores: res, partidos }
 }
 
+/**
+ * Δ que se llevaría cada jugador de A y de B si el partido acaba con `dif` goles de
+ * diferencia a favor de A (negativo = gana B), con probabilidad de A `probA`. Misma
+ * cuenta que `simularAjustes` (K, tramos, límite de ganar/perder y bonus); sin los
+ * topes de ±2 y de la nota, que dependen de cada jugador.
+ */
+export function ajustePorResultado(probA: number, dif: number, k: number): { a: number; b: number } {
+  const bruto = k * (resultadoA(dif, 0) - probA)
+  const deltaA = dif > 0 ? Math.max(0, bruto) : dif < 0 ? Math.min(0, bruto) : bruto
+  return { a: deltaA + BONUS_PARTIDO, b: -deltaA + BONUS_PARTIDO }
+}
+
+/**
+ * Las `n` diferencias de goles (en valor absoluto; 0 = empate, la última agrupa «5 o
+ * más») más habituales en los partidos con resultado de `lineups`. A igualdad, la de
+ * menos goles. Si no hay bastantes, se completa con 1, 0, 2, 3… (lo normal).
+ */
+export function diferenciasMasComunes(lineups: ConfirmedLineup[], n = 3): number[] {
+  const tope = RESULTADO_POR_DIFERENCIA.length
+  const cuenta = new Map<number, number>()
+  for (const l of lineups) {
+    if (!l.resultado) continue
+    const d = Math.min(Math.abs(l.resultado.golesA - l.resultado.golesB), tope)
+    cuenta.set(d, (cuenta.get(d) ?? 0) + 1)
+  }
+  const orden = [...cuenta.entries()].sort((x, y) => y[1] - x[1] || x[0] - y[0]).map(([d]) => d)
+  for (const d of [1, 0, 2, 3, 4, 5]) if (!orden.includes(d)) orden.push(d)
+  return orden.slice(0, n)
+}
+
+/** Diferencia máxima con tramo propio (la última agrupa «o más»). */
+export const DIFERENCIA_MAX = RESULTADO_POR_DIFERENCIA.length
+
 /** Una fila de la tabla «¿Cómo se calcula el ajuste?». */
 export interface FilaTablaAjuste {
   /** Texto del resultado desde el punto de vista del favorito. */
