@@ -56,7 +56,7 @@ export function AjustePorResultado({ probA, temporada }: { probA: number; tempor
   return (
     <div className="mx-auto mt-2 w-full max-w-sm text-xs">
       <p className="text-center text-slate-400">
-        Ajuste por jugador según el resultado (los más habituales de la {temporada})
+        Ajuste por jugador según el resultado
       </p>
       <table className="mt-1 w-full border-collapse">
         <thead>
