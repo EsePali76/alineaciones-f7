@@ -58,6 +58,8 @@ export function TeamGenerator() {
   const setPlacementA = useGeneratorStore((s) => s.setPlacementA)
   const setPlacementB = useGeneratorStore((s) => s.setPlacementB)
   const setBalance = useGeneratorStore((s) => s.setBalance)
+  const propuesta = useGeneratorStore((s) => s.propuesta)
+  const setPropuesta = useGeneratorStore((s) => s.setPropuesta)
   const setConfirmada = useGeneratorStore((s) => s.setConfirmada)
   const syncConvocatoria = useGeneratorStore((s) => s.syncConvocatoria)
   const loadConfirmed = useGeneratorStore((s) => s.loadConfirmed)
@@ -176,6 +178,9 @@ export function TeamGenerator() {
       placementA: pendingLineup.placementA ?? null,
       placementB: pendingLineup.placementB ?? null,
       balance: evaluatePartition(teamA, teamB, { history: lineups, ...scoreOpts }),
+      propuesta: pendingLineup.propuesta
+        ? { teamA: pendingLineup.propuesta.teamA, teamB: pendingLineup.propuesta.teamB }
+        : null,
       confirmedLineupId: pendingLineup.id,
       convocatoriaDate: fecha,
       lastSyncedSignupIds: titularIds,
@@ -235,27 +240,51 @@ export function TeamGenerator() {
     return { ...re, method: balance.method, evaluated: balance.evaluated }
   }, [balance, players, lineups, scoreOpts])
 
-  // Sustitución in-place: el jugador `inId` entra por `outId` conservando su puesto.
-  // Recalcula el balance y fija los placements para que el sustituto ocupe el hueco.
+  // Retoques de quien alinea respecto a la propuesta de la app: nº de jugadores que han
+  // pasado de un equipo a otro (el mismo en los dos) y la probabilidad de la propuesta.
+  // null si no hay propuesta conocida o no casa con los jugadores actuales.
+  const auditoria = useMemo(() => {
+    if (!balanceVivo || !propuesta) return null
+    const finA = balanceVivo.teamA.map((p) => p.id)
+    const finB = balanceVivo.teamB.map((p) => p.id)
+    const todos = new Set([...finA, ...finB])
+    if (
+      propuesta.teamA.length + propuesta.teamB.length !== todos.size ||
+      ![...propuesta.teamA, ...propuesta.teamB].every((id) => todos.has(id))
+    )
+      return null
+    const porId = new Map(players.map((p) => [p.id, p]))
+    const aPlayers = (ids: string[]) => ids.map((id) => porId.get(id)).filter((p): p is Player => !!p)
+    const propA = new Set(propuesta.teamA)
+    return {
+      cambios: finA.filter((id) => !propA.has(id)).length,
+      probAppA: probabilidadEquipos(aPlayers(propuesta.teamA), aPlayers(propuesta.teamB)),
+    }
+  }, [balanceVivo, propuesta, players])
+  // Quién alinea: el autor de la confirmada; si aún no lo está, el del turno (o yo).
+  const autorId =
+    lineups.find((l) => l.id === confirmedLineupId)?.madeBy ?? turnoActual?.id ?? myPlayerId ?? undefined
+  const autorNombre = autorId ? nombreVisible(players.find((p) => p.id === autorId)) : ''
+
+  // Sustitución (baja de última hora): sale `outId`, entra `inId` y la app REGENERA
+  // la alineación con los nuevos convocados (decisión de Santi, 2026-11-14: sustituir
+  // in-place dejaba partidos más descompensados de lo debido). Se pierden los retoques
+  // y la colocación manual; la nueva propuesta es la base contra la que se cuentan
+  // los cambios de quien alinea.
   const hacerSustitucion = async (outId: string, inId: string) => {
     if (!balanceVivo) return
     const inPlayer = players.find((p) => p.id === inId)
     if (!inPlayer) return
-    const enA = balanceVivo.teamA.some((p) => p.id === outId)
-    const teamA = balanceVivo.teamA.map((p) => (p.id === outId ? inPlayer : p))
-    const teamB = balanceVivo.teamB.map((p) => (p.id === outId ? inPlayer : p))
-    const nuevo = evaluatePartition(teamA, teamB, { history: lineups, ...scoreOpts })
-    // Congela el orden actual y cambia solo el id que sale por el que entra, para que
-    // el sustituto quede EXACTAMENTE en el puesto del que se va (misma banda/posición).
-    const balancePortero = balancePorterias(lineups)
-    const curPlA = placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA, balancePortero)
-    const curPlB = placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB, balancePortero)
-    const newPlA = enA ? curPlA.map((x) => (x === outId ? inId : x)) : curPlA
-    const newPlB = enA ? curPlB : curPlB.map((x) => (x === outId ? inId : x))
+    const nuevos = [...balanceVivo.teamA, ...balanceVivo.teamB]
+      .filter((p) => p.id !== outId)
+      .concat(inPlayer)
+    const nuevo = balanceTeams(nuevos, { history: lineups, ...scoreOpts })
+    if (!nuevo) return
     substitute({
-      balance: { ...nuevo, method: 'manual', evaluated: 0 },
-      placementA: newPlA,
-      placementB: newPlB,
+      balance: nuevo,
+      propuesta: { teamA: nuevo.teamA.map((p) => p.id), teamB: nuevo.teamB.map((p) => p.id) },
+      placementA: null,
+      placementB: null,
       convocados: [...convocadosIds.filter((i) => i !== outId), inId],
     })
     // Refleja el cambio en la convocatoria COMPARTIDA (banner): sale el saliente,
@@ -351,6 +380,8 @@ export function TeamGenerator() {
     // Pasa el historial de alineaciones confirmadas para evitar repetir parejas.
     const result = balanceTeams(seleccionados, { history: lineups, ...scoreOpts })
     setBalance(result)
+    // Se guarda la propuesta tal cual sale de la app: contra ella se cuentan los cambios.
+    setPropuesta(result ? { teamA: result.teamA.map((p) => p.id), teamB: result.teamB.map((p) => p.id) } : null)
     setConfirmada(false)
     setConfirmedLineupId(null) // nueva alineación → ya no re-confirma la anterior
     // Nueva alineación → descarta cualquier colocación manual previa.
@@ -372,6 +403,9 @@ export function TeamGenerator() {
       formacionB: formacionNombreB,
       placementA: placementA ?? ordenAutomatico(balanceVivo.teamA, 'A', formacionA, balancePorteriasHist),
       placementB: placementB ?? ordenAutomatico(balanceVivo.teamB, 'B', formacionB, balancePorteriasHist),
+      // Foto fija de la propuesta de la app y de lo confirmado (lo que sale en la imagen).
+      propuesta: auditoria ? { ...propuesta!, probA: auditoria.probAppA } : null,
+      probA: probabilidadEquipos(balanceVivo.teamA, balanceVivo.teamB),
     }
     // Solo se actualiza si el partido referenciado SIGUE existiendo; si se borró del
     // historial, el id quedó huérfano → hay que crear uno nuevo (si no, no pasaría nada).
@@ -409,6 +443,7 @@ export function TeamGenerator() {
     setConfirmedLineupId(null)
     setConfirmada(false)
     setBalance(null)
+    setPropuesta(null)
     setPlacementA(null)
     setPlacementB(null)
     setSalienteId(null)
@@ -522,12 +557,12 @@ export function TeamGenerator() {
           </p>
         )}
 
-        {/* Rejilla inteligente: al marcar a un saliente, la rejilla pasa a sustituir
-            sin regenerar ni perder posiciones. */}
+        {/* Rejilla inteligente: al marcar a un saliente, la rejilla pasa a sustituir;
+            al elegir quién entra, la app regenera la alineación. */}
         {salienteId && (
           <p className="rounded-md border border-amber-500/50 bg-amber-900/25 px-3 py-2 text-sm text-amber-100">
             🔁 Sale <b>{nombreVisible(players.find((p) => p.id === salienteId)!)}</b> — toca en la
-            rejilla a quién entra.{' '}
+            rejilla a quién entra (la app regenerará los equipos).{' '}
             <button
               onClick={() => setSalienteId(null)}
               className="ml-1 rounded border border-amber-400/60 px-2 py-0.5 text-xs hover:bg-amber-500/20"
@@ -598,6 +633,8 @@ export function TeamGenerator() {
           canConfirm={puedeConfirmar}
           onCrossSwap={handleCrossSwap}
           scoreOpts={scoreOpts}
+          auditoria={auditoria}
+          autorNombre={autorNombre}
         />
       )}
     </div>
@@ -725,6 +762,8 @@ function BalanceResult({
   canConfirm,
   onCrossSwap,
   scoreOpts,
+  auditoria,
+  autorNombre,
 }: {
   balance: TeamBalance
   formacionA: Formacion
@@ -736,6 +775,9 @@ function BalanceResult({
   onCrossSwap: (dragId: string, dropId: string) => void
   /** Criterio con el que se puntúa (para ordenar cada equipo igual que se repartió). */
   scoreOpts: ScoreOptions
+  /** Cambios de quien alinea respecto a la propuesta de la app (null = desconocido). */
+  auditoria: { cambios: number; probAppA: number } | null
+  autorNombre: string
 }) {
   const probA = probabilidadEquipos(balance.teamA, balance.teamB)
   const isAdmin = useAuthStore((s) => s.isAdmin)
@@ -901,6 +943,20 @@ function BalanceResult({
           formacionB={formacionB}
           onCrossSwap={onCrossSwap}
         />
+        {/* Sale en la imagen: si la alineación es la de la app o cuánto la retocó quien
+            alinea (solo el nº de cambios, sin decir cuáles) y cómo quedó. */}
+        {auditoria && (
+          <p className="mt-2 text-center text-sm text-slate-300">
+            Alineación propuesta por la app {porcentajes(auditoria.probAppA)}
+            {auditoria.cambios > 0 && (
+              <>
+                {' '}
+                · <b className="text-amber-300">{autorNombre || 'Quien alinea'}</b>: {auditoria.cambios}{' '}
+                {auditoria.cambios === 1 ? 'cambio' : 'cambios'} → {porcentajes(probA)}
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -949,6 +1005,12 @@ function BalanceResult({
       )}
     </section>
   )
+}
+
+/** «⚪ 58% · 🔴 42%» a partir de la probabilidad de victoria de A. */
+function porcentajes(probA: number): string {
+  const a = Math.round(probA * 100)
+  return `⚪ ${a}% · 🔴 ${100 - a}%`
 }
 
 function TeamColumn({

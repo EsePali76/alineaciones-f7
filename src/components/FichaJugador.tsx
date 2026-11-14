@@ -3,7 +3,7 @@ import { useLineupsStore } from '../store/lineupsStore'
 import { useEffectivePlayers, useSimulacionAjustes } from '../hooks/useEffectivePlayers'
 import { playerScore, weightedRatings } from '../domain/scoring'
 import { temporadaDe } from '../domain/season'
-import { fotoVisible, nombreVisible } from '../domain/types'
+import { fotoVisible, nombreVisible, type ConfirmedLineup } from '../domain/types'
 import { Avatar } from './Avatar'
 import { AjusteFlecha } from './AjusteFlecha'
 import { SeasonPicker } from './SeasonPicker'
@@ -53,6 +53,15 @@ export function FichaJugador({
   const [temporada, setTemporada] = useState<string | undefined>(temporadaInicial)
   const temporadaSel = temporada && temporadas.includes(temporada) ? temporada : temporadas[0]
   const filas = partidos.filter((l) => temporadaDe(l.fecha) === temporadaSel)
+  // Partidos que le tocó alinear (con resultado), de la temporada elegida si la hay.
+  const alineados = useMemo(
+    () =>
+      lineups
+        .filter((l) => l.resultado && l.madeBy === playerId)
+        .filter((l) => !temporadaSel || temporadaDe(l.fecha) === temporadaSel)
+        .sort((a, b) => a.fecha - b.fecha),
+    [lineups, playerId, temporadaSel],
+  )
   const totalTemporada = temporadaSel ? sim.jugadores.get(playerId)?.porTemporada.get(temporadaSel) : undefined
 
   // Esc cierra.
@@ -235,6 +244,14 @@ export function FichaJugador({
             <p className="text-xs text-slate-500">Toca un partido para ver su detalle.</p>
           </>
         )}
+
+        {alineados.length > 0 && (
+          <PartidosAlineados
+            lineups={alineados}
+            playerId={playerId}
+            probDe={(id) => sim.partidos.get(id)?.probA}
+          />
+        )}
       </div>
     </div>
   )
@@ -267,5 +284,119 @@ function FilaPartido({
         </tr>
       )}
     </>
+  )
+}
+
+/**
+ * Partidos en los que le tocó alinear: la probabilidad con la que se jugó (la de su
+ * equipo), si retocó la propuesta de la app y si su equipo ganó. Arriba, el resumen
+ * (cuántos gana el que alinea cuando le toca). Si no jugó ese partido, no cuenta.
+ */
+function PartidosAlineados({
+  lineups,
+  playerId,
+  probDe,
+}: {
+  lineups: ConfirmedLineup[]
+  playerId: string
+  /** Probabilidad de A recalculada (para partidos de antes de guardarla al confirmar). */
+  probDe: (lineupId: string) => number | undefined
+}) {
+  const filas = lineups.map((l) => {
+    const r = l.resultado!
+    const enA = l.teamA.includes(playerId)
+    const enB = l.teamB.includes(playerId)
+    const jugo = enA || enB
+    const probA = l.probA ?? probDe(l.id)
+    // Retocada: hay propuesta guardada y algún jugador de A no estaba en la de la app.
+    const retocada = l.propuesta ? l.teamA.some((id) => !l.propuesta!.teamA.includes(id)) : undefined
+    const gf = enB ? r.golesB : r.golesA
+    const gc = enB ? r.golesA : r.golesB
+    const letra = !jugo ? null : gf > gc ? 'V' : gf < gc ? 'D' : 'E'
+    return { l, enA, jugo, probA, retocada, gf, gc, letra }
+  })
+  const jugados = filas.filter((f) => f.jugo)
+  const v = jugados.filter((f) => f.letra === 'V').length
+  const e = jugados.filter((f) => f.letra === 'E').length
+  const d = jugados.filter((f) => f.letra === 'D').length
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-base font-semibold text-white">Partidos que alineó</h3>
+      <p className="text-sm text-slate-400">
+        Alineó <b className="text-slate-200">{filas.length}</b>
+        {jugados.length > 0 && (
+          <>
+            {' '}
+            · jugando: <b className="text-emerald-400">{v} V</b> · <b className="text-slate-300">{e} E</b> ·{' '}
+            <b className="text-red-400">{d} D</b> ({Math.round((v / jugados.length) * 100)}% de victorias)
+          </>
+        )}
+      </p>
+      <div className="overflow-x-auto rounded-lg border border-slate-700">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-slate-800 text-left text-slate-400">
+              <th className="px-2 py-2 font-medium">Fecha</th>
+              <th className="px-2 py-2 font-medium">Su equipo</th>
+              <th
+                className="px-2 py-2 text-center font-medium"
+                title="Probabilidad de victoria de su equipo con la alineación que se jugó"
+              >
+                Prob.
+              </th>
+              <th className="px-2 py-2 text-center font-medium" title="Si cambió la propuesta de la app">
+                Retocada
+              </th>
+              <th className="px-2 py-2 text-center font-medium">Resultado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map(({ l, enA, jugo, probA, retocada, gf, gc, letra }) => {
+              const prob = probA == null ? undefined : jugo && !enA ? 1 - probA : probA
+              const color = letra === 'V' ? 'bg-emerald-600' : letra === 'D' ? 'bg-red-600' : 'bg-slate-600'
+              return (
+                <tr key={l.id} className="border-t border-slate-700/60">
+                  <td className="whitespace-nowrap px-2 py-2 text-slate-300">
+                    {new Date(l.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2 text-slate-300">
+                    {jugo ? (enA ? '⚪' : '🔴') : <span className="text-xs text-slate-500">no jugó</span>}
+                  </td>
+                  <td className="px-2 py-2 text-center text-slate-300 tabular-nums">
+                    {prob == null ? '—' : `${jugo ? '' : '⚪ '}${Math.round(prob * 100)}%`}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {retocada === undefined ? (
+                      <span className="text-slate-500">—</span>
+                    ) : retocada ? (
+                      <span className="font-bold text-amber-400">✓</span>
+                    ) : (
+                      <span className="text-slate-500">✗</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2 text-center">
+                    {letra && (
+                      <span
+                        className={`mr-1.5 inline-block w-5 rounded text-center text-xs font-bold text-white ${color}`}
+                      >
+                        {letra}
+                      </span>
+                    )}
+                    <span className="font-semibold text-slate-100 tabular-nums">
+                      {gf}-{gc}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-500">
+        «Retocada»: ✓ cambió la propuesta de la app · ✗ la dejó tal cual · — partido de antes de que se guardara la
+        propuesta.
+      </p>
+    </div>
   )
 }

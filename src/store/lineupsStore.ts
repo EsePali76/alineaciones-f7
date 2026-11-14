@@ -9,6 +9,10 @@ export interface LineupMeta {
   formacionB?: string
   placementA?: string[] | null
   placementB?: string[] | null
+  /** Propuesta original de la app (ver `ConfirmedLineup.propuesta`). */
+  propuesta?: { teamA: string[]; teamB: string[]; probA: number } | null
+  /** Prob. de victoria de A tal cual se confirma. */
+  probA?: number
 }
 
 interface LineupsState {
@@ -87,6 +91,8 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
       formacionB: meta.formacionB,
       placementA: meta.placementA ?? undefined,
       placementB: meta.placementB ?? undefined,
+      propuesta: meta.propuesta ?? undefined,
+      probA: meta.probA,
     }
     const prev = get().lineups
     set({ lineups: [...prev, lineup] })
@@ -108,6 +114,8 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
       formacionB: meta.formacionB ?? l.formacionB,
       placementA: meta.placementA ?? undefined,
       placementB: meta.placementB ?? undefined,
+      propuesta: meta.propuesta ?? l.propuesta,
+      probA: meta.probA ?? l.probA,
     })),
 
   removeLineup: async (id) => {

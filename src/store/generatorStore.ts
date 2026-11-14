@@ -22,6 +22,12 @@ interface GeneratorState {
   placementB: string[] | null
   /** Última alineación generada (null si aún no se ha generado). */
   balance: TeamBalance | null
+  /**
+   * Propuesta ORIGINAL de la app (ids por equipo, tal cual salió al generar). Contra
+   * ella se cuentan los cambios de quien alinea. null = sin propuesta conocida
+   * (alineación antigua cargada del backend).
+   */
+  propuesta: { teamA: string[]; teamB: string[] } | null
   /** Si la alineación actual ya se confirmó en el historial. */
   confirmada: boolean
   /** Id de la alineación confirmada (para re-confirmar editando la misma, no crear otra). */
@@ -50,6 +56,7 @@ interface GeneratorState {
   setPlacementA: (ids: string[] | null) => void
   setPlacementB: (ids: string[] | null) => void
   setBalance: (b: TeamBalance | null) => void
+  setPropuesta: (p: { teamA: string[]; teamB: string[] } | null) => void
   setConfirmada: (v: boolean) => void
   setConfirmedLineupId: (id: string | null) => void
   /**
@@ -67,18 +74,20 @@ interface GeneratorState {
     placementA: string[] | null
     placementB: string[] | null
     balance: TeamBalance
+    propuesta: { teamA: string[]; teamB: string[] } | null
     confirmedLineupId: string
     convocatoriaDate: string
     lastSyncedSignupIds: string[]
   }) => void
   /**
-   * Sustitución in-place ("rejilla inteligente"): reemplaza a un jugador de la
-   * alineación por otro conservando su puesto. El componente calcula el nuevo balance,
-   * los placements y la lista de convocados; aquí se aplican de una vez para que el
-   * balance y los convocados queden SIEMPRE consistentes (no dispara el reset).
+   * Sustitución ("rejilla inteligente"): sale un jugador, entra otro y el componente
+   * REGENERA la alineación (nuevo balance + nueva propuesta de la app). Aquí se aplica
+   * todo de una vez para que balance, propuesta y convocados queden SIEMPRE
+   * consistentes (no dispara el reset).
    */
   substitute: (payload: {
     balance: TeamBalance
+    propuesta: { teamA: string[]; teamB: string[] } | null
     placementA: string[] | null
     placementB: string[] | null
     convocados: string[]
@@ -100,6 +109,7 @@ const INICIAL = {
   placementA: null as string[] | null,
   placementB: null as string[] | null,
   balance: null as TeamBalance | null,
+  propuesta: null as { teamA: string[]; teamB: string[] } | null,
   confirmada: false,
   confirmedLineupId: null as string | null,
   convocatoriaDate: null as string | null,
@@ -136,6 +146,7 @@ export const useGeneratorStore = create<GeneratorState>()(
       setPlacementA: (ids) => set({ placementA: ids }),
       setPlacementB: (ids) => set({ placementB: ids }),
       setBalance: (b) => set({ balance: b }),
+      setPropuesta: (p) => set({ propuesta: p }),
       setConfirmada: (v) => set({ confirmada: v }),
       setConfirmedLineupId: (id) => set({ confirmedLineupId: id }),
       loadConfirmed: (p) =>
@@ -147,6 +158,7 @@ export const useGeneratorStore = create<GeneratorState>()(
           placementA: p.placementA,
           placementB: p.placementB,
           balance: p.balance,
+          propuesta: p.propuesta,
           confirmada: true,
           confirmedLineupId: p.confirmedLineupId,
           convocatoriaDate: p.convocatoriaDate,
@@ -155,6 +167,7 @@ export const useGeneratorStore = create<GeneratorState>()(
       substitute: (p) =>
         set({
           balance: p.balance,
+          propuesta: p.propuesta,
           placementA: p.placementA,
           placementB: p.placementB,
           convocados: p.convocados,

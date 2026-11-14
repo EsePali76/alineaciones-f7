@@ -192,6 +192,15 @@ export interface ConfirmedLineup {
   /** Colocación manual (ids en orden de puesto), si se arrastraron fichas. */
   placementA?: string[]
   placementB?: string[]
+  /**
+   * Propuesta ORIGINAL de la app (lo que salió al pulsar «Generar») y su probabilidad
+   * de victoria de A al confirmar. Sirve para ver si quien alinea la retocó: nº de
+   * cambios = jugadores de `teamA` final que no estaban en `propuesta.teamA`. Solo en
+   * alineaciones confirmadas desde que existe (2026-11-14); antes, undefined.
+   */
+  propuesta?: { teamA: string[]; teamB: string[]; probA: number }
+  /** Probabilidad de victoria de A de la alineación tal cual se confirmó (la de la imagen). */
+  probA?: number
   /** Resultado del partido, si ya se ha registrado tras jugar. */
   resultado?: MatchResult
   /** K vigente al registrar el resultado (ajuste por resultados; ver `domain/ajuste.ts`). */
