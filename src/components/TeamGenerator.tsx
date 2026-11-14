@@ -428,7 +428,10 @@ export function TeamGenerator() {
       const previa = lineups.find((l) => l.id === idExistente)
       const cambianEquipos =
         !previa || !mismoConjunto(previa.teamA, teamAids) || !mismoConjunto(previa.teamB, teamBids)
-      const autor = cambianEquipos ? myPlayerId ?? undefined : undefined
+      // Excepción (Santi, 2026-11-14): si son los equipos tal cual los regeneró la app
+      // (p. ej. por una baja) sin tocarlos, sigue siendo del alineador anterior.
+      const talCualApp = auditoria?.cambios === 0
+      const autor = cambianEquipos && !talCualApp ? myPlayerId ?? undefined : undefined
       await updateLineupTeams(idExistente, teamAids, teamBids, { ...meta, autor })
       setConfirmedLineupId(idExistente)
     } else {
