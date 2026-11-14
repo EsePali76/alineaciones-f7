@@ -9,6 +9,9 @@ import { ProbabilidadBar } from './ProbabilidadBar'
 import { probabilidadEquipos } from '../domain/ajuste'
 import type { ConfirmedLineup, Player } from '../domain/types'
 import { nombreVisible } from '../domain/types'
+import { temporadaDe } from '../domain/season'
+import { AjustePorResultado, LineaPropuesta } from './InfoAlineacion'
+import { auditarAlineacion, autorDe } from '../domain/auditoria'
 
 /**
  * Vista de solo lectura de la alineación confirmada de la semana (sin resultado aún),
@@ -31,6 +34,12 @@ export function ConfirmedLineupView({ lineup }: { lineup: ConfirmedLineup }) {
   const porEquipo = teamA.length
   const formacionA = formacionPorNombre(porEquipo, lineup.formacionA ?? '')
   const formacionB = formacionPorNombre(porEquipo, lineup.formacionB ?? '')
+
+  const probA = probabilidadEquipos(teamA, teamB)
+  // Transparencia: propuesta de la app vs retoques de quien alineó (solo el nº).
+  const auditoria = auditarAlineacion(lineup.propuesta, lineup.teamA, lineup.teamB, players)
+  const autorId = autorDe(lineup)
+  const autorNombre = autorId ? nombreVisible(byId.get(autorId)) : ''
 
   const enA = !!myPlayerId && lineup.teamA.includes(myPlayerId)
   const enB = !!myPlayerId && lineup.teamB.includes(myPlayerId)
@@ -63,7 +72,7 @@ export function ConfirmedLineupView({ lineup }: { lineup: ConfirmedLineup }) {
         </p>
       </div>
 
-      <ProbabilidadBar probA={probabilidadEquipos(teamA, teamB)} />
+      <ProbabilidadBar probA={probA} />
 
       {/* Campo (solo lectura) */}
       <FieldView
@@ -75,6 +84,11 @@ export function ConfirmedLineupView({ lineup }: { lineup: ConfirmedLineup }) {
         placementA={lineup.placementA ?? null}
         placementB={lineup.placementB ?? null}
       />
+
+      <div>
+        {auditoria && <LineaPropuesta auditoria={auditoria} autorNombre={autorNombre} probA={probA} />}
+        <AjustePorResultado probA={probA} temporada={temporadaDe(lineup.fecha)} />
+      </div>
 
       {/* Listado por equipos */}
       <div className="grid gap-2 text-sm md:grid-cols-2">

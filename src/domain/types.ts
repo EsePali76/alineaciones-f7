@@ -186,6 +186,13 @@ export interface ConfirmedLineup {
   teamB: string[]
   /** Id del jugador que hizo la alineación (el del turno). Para historial/estadísticas. */
   madeBy?: string
+  /**
+   * Autor FINAL: quien confirmó los equipos por última vez (si un admin o superuser la
+   * retoca, pasa a ser él). Es a quien se atribuyen las estadísticas de «Partidos que
+   * alineó». `madeBy` sigue siendo el del turno (mueve la cola). Antiguas: undefined →
+   * `madeBy`.
+   */
+  autor?: string
   /** Formación elegida por equipo (para dibujar el campo igual para todos). */
   formacionA?: string
   formacionB?: string

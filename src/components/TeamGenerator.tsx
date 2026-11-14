@@ -14,10 +14,10 @@ import { formacionesDe, formacionPorNombre, balancePorterias, type Formacion } f
 import { parseISO, partidoPasado, toISO } from '../domain/matchday'
 import { FieldView, ordenAutomatico } from './FieldView'
 import { ProbabilidadBar } from './ProbabilidadBar'
-import { ajustePorResultado, diferenciasMasComunes, DIFERENCIA_MAX, probabilidadEquipos } from '../domain/ajuste'
+import { probabilidadEquipos } from '../domain/ajuste'
 import { temporadaDe } from '../domain/season'
-import { useRotationStore } from '../store/rotationStore'
-import { Delta } from './TablaAjuste'
+import { AjustePorResultado, LineaPropuesta } from './InfoAlineacion'
+import { auditarAlineacion, autorDe } from '../domain/auditoria'
 import { Avatar } from './Avatar'
 import { QuickGuestForm } from './QuickGuestForm'
 import { usePlayersStore, type PlayerInput } from '../store/playersStore'
@@ -246,27 +246,29 @@ export function TeamGenerator() {
   // Retoques de quien alinea respecto a la propuesta de la app: nº de jugadores que han
   // pasado de un equipo a otro (el mismo en los dos) y la probabilidad de la propuesta.
   // null si no hay propuesta conocida o no casa con los jugadores actuales.
-  const auditoria = useMemo(() => {
-    if (!balanceVivo || !propuesta) return null
-    const finA = balanceVivo.teamA.map((p) => p.id)
-    const finB = balanceVivo.teamB.map((p) => p.id)
-    const todos = new Set([...finA, ...finB])
-    if (
-      propuesta.teamA.length + propuesta.teamB.length !== todos.size ||
-      ![...propuesta.teamA, ...propuesta.teamB].every((id) => todos.has(id))
-    )
-      return null
-    const porId = new Map(players.map((p) => [p.id, p]))
-    const aPlayers = (ids: string[]) => ids.map((id) => porId.get(id)).filter((p): p is Player => !!p)
-    const propA = new Set(propuesta.teamA)
-    return {
-      cambios: finA.filter((id) => !propA.has(id)).length,
-      probAppA: probabilidadEquipos(aPlayers(propuesta.teamA), aPlayers(propuesta.teamB)),
-    }
-  }, [balanceVivo, propuesta, players])
-  // Quién alinea: el autor de la confirmada; si aún no lo está, el del turno (o yo).
+  const auditoria = useMemo(
+    () =>
+      balanceVivo
+        ? auditarAlineacion(
+            propuesta,
+            balanceVivo.teamA.map((p) => p.id),
+            balanceVivo.teamB.map((p) => p.id),
+            players,
+          )
+        : null,
+    [balanceVivo, propuesta, players],
+  )
+  // Quién alinea: si lo que hay en pantalla son los equipos ya confirmados, su autor
+  // final; si no (aún sin confirmar o retocada), quien la va a confirmar: yo (el admin
+  // o superuser que la retoca se la queda) o, sin perfil, el del turno.
+  const confirmadaGuardada = lineups.find((l) => l.id === confirmedLineupId)
+  const mismosEquipos =
+    !!confirmadaGuardada &&
+    !!balanceVivo &&
+    mismoConjunto(confirmadaGuardada.teamA, balanceVivo.teamA.map((p) => p.id)) &&
+    mismoConjunto(confirmadaGuardada.teamB, balanceVivo.teamB.map((p) => p.id))
   const autorId =
-    lineups.find((l) => l.id === confirmedLineupId)?.madeBy ?? turnoActual?.id ?? myPlayerId ?? undefined
+    (mismosEquipos ? autorDe(confirmadaGuardada!) : undefined) ?? myPlayerId ?? turnoActual?.id ?? undefined
   const autorNombre = autorId ? nombreVisible(players.find((p) => p.id === autorId)) : ''
 
   // Sustitución (baja de última hora): sale `outId`, entra `inId` y la app REGENERA
@@ -420,7 +422,14 @@ export function TeamGenerator() {
     const idExistente = existe ? confirmedLineupId! : delMismoDia?.id
     if (idExistente) {
       // Re-confirmar: actualiza la misma alineación (el autor puede editar y reconfirmar).
-      await updateLineupTeams(idExistente, teamAids, teamBids, meta)
+      // Si cambian los equipos, el autor final pasa a ser quien re-confirma (p. ej. el
+      // admin o superuser que la retoca): se lleva las estadísticas de «Partidos que
+      // alineó». `madeBy` (el turno) NO cambia: no le consume su sitio en la cola.
+      const previa = lineups.find((l) => l.id === idExistente)
+      const cambianEquipos =
+        !previa || !mismoConjunto(previa.teamA, teamAids) || !mismoConjunto(previa.teamB, teamBids)
+      const autor = cambianEquipos ? myPlayerId ?? undefined : undefined
+      await updateLineupTeams(idExistente, teamAids, teamBids, { ...meta, autor })
       setConfirmedLineupId(idExistente)
     } else {
       const madeBy = turnoActual?.id ?? myPlayerId ?? undefined
@@ -429,7 +438,9 @@ export function TeamGenerator() {
       // usa mediodía local, igual que el editor de fecha del historial.
       const diaPartido = parseISO(fecha)
       diaPartido.setHours(12, 0, 0, 0)
-      const id = await addLineup(teamAids, teamBids, { ...meta, madeBy }, diaPartido.getTime())
+      // Autor final = quien confirma (si un admin la hace por el del turno, es suya).
+      const autor = myPlayerId ?? madeBy
+      const id = await addLineup(teamAids, teamBids, { ...meta, madeBy, autor }, diaPartido.getTime())
       setConfirmedLineupId(id)
       // No se avanza el turno aquí: el autor sigue siendo el del turno y puede editar y
       // re-confirmar. El turno avanza cuando el admin registra el resultado del partido.
@@ -952,18 +963,7 @@ function BalanceResult({
         />
         {/* Sale en la imagen: si la alineación es la de la app o cuánto la retocó quien
             alinea (solo el nº de cambios, sin decir cuáles) y cómo quedó. */}
-        {auditoria && (
-          <p className="mt-2 text-center text-sm text-slate-300">
-            Alineación propuesta por la app {porcentajes(auditoria.probAppA)}
-            {auditoria.cambios > 0 && (
-              <>
-                {' '}
-                · <b className="text-amber-300">{autorNombre || 'Quien alinea'}</b>: {auditoria.cambios}{' '}
-                {auditoria.cambios === 1 ? 'cambio' : 'cambios'} → {porcentajes(probA)}
-              </>
-            )}
-          </p>
-        )}
+        {auditoria && <LineaPropuesta auditoria={auditoria} autorNombre={autorNombre} probA={probA} />}
         <AjustePorResultado probA={probA} temporada={temporada} />
       </div>
 
@@ -1015,59 +1015,10 @@ function BalanceResult({
   )
 }
 
-/**
- * Lo que se lleva cada jugador de cada equipo (ajuste) según el resultado, solo con
- * las 3 diferencias de goles más habituales de la temporada (el ajuste depende de la
- * diferencia, no del marcador exacto). Sale en la imagen.
- */
-function AjustePorResultado({ probA, temporada }: { probA: number; temporada: string }) {
-  const lineups = useLineupsStore((s) => s.lineups)
-  const k = useRotationStore((s) => s.eloK)
-  const difs = diferenciasMasComunes(lineups.filter((l) => temporadaDe(l.fecha) === temporada))
-  const porGoles = (d: number) => (d >= DIFERENCIA_MAX ? `${d} o más` : `${d}`)
-  const filas = difs.flatMap((d) =>
-    d === 0
-      ? [{ txt: 'Empate', ...ajustePorResultado(probA, 0, k) }]
-      : [
-          { txt: `⚪ gana por ${porGoles(d)}`, ...ajustePorResultado(probA, d, k) },
-          { txt: `🔴 gana por ${porGoles(d)}`, ...ajustePorResultado(probA, -d, k) },
-        ],
-  )
-  return (
-    <div className="mx-auto mt-2 w-full max-w-sm text-xs">
-      <p className="text-center text-slate-400">
-        Ajuste por jugador según el resultado (los más habituales de la {temporada})
-      </p>
-      <table className="mt-1 w-full border-collapse">
-        <thead>
-          <tr className="text-slate-400">
-            <th className="py-0.5 text-left font-medium">Resultado</th>
-            <th className="py-0.5 text-right font-medium">⚪</th>
-            <th className="py-0.5 text-right font-medium">🔴</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((f) => (
-            <tr key={f.txt} className="border-t border-slate-700/50">
-              <td className="py-0.5 text-slate-300">{f.txt}</td>
-              <td className="py-0.5 text-right">
-                <Delta v={f.a} />
-              </td>
-              <td className="py-0.5 text-right">
-                <Delta v={f.b} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-/** «⚪ 58% · 🔴 42%» a partir de la probabilidad de victoria de A. */
-function porcentajes(probA: number): string {
-  const a = Math.round(probA * 100)
-  return `⚪ ${a}% · 🔴 ${100 - a}%`
+/** ¿Los dos arrays tienen los mismos ids (sin importar el orden)? */
+function mismoConjunto(a: string[], b: string[]): boolean {
+  const sa = new Set(a)
+  return a.length === b.length && b.every((id) => sa.has(id))
 }
 
 function TeamColumn({

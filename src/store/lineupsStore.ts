@@ -5,6 +5,8 @@ import * as api from '../lib/dataApi'
 /** Metadatos opcionales de una alineación (quién la hizo + cómo dibujarla). */
 export interface LineupMeta {
   madeBy?: string
+  /** Autor final (ver `ConfirmedLineup.autor`). En una actualización, undefined = no cambia. */
+  autor?: string
   formacionA?: string
   formacionB?: string
   placementA?: string[] | null
@@ -87,6 +89,7 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
       teamA,
       teamB,
       madeBy: meta.madeBy,
+      autor: meta.autor,
       formacionA: meta.formacionA,
       formacionB: meta.formacionB,
       placementA: meta.placementA ?? undefined,
@@ -114,6 +117,7 @@ export const useLineupsStore = create<LineupsState>((set, get) => ({
       formacionB: meta.formacionB ?? l.formacionB,
       placementA: meta.placementA ?? undefined,
       placementB: meta.placementB ?? undefined,
+      autor: meta.autor ?? l.autor,
       propuesta: meta.propuesta ?? l.propuesta,
       probA: meta.probA ?? l.probA,
     })),

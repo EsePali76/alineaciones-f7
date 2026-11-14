@@ -9,6 +9,7 @@ import { AjusteFlecha } from './AjusteFlecha'
 import { SeasonPicker } from './SeasonPicker'
 import { Delta, TablaAjuste } from './TablaAjuste'
 import { MatchCard } from './HistoryList'
+import { autorDe } from '../domain/auditoria'
 
 /**
  * Ficha de un jugador (se abre pinchando en él en Estadísticas → Por jugador): su
@@ -57,7 +58,7 @@ export function FichaJugador({
   const alineados = useMemo(
     () =>
       lineups
-        .filter((l) => l.resultado && l.madeBy === playerId)
+        .filter((l) => l.resultado && autorDe(l) === playerId)
         .filter((l) => !temporadaSel || temporadaDe(l.fecha) === temporadaSel)
         .sort((a, b) => a.fecha - b.fecha),
     [lineups, playerId, temporadaSel],
