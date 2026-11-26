@@ -132,8 +132,12 @@ export function MatchCard({
 }) {
   const removeLineup = useLineupsStore((s) => s.removeLineup)
   const setFecha = useLineupsStore((s) => s.setFecha)
+  // Resultado, fecha y partidos ya jugados: solo el admin real (no el superuser).
+  const isFullAdmin = useAuthStore((s) => s.isFullAdmin)
   const [open, setOpen] = useState(abiertaInicial)
   const r = lineup.resultado
+  const puedeResultado = isAdmin && isFullAdmin
+  const puedeBorrar = isAdmin && (isFullAdmin || !r)
   const mvpId = r ? mvpEfectivo(lineup) : null
   const ganaA = !!r && r.golesA > r.golesB
   const ganaB = !!r && r.golesB > r.golesA
@@ -183,7 +187,7 @@ export function MatchCard({
 
       {open && (
         <div className="border-t border-slate-700/60 p-3">
-          <ResultadoRow lineup={lineup} isAdmin={isAdmin} nombre={nombre} />
+          <ResultadoRow lineup={lineup} isAdmin={puedeResultado} nombre={nombre} />
 
           {/* Alineaciones: campo gráfico (con fallback a texto en partidos antiguos) */}
           <div className="mt-3 border-t border-slate-700/60 pt-3">
@@ -191,21 +195,23 @@ export function MatchCard({
           </div>
 
           <div className="mt-2 flex items-center justify-end">
-            {isAdmin && (
+            {puedeBorrar && (
               <div className="flex items-center gap-2">
-                <label className="flex items-center gap-1 text-xs text-slate-400">
-                  📅
-                  <input
-                    type="date"
-                    value={fechaInputValue(lineup.fecha)}
-                    onChange={(e) => {
-                      const ts = parseFechaInput(e.target.value)
-                      if (ts != null) setFecha(lineup.id, ts)
-                    }}
-                    className="rounded border border-slate-600 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200"
-                    title="Cambiar la fecha del partido"
-                  />
-                </label>
+                {puedeResultado && (
+                  <label className="flex items-center gap-1 text-xs text-slate-400">
+                    📅
+                    <input
+                      type="date"
+                      value={fechaInputValue(lineup.fecha)}
+                      onChange={(e) => {
+                        const ts = parseFechaInput(e.target.value)
+                        if (ts != null) setFecha(lineup.id, ts)
+                      }}
+                      className="rounded border border-slate-600 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200"
+                      title="Cambiar la fecha del partido"
+                    />
+                  </label>
+                )}
                 <button
                   onClick={() => {
                     if (confirm('¿Eliminar este partido del historial?')) removeLineup(lineup.id)
