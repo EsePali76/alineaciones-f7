@@ -11,7 +11,8 @@ type Modo = 'cerrado' | 'login' | 'registro'
  * Tras entrar muestra el nombre, el rol y el jugador vinculado (o aviso si no).
  */
 export function AccountBar() {
-  const { isLoggedIn, isAdmin, profile, email, register, login, logout } = useAuthStore()
+  const { isLoggedIn, isAdmin, profile, email, register, login, logout, changePassword } =
+    useAuthStore()
   const players = usePlayersStore((s) => s.players)
 
   const [modo, setModo] = useState<Modo>('cerrado')
@@ -20,6 +21,33 @@ export function AccountBar() {
   const [nombre, setNombre] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  // Cambio de contraseña (con sesión iniciada).
+  const [cambiando, setCambiando] = useState(false)
+  const [pass2, setPass2] = useState('')
+  const [aviso, setAviso] = useState('')
+
+  const cerrarCambio = () => {
+    setCambiando(false)
+    setPass('')
+    setPass2('')
+    setError('')
+  }
+
+  const guardarPass = async () => {
+    if (pass.length < 6) return setError('Mínimo 6 caracteres')
+    if (pass !== pass2) return setError('No coinciden')
+    setCargando(true)
+    setError('')
+    const err = await changePassword(pass)
+    setCargando(false)
+    if (err) {
+      setError(err.includes('different') ? 'Es la misma que ya tenías' : err)
+    } else {
+      cerrarCambio()
+      setAviso('Contraseña cambiada')
+      setTimeout(() => setAviso(''), 4000)
+    }
+  }
 
   const reset = () => {
     setModo('cerrado')
@@ -57,12 +85,63 @@ export function AccountBar() {
             sin vincular
           </span>
         )}
+        {!cambiando && (
+          <button
+            onClick={() => setCambiando(true)}
+            className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+          >
+            Contraseña
+          </button>
+        )}
         <button
           onClick={() => logout()}
           className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
         >
           Salir
         </button>
+        {aviso && <span className="text-xs text-emerald-400">{aviso}</span>}
+        {cambiando && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              guardarPass()
+            }}
+            className="flex w-full flex-wrap items-center gap-2"
+          >
+            <input
+              type="password"
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              placeholder="nueva contraseña"
+              autoComplete="new-password"
+              autoFocus
+              className="w-40 rounded border border-slate-600 bg-slate-900 px-2 py-1"
+            />
+            <input
+              type="password"
+              value={pass2}
+              onChange={(e) => setPass2(e.target.value)}
+              placeholder="repítela"
+              autoComplete="new-password"
+              className="w-40 rounded border border-slate-600 bg-slate-900 px-2 py-1"
+            />
+            <button
+              type="submit"
+              disabled={cargando || !pass || !pass2}
+              className="rounded bg-emerald-600 px-3 py-1 font-medium text-white enabled:hover:bg-emerald-500 disabled:opacity-50"
+            >
+              Guardar
+            </button>
+            <button
+              type="button"
+              onClick={cerrarCambio}
+              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+            >
+              Cancelar
+            </button>
+            {error && <span className="text-red-400">{error}</span>}
+          </form>
+        )}
       </div>
     )
   }

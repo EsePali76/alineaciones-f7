@@ -26,6 +26,8 @@ interface AuthState {
   register: (email: string, password: string, displayName: string) => Promise<string | null>
   /** Login; devuelve mensaje de error o null si OK. */
   login: (email: string, password: string) => Promise<string | null>
+  /** Cambia la contraseña del usuario con sesión; devuelve mensaje de error o null si OK. */
+  changePassword: (password: string) => Promise<string | null>
   logout: () => Promise<void>
 }
 
@@ -95,6 +97,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    return error ? error.message : null
+  },
+
+  changePassword: async (password) => {
+    const { error } = await supabase.auth.updateUser({ password })
     return error ? error.message : null
   },
 

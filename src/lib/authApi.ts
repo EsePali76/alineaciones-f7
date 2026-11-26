@@ -103,6 +103,12 @@ export async function finalizeMyRatings(): Promise<void> {
   if (error) throw error
 }
 
+/** Admin: pone una contraseña nueva a un usuario (para cuando la olvida). */
+export async function adminSetPassword(target: string, password: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_password', { target, p_password: password })
+  if (error) throw error
+}
+
 /** Admin: borra la cuenta de un usuario (cascada perfil + votos; el jugador se mantiene). */
 export async function adminDeleteUser(target: string): Promise<void> {
   const { error } = await supabase.rpc('admin_delete_user', { target })

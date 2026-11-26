@@ -12,6 +12,7 @@ import {
   adminResetRatings,
   adminSetRatingsFinalized,
   adminDeleteUser,
+  adminSetPassword,
   type Profile,
 } from '../../lib/authApi'
 
@@ -270,8 +271,31 @@ export function UsersPanel() {
                     </select>
                   </td>
 
-                  {/* Borrar usuario */}
-                  <td className="px-3 py-2 text-right">
+                  {/* Restablecer contraseña + borrar usuario */}
+                  <td className="whitespace-nowrap px-3 py-2 text-right">
+                    {!esYo && (
+                      <button
+                        onClick={() => {
+                          const nueva = prompt(
+                            `Nueva contraseña para ${pr.displayName || pr.email} (mínimo 6 caracteres).\n\n` +
+                              'Pásasela y que la cambie luego desde «Contraseña».',
+                          )
+                          if (nueva == null) return
+                          if (nueva.length < 6) {
+                            alert('La contraseña debe tener al menos 6 caracteres.')
+                            return
+                          }
+                          accion(async () => {
+                            await adminSetPassword(pr.id, nueva)
+                            alert(`Contraseña cambiada. Ya puede entrar con ${pr.email} y la nueva contraseña.`)
+                          })
+                        }}
+                        title="Para cuando ha olvidado su contraseña. No toca sus votos ni su jugador."
+                        className="mr-2 rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-400"
+                      >
+                        Contraseña
+                      </button>
+                    )}
                     {!esYo && (
                       <button
                         onClick={() => {
