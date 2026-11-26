@@ -132,11 +132,12 @@ export function MatchCard({
 }) {
   const removeLineup = useLineupsStore((s) => s.removeLineup)
   const setFecha = useLineupsStore((s) => s.setFecha)
-  // Resultado, fecha y partidos ya jugados: solo el admin real (no el superuser).
+  // El resultado lo mete admin o superuser; corregirlo, la fecha y borrar un partido
+  // ya jugado, solo el admin real.
   const isFullAdmin = useAuthStore((s) => s.isFullAdmin)
   const [open, setOpen] = useState(abiertaInicial)
   const r = lineup.resultado
-  const puedeResultado = isAdmin && isFullAdmin
+  const puedeCorregir = isAdmin && isFullAdmin
   const puedeBorrar = isAdmin && (isFullAdmin || !r)
   const mvpId = r ? mvpEfectivo(lineup) : null
   const ganaA = !!r && r.golesA > r.golesB
@@ -187,7 +188,12 @@ export function MatchCard({
 
       {open && (
         <div className="border-t border-slate-700/60 p-3">
-          <ResultadoRow lineup={lineup} isAdmin={puedeResultado} nombre={nombre} />
+          <ResultadoRow
+            lineup={lineup}
+            isAdmin={isAdmin}
+            puedeCorregir={puedeCorregir}
+            nombre={nombre}
+          />
 
           {/* Alineaciones: campo gráfico (con fallback a texto en partidos antiguos) */}
           <div className="mt-3 border-t border-slate-700/60 pt-3">
@@ -197,7 +203,7 @@ export function MatchCard({
           <div className="mt-2 flex items-center justify-end">
             {puedeBorrar && (
               <div className="flex items-center gap-2">
-                {puedeResultado && (
+                {puedeCorregir && (
                   <label className="flex items-center gap-1 text-xs text-slate-400">
                     📅
                     <input
@@ -316,10 +322,14 @@ function MatchField({
 function ResultadoRow({
   lineup,
   isAdmin,
+  puedeCorregir,
   nombre,
 }: {
   lineup: ConfirmedLineup
+  /** Meter el resultado la primera vez (admin y superuser). */
   isAdmin: boolean
+  /** Editar o resetear un resultado ya metido (solo el admin real). */
+  puedeCorregir: boolean
   nombre: (id: string) => string
 }) {
   const setResultado = useLineupsStore((s) => s.setResultado)
@@ -363,7 +373,7 @@ function ResultadoRow({
   if (r && !editando) {
     return (
       <div className="text-sm">
-        {isAdmin && (
+        {puedeCorregir && (
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setEditando(true)}

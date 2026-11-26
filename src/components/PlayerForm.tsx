@@ -15,6 +15,7 @@ import {
 } from '../domain/constants'
 import type { RatingKey } from '../domain/constants'
 import { PhotoUpload } from './PhotoUpload'
+import { useAuthStore } from '../store/authStore'
 
 interface PlayerFormProps {
   /** Valores iniciales (modo edición). Si se omite, formulario en blanco (alta). */
@@ -65,6 +66,7 @@ export function PlayerForm({
   const seed: PlayerInput = initial ?? (esInvitado ? { ...EMPTY, invitado: true } : EMPTY)
   const [data, setData] = useState<PlayerInput>(seed)
   const soloIdentidad = mode === 'identity'
+  const isFullAdmin = useAuthStore((s) => s.isFullAdmin)
   // En la lista de invitados, las valoraciones manuales solo se piden al puntual
   // (al habitual lo vota el grupo, igual que a un jugador del plantel).
   const mostrarValoraciones = esInvitado && !data.habitual
@@ -207,18 +209,21 @@ export function PlayerForm({
             className="rounded border border-slate-600 bg-slate-900 px-3 py-2"
           />
         </label>
-        <label className="flex flex-1 min-w-[200px] flex-col gap-1 text-sm">
-          <span className="text-slate-400" title="El que se ve en estadísticas, equipos y partidos. Si lo dejas vacío, se usa el nombre de arriba.">
-            Nombre reconocible (opcional)
-          </span>
-          <input
-            type="text"
-            value={data.nombreReconocible ?? ''}
-            onChange={(e) => setData((d) => ({ ...d, nombreReconocible: e.target.value }))}
-            placeholder="Nombre real para estadísticas"
-            className="rounded border border-slate-600 bg-slate-900 px-3 py-2"
-          />
-        </label>
+        {/* Solo lo pone el admin real: así nadie se pone lo que quiera en estadísticas. */}
+        {!soloIdentidad && isFullAdmin && (
+          <label className="flex flex-1 min-w-[200px] flex-col gap-1 text-sm">
+            <span className="text-slate-400" title="El que se ve en estadísticas, equipos y partidos. Si lo dejas vacío, se usa el nombre de arriba.">
+              Nombre reconocible (opcional)
+            </span>
+            <input
+              type="text"
+              value={data.nombreReconocible ?? ''}
+              onChange={(e) => setData((d) => ({ ...d, nombreReconocible: e.target.value }))}
+              placeholder="Nombre real para estadísticas"
+              className="rounded border border-slate-600 bg-slate-900 px-3 py-2"
+            />
+          </label>
+        )}
         <label className="flex w-28 flex-col gap-1 text-sm">
           <span className="text-slate-400">Edad</span>
           <input
