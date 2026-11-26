@@ -93,7 +93,7 @@ export function StatsPanel() {
 
   // Menciones: solo entra quien ha jugado al menos la mitad de los partidos disputados.
   const minPJ = minPartidosMencion(conResultado.length)
-  const subMin = `mín. ${minPJ} PJ (la mitad de ${conResultado.length})`
+  const subMin = 'mínimo la mitad de los partidos jugados'
   const goleadores = useMemo(() => ordenarGoleadores(statsArr, minPJ), [statsArr, minPJ])
   const asistentes = useMemo(() => ordenarAsistentes(statsArr, minPJ), [statsArr, minPJ])
   const masGoleadores = useMemo(() => equiposMasGoleadores(statsArr, minPJ), [statsArr, minPJ])
