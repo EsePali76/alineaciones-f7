@@ -442,7 +442,7 @@ function mejoresRachas(mejorV: number, peorD: number) {
   )
 }
 
-/** Tabla de ranking por goles o asistencias (solo la columna que aplica + PJ). */
+/** Tabla de ranking por goles o asistencias (la columna que aplica, su media por partido y PJ). */
 function ScorerTable({
   titulo,
   rows,
@@ -475,6 +475,9 @@ function ScorerTable({
                 <th className="w-full py-2 pl-1 pr-3 font-medium">Jugador</th>
                 <th className="py-2 pl-3 pr-6 text-center font-medium" title="Partidos jugados">PJ</th>
                 <th className="px-3 py-2 text-center font-medium" title={col.title}>{col.emoji}</th>
+                <th className="px-3 py-2 text-center font-medium" title={`${col.title} por partido`}>
+                  {col.emoji}/P
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -490,6 +493,9 @@ function ScorerTable({
                   <td className="py-2 pl-3 pr-6 text-center text-slate-400">{s.partidos}</td>
                   <td className="px-3 py-2 text-center font-semibold text-slate-200">
                     {destacado === 'goles' ? s.goles : s.asistencias}
+                  </td>
+                  <td className="px-3 py-2 text-center text-slate-300">
+                    {((destacado === 'goles' ? s.goles : s.asistencias) / s.partidos).toFixed(2)}
                   </td>
                 </tr>
               ))}
