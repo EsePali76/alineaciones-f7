@@ -13,7 +13,7 @@ import {
   ordenarAsistentes,
   equiposMasGoleadores,
   equiposMenosGoleados,
-  MIN_PARTIDOS_MENCION,
+  minPartidosMencion,
   type PlayerStats,
   type MencionEquipo,
   type TeamStats,
@@ -91,10 +91,13 @@ export function StatsPanel() {
     return [...porJugador.values()].filter((s) => !esPuntual(s.playerId))
   }, [porJugador, players])
 
-  const goleadores = useMemo(() => ordenarGoleadores(statsArr), [statsArr])
-  const asistentes = useMemo(() => ordenarAsistentes(statsArr), [statsArr])
-  const masGoleadores = useMemo(() => equiposMasGoleadores(statsArr), [statsArr])
-  const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr), [statsArr])
+  // Menciones: solo entra quien ha jugado al menos la mitad de los partidos disputados.
+  const minPJ = minPartidosMencion(conResultado.length)
+  const subMin = `mín. ${minPJ} PJ (la mitad de ${conResultado.length})`
+  const goleadores = useMemo(() => ordenarGoleadores(statsArr, minPJ), [statsArr, minPJ])
+  const asistentes = useMemo(() => ordenarAsistentes(statsArr, minPJ), [statsArr, minPJ])
+  const masGoleadores = useMemo(() => equiposMasGoleadores(statsArr, minPJ), [statsArr, minPJ])
+  const menosGoleados = useMemo(() => equiposMenosGoleados(statsArr, minPJ), [statsArr, minPJ])
 
   // Ajuste por resultados: solo por temporada, lo ganado o perdido en ella (aunque el
   // admin lo haya puesto a cero después: queda como histórico). En «Totales» no se
@@ -224,6 +227,7 @@ export function StatsPanel() {
             <div className="grid gap-4 md:grid-cols-2">
               <ScorerTable
                 titulo="⚽ Goleadores"
+                subtitulo={`Goles por partido · ${subMin}`}
                 rows={goleadores}
                 nombre={nombre}
                 foto={foto}
@@ -232,6 +236,7 @@ export function StatsPanel() {
               />
               <ScorerTable
                 titulo="🅰️ Asistentes"
+                subtitulo={`Asistencias por partido · ${subMin}`}
                 rows={asistentes}
                 nombre={nombre}
                 foto={foto}
@@ -242,7 +247,7 @@ export function StatsPanel() {
               {masGoleadores.length > 0 && (
                 <MencionTable
                   titulo="🚀 En los equipos más goleadores"
-                  subtitulo={`Media de goles a favor por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
+                  subtitulo={`Media de goles a favor por partido · ${subMin}`}
                   rows={masGoleadores}
                   nombre={nombre}
                   foto={foto}
@@ -252,7 +257,7 @@ export function StatsPanel() {
               {menosGoleados.length > 0 && (
                 <MencionTable
                   titulo="🛡️ Menos goleados"
-                  subtitulo={`Media de goles en contra por partido · mín. ${MIN_PARTIDOS_MENCION} PJ`}
+                  subtitulo={`Media de goles en contra por partido · ${subMin}`}
                   rows={menosGoleados}
                   nombre={nombre}
                   foto={foto}
@@ -442,9 +447,10 @@ function mejoresRachas(mejorV: number, peorD: number) {
   )
 }
 
-/** Tabla de ranking por goles o asistencias (la columna que aplica, su media por partido y PJ). */
+/** Tabla de ranking por goles o asistencias por partido (total, media y PJ). */
 function ScorerTable({
   titulo,
+  subtitulo,
   rows,
   nombre,
   foto,
@@ -452,6 +458,7 @@ function ScorerTable({
   vacio,
 }: {
   titulo: string
+  subtitulo: string
   rows: PlayerStats[]
   nombre: (id: string) => string
   foto: (id: string) => string | undefined
@@ -461,7 +468,10 @@ function ScorerTable({
   const col = destacado === 'goles' ? { emoji: '⚽', title: 'Goles' } : { emoji: '🅰️', title: 'Asistencias' }
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-slate-200">{titulo}</h3>
+      <div>
+        <h3 className="text-sm font-semibold text-slate-200">{titulo}</h3>
+        <p className="text-xs text-slate-500">{subtitulo}</p>
+      </div>
       {rows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">
           {vacio}
@@ -491,10 +501,10 @@ function ScorerTable({
                     </span>
                   </td>
                   <td className="py-2 pl-3 pr-6 text-center text-slate-400">{s.partidos}</td>
-                  <td className="px-3 py-2 text-center font-semibold text-slate-200">
+                  <td className="px-3 py-2 text-center text-slate-300">
                     {destacado === 'goles' ? s.goles : s.asistencias}
                   </td>
-                  <td className="px-3 py-2 text-center text-slate-300">
+                  <td className="px-3 py-2 text-center font-semibold text-slate-200">
                     {((destacado === 'goles' ? s.goles : s.asistencias) / s.partidos).toFixed(2)}
                   </td>
                 </tr>
