@@ -61,8 +61,7 @@ begin
   return new;
 end; $$;
 
-drop trigger if exists lineups_guard on public.lineups;
-create trigger lineups_guard before insert or update or delete on public.lineups
+create or replace trigger lineups_guard before insert or update or delete on public.lineups
   for each row execute function public.lineups_guard();
 
 -- ---- K global: solo admin real ----
@@ -116,6 +115,5 @@ begin
   return new;
 end; $$;
 
-drop trigger if exists players_guard on public.players;
-create trigger players_guard before insert or update on public.players
+create or replace trigger players_guard before insert or update on public.players
   for each row execute function public.players_guard();
